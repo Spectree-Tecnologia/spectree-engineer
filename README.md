@@ -61,6 +61,8 @@ skills/monolith/           skills de monólito modular (config-*, module-*, back
 skills/security/           security-audit da Cloudflare (MIT, vendorizada): review por mudança e auditoria completa
 templates/shared           o pacote @<ns>/shared copiado no bootstrap
 scripts/smoke.mjs          prova: bootstrap inteiro num projeto temporário, build, testes, 401 sem token
+scripts/evals.mjs          prova: o julgamento dos agentes, com `claude plugin eval` sobre evals/
+evals/                     um caso por diretório (prompt.md + graders/), fixtures sintéticos em evals/fixtures/
 ```
 
 ## Prova
@@ -70,6 +72,14 @@ node scripts/smoke.mjs
 ```
 
 Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → backend → Prisma → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend e exige `401` em `GET /` sem token. `SMOKE_KEEP=1` preserva o projeto gerado.
+
+```bash
+node scripts/evals.mjs
+```
+
+Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` bloqueia um `UpdateAccount` que zera o saldo num PATCH parcial (com `arquivo:linha`) e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; e `/engineer` faz exatamente uma pergunta (gate 2) a um pedido fora do roadmap.
+
+Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 2,50 por passada completa (seis casos, uma run cada): uns 5 minutos com `-j 3`, uns 12 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso 1 contra uma cópia do plugin com o card do `quality-engineer` sem a lista de regras e exige que ele **falhe**.
 
 ## Versão
 
