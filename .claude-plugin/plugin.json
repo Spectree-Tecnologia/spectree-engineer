@@ -45,6 +45,7 @@
     "./skills/monolith/module-use-case",
     "./skills/monolith/backend-controller",
     "./skills/monolith/backend-prisma-data",
-    "./skills/monolith/frontend-form-schema"
+    "./skills/monolith/frontend-form-schema",
+    "./skills/security/security-audit"
   ]
 }

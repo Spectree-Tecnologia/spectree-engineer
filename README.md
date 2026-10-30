@@ -13,6 +13,7 @@ Seguro por padrão no que o bootstrap gera:
 
 - `JwtGuard` como `APP_GUARD` — toda rota fechada salvo `@Public()`; `JWT_SECRET` sem valor padrão (o app não sobe sem ele).
 - `@nestjs/throttler` com limite global, `helmet`, CORS restrito a `FRONTEND_URL`, `ValidationPipe` com `whitelist` + `forbidNonWhitelisted`, `ApiExceptionFilter` logando a causa dos 500.
+- Review de segurança em toda mudança (`security-engineer`, em paralelo ao review de padrões) e auditoria completa em seis fases antes da primeira exposição pública e a cada cinco itens do roadmap — `confirmed` vira ticket, `needs_validation` vira teste.
 - Supply chain: `.npmrc` com `min-release-age=3`, `.github/dependabot.yml` com o mesmo cooldown, `npm audit --audit-level=high` no CI.
 - Fronteiras do monólito verificadas por `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro em `modules/*/src`, módulo depende só do shared, teste fora de `src/`, rota do Next só importa a página do módulo.
 
@@ -44,6 +45,7 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 | `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, design system do projeto | regra de negócio, código |
 | `full-stack-developer` | um ticket, test-first, scaffold pelas skills de monólito | sair do ticket |
 | `quality-engineer` | review em dois eixos + fronteiras do monólito | editar |
+| `security-engineer` | review como atacante com o `security-audit` da Cloudflare (guidance); achados só com fronteira violada e impacto | editar, rodar o alvo |
 | `platform-engineer` | bootstrap, git, worktrees, merge, Prisma, PR | código de módulo, merge na main |
 | `integration-engineer` | fatos sobre sistemas externos, com fonte; vigilância de suporte e advisories da stack | afirmar de memória |
 
@@ -52,9 +54,10 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 ```
 ARCHITECTURE.md            as dez regras do monólito modular Spectree (vira docs/architecture.md no projeto)
 commands/engineer.md       o orquestrador
-agents/*.md                os seis especialistas
+agents/*.md                os sete especialistas
 skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
 skills/monolith/           skills de monólito modular (config-*, module-*, backend-*, frontend-*)
+skills/security/           security-audit da Cloudflare (MIT, vendorizada): review por mudança e auditoria completa
 templates/shared           o pacote @<ns>/shared copiado no bootstrap
 scripts/smoke.mjs          prova: bootstrap inteiro num projeto temporário, build, testes, 401 sem token
 ```
