@@ -760,7 +760,8 @@ async function ensureBackendApp({ rootDir, backendPath, backendName, backendPare
     await runCommand('nest', nestCreateArgs, backendParentDir);
   } else {
     console.log(`Creating NestJS app with npx: ${backendName}`);
-    await runCommand('npx', ['--yes', '@nestjs/cli@latest', ...nestCreateArgs], backendParentDir);
+    // pinned major: @latest changed the scaffold under us (Nest 12 = Vitest + ESM)
+    await runCommand('npx', ['--yes', '@nestjs/cli@12', ...nestCreateArgs], backendParentDir);
   }
 
   return true;

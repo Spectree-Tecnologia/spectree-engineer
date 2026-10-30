@@ -2,7 +2,7 @@
 
 Plugin Claude Code da Spectree Tecnologia: um orquestrador em pt-BR (`/engineer`) com sub-agentes especialistas, para monólitos modulares spec-driven.
 
-- **Processo:** as skills de engenharia de [Matt Pocock](https://github.com/mattpocock/skills) — grill → **design** → spec → tickets → TDD → code review → PR → retro. A tela é prototipada no artefato Design e aprovada por você antes da spec, não vista semanas depois do código.
+- **Processo:** as skills de engenharia de [Matt Pocock](https://github.com/mattpocock/skills) — entrevista → roadmap → **design** → spec → tickets → TDD → code review → PR → **merge automático com CI verde** → próxima spec. A tela é prototipada no artefato Design antes da spec, não vista semanas depois do código. Depois da entrevista o squad anda sozinho; só sobem a você dinheiro/plataforma, mudança de escopo, impacto irreversível e o que nenhuma melhor prática decide.
 - **Arquitetura:** as skills do curso *Spec-Driven Development para Monólitos Modulares* — `config-*`, `module-*`, `backend-*`, `frontend-*` — e as regras de DDD tático que elas encodam.
 
 ## Instalação

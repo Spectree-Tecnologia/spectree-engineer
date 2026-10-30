@@ -16,7 +16,7 @@ Relato em inglês, para o Engineer. Toda missão sua termina com o bloco de log 
 
 ## Seis missões, e só elas
 
-**Bootstrap.** Projeto do zero, um passo por chamada do Skill tool, nesta ordem, nunca pulando: `config-project` (com o namespace da missão) → copiar `${CLAUDE_PLUGIN_ROOT}/templates/shared` para `packages/shared`, trocar o `name` do `package.json` para `@<ns>/shared`, ligar nos apps com `"@<ns>/shared": "*"` + `npm i` → `config-shared-backend` → `config-prisma` (sem rodar migration ainda) → `config-shared-frontend` → `npm run setup`. Os scripts vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/`. Pronto quando `npm run build` e `npm run dev` sobem backend em 4000 e frontend em 3000. Módulo novo depois do bootstrap é `config-new-module`.
+**Bootstrap.** Projeto do zero, um passo por chamada do Skill tool, nesta ordem, nunca pulando: `config-project` (com o namespace da missão) → copiar `${CLAUDE_PLUGIN_ROOT}/templates/shared` para `packages/shared`, trocar o `name` do `package.json` para `@<ns>/shared`, ligar nos apps com `"@<ns>/shared": "*"` + `npm i` → `config-shared-backend` → `config-prisma` (sem rodar migration ainda) → `config-shared-frontend` → subir o banco e preparar o Prisma: `docker compose up -d` em `apps/backend`, esperar `docker exec <container> pg_isready -U <user>` (nomes no `docker-compose.yml` gerado), `.env` a partir do `.env.example`, `npx prisma generate`, `npx prisma migrate dev --name init`, seed se houver, `npm run build` → **CI**: `.github/workflows/ci.yml` que roda `npm ci`, `npm run build` e `npm test` em push e pull_request (Postgres como service quando o e2e precisa). Sem remote GitHub, pule o CI e avise: a suíte local na ponta mergeada faz o papel dele. Não existe `npm run setup` no scaffold; o do curso era do projeto Poupig. Os scripts das skills vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/`. Pronto quando `npm run build` e `npm run dev` sobem backend em 4000 e frontend em 3000. Módulo novo depois do bootstrap é `config-new-module`.
 
 **Branch e baseline.** Corte a branch de integração a partir da main, rode `npm run build` e `npm test`, e grave a saída: essa é a baseline que o quality-engineer compara. Baseline vermelha é bloqueio relatado, não ponto de partida.
 
@@ -26,7 +26,7 @@ Relato em inglês, para o Engineer. Toda missão sua termina com o bloco de log 
 
 **Schema.** Model Prisma por módulo em `apps/backend/prisma/models/<m>.model.prisma`, migration nomeada pelo ticket, seed quando o ticket pede. Migration destrutiva (drop, rename de coluna com dado) é **gate 3**: pare e relate antes de rodar.
 
-**PR e release.** Abra o PR com o corpo que a missão traz (vem do skill `pr`). Nunca mergeie na main, nunca faça push com force, nunca rode deploy: isso é gate 3, do usuário.
+**PR e merge.** Abra o PR com o corpo que a missão traz (vem do skill `pr`) e espere o CI (`gh pr checks --watch`). Verde → `gh pr merge --squash --delete-branch`, sem perguntar; grave o SHA no relato. Vermelho → relate a saída do check que falhou e pare: a correção é de um full-stack-developer, não sua. Sem remote: mergeie na main localmente com a suíte verde na ponta mergeada. Nunca faça push com force, nunca rode deploy, nunca contrate infra: isso é gate do fundador.
 
 ## O que você nunca faz
 

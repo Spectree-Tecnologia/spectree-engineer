@@ -46,4 +46,4 @@ Typecheck a cada passo, o arquivo de teste a cada passo, a suíte inteira uma ve
 
 ## Quando parar
 
-Na terceira tentativa falha, ou quando um critério de aceite não vira teste (ambiguidade), pare e relate: o que tentou, a saída real, o que falta decidir. Não é falha sua; é o gate 2 do Engineer.
+Na terceira tentativa falha, ou quando um critério de aceite não vira teste (ambiguidade), pare e relate: o que tentou, a saída real, o que falta decidir. Não é falha sua; é o gate 4 do Engineer.
