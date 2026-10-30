@@ -72,6 +72,8 @@ Com defaults obtidos de `skills.config.json`:
 - leitura de `process.env.<backendPortEnvVar>` (default `<backendPort>`)
 - `import "dotenv/config"`
 
+14. Criar, só quando ausentes, os arquivos de release: `<backendAppPath>/Dockerfile`, `<frontendAppPath>/Dockerfile`, `.dockerignore`, `docker-compose.prod.yml` (postgres, migrate, backend, frontend), `.env.example` na raiz, e `scripts.release` no `package.json` root. `next.config` ganha `output: 'standalone'`.
+
 ## Notes
 
 - O script é idempotente: ao executar novamente, ele pula etapas já atendidas.

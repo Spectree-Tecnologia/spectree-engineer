@@ -30,6 +30,7 @@ Mais o que só a leitura pega, um achado por item com arquivo:linha:
 - query passando por use case, ou comando devolvendo entidade onde o projeto devolve void;
 - sufixo ou nome fora da convenção; classe com sufixo `Entity`;
 - `userId` lido do body; token entrando no módulo de negócio;
+- capacidade sem número (regra 11 de `docs/architecture.md`): rota nova no diff sem linha em `perf.config.json`, ou e2e de listagem sem `expectQueryBudget(prisma.client, K, ...)` em volta da requisição — confira com `grep -n "@Get\|@Post\|@Patch\|@Delete" apps/backend/src/modules/<m>/*.controller.ts` contra `perf.config.json`;
 - assert enfraquecido, teste pulado, expectativa removida no diff — **sempre bloqueante**.
 
 ## O que é achado

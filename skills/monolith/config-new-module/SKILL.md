@@ -83,6 +83,8 @@ O script deve gerar exatamente:
 - `<backendAppPath>/src/modules/<module-name>/index.ts`
 - `<backendAppPath>/prisma/models/<module-name>.model.prisma`
 - atualização em `<backendAppPath>/src/app.module.ts` para importar e registrar `<ModuleName>Module`
+- `<backendAppPath>/test/<module-name>.e2e-spec.ts`: 401 sem token e `GET /<module-name>` dentro de `expectQueryBudget(prisma.client, 2, ...)` — quando a listagem passar a ler o banco, semeie N linhas antes e mantenha o orçamento (regra 11 de `docs/architecture.md`)
+- linha `{ "path": "/<module-name>", "auth": true, "p95Ms": 200 }` em `perf.config.json` (quando o arquivo existe), medida por `npm run perf`
 - `<frontendAppPath>/src/modules/<module-name>/components/<module-name>-dashboard.component.tsx`
 - `<frontendAppPath>/src/modules/<module-name>/data/index.ts`
 - `<frontendAppPath>/src/modules/<module-name>/pages/dashboard.page.tsx`

@@ -547,6 +547,9 @@ async function main() {
       tsConfigBasePath = legacyFallbackTsConfigBasePath;
     }
     const tsConfigExtendsPath = toPosixPath(path.relative(targetDir, tsConfigBasePath));
+    // the extends above is a path, invisible to `turbo prune`: declaring the package keeps it in the Docker build
+    const tsConfigPackageJsonPath = path.join(path.dirname(tsConfigBasePath), 'package.json');
+    const tsConfigPackageName = (await pathExists(tsConfigPackageJsonPath)) ? (await readJson(tsConfigPackageJsonPath)).name : '';
     const moduleClassName = toPascalCase(moduleName);
     const backendControllerClassName = `${moduleClassName}Controller`;
     const backendPrismaClassName = `${moduleClassName}Prisma`;
@@ -608,6 +611,7 @@ async function main() {
       devDependencies: {
         '@vitest/coverage-v8': '^4.1.2',
         vitest: '^4.1.2',
+        ...(tsConfigPackageName ? { [tsConfigPackageName]: '*' } : {}),
       },
     };
 
@@ -750,6 +754,49 @@ export * from "./pages/dashboard.page";
 `;
     const backendModuleIndexTs = `export * from './${moduleName}.module.js';
 `;
+    // the e2e covers the guard, the status mapping and the query budget of the route (architecture rules 10 and 11)
+    const backendE2eSpecTs = `import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { App } from 'supertest/types.js';
+import { AppModule } from '../src/app.module.js';
+import { PrismaService } from '../src/db/prisma.service.js';
+import { ApiExceptionFilter } from '../src/shared/errors/api-exception.filter.js';
+import { expectQueryBudget } from './query-budget.js';
+
+describe('${moduleName} (e2e)', () => {
+  let app: INestApplication<App>;
+  let prisma: PrismaService;
+  let auth: string;
+
+  beforeAll(async () => {
+    const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleFixture.createNestApplication();
+    app.useGlobalFilters(new ApiExceptionFilter());
+    await app.init();
+    prisma = app.get(PrismaService);
+    const payload = { sub: '00000000-0000-4000-8000-000000000001', name: 'E2E', email: 'e2e@localhost' };
+    auth = \`Bearer \${app.get(JwtService).sign(payload)}\`;
+  });
+
+  afterAll(() => app.close());
+
+  it('answers 401 without a token', async () => {
+    await request(app.getHttpServer()).get('/${moduleName}').expect(401);
+  });
+
+  it('lists within the query budget, whatever the number of rows', async () => {
+    // seed N rows of the aggregate here once the list reads the database: the budget does not grow with N
+    const res = await expectQueryBudget(prisma.client, 2, () =>
+      request(app.getHttpServer()).get('/${moduleName}').set('Authorization', auth).expect(200),
+    );
+    expect(res.body).toBeDefined();
+  });
+});
+`;
+    const backendE2eSpecPath = path.join(rootDir, backendAppPath, 'test', `${moduleName}.e2e-spec.ts`);
+    const perfConfigPath = path.join(rootDir, 'perf.config.json');
 
     await activeRunOps.ensureDir(path.join(targetDir, 'src'), {
       note: 'estrutura base de pacote',
@@ -782,6 +829,18 @@ export * from "./pages/dashboard.page";
     logger.step(`criou arquivo: ${backendModuleIndexPath}`);
     await writeFile(backendPrismaModelPath, backendPrismaModel);
     logger.step(`criou arquivo: ${backendPrismaModelPath}`);
+    await writeFile(backendE2eSpecPath, backendE2eSpecTs);
+    logger.step(`criou arquivo: ${backendE2eSpecPath}`);
+    // the list route enters the latency budget the day it is born; a route outside perf.config.json is a review finding
+    if (await pathExists(perfConfigPath)) {
+      const perfConfig = await readJson(perfConfigPath);
+      perfConfig.routes = perfConfig.routes ?? [];
+      if (!perfConfig.routes.some((route) => route.path === `/${moduleName}`)) {
+        perfConfig.routes.push({ path: `/${moduleName}`, auth: true, p95Ms: 200 });
+        await writeFile(perfConfigPath, stringifyJson(perfConfig));
+        logger.step(`rota /${moduleName} adicionada ao orçamento de p95: ${perfConfigPath}`);
+      }
+    }
     await ensureBackendModuleImportedInAppModule({
       appModulePath: backendAppModulePath,
       moduleName,
