@@ -1,0 +1,50 @@
+{
+  "name": "spectree-engineer",
+  "version": "0.1.0",
+  "description": "Orquestrador em pt-BR com sub-agentes especialistas para monólitos modulares spec-driven: as skills de engenharia de Matt Pocock como processo, as skills do curso como padrão de arquitetura.",
+  "author": {
+    "name": "Spectree Tecnologia"
+  },
+  "homepage": "https://github.com/Spectree-Tecnologia/spectree-engineer",
+  "repository": "https://github.com/Spectree-Tecnologia/spectree-engineer",
+  "license": "MIT",
+  "keywords": [
+    "orchestrator",
+    "multi-agent",
+    "spec-driven",
+    "modular-monolith",
+    "tdd",
+    "pt-br"
+  ],
+  "skills": [
+    "./skills/engineering/grilling",
+    "./skills/engineering/domain-modeling",
+    "./skills/engineering/codebase-design",
+    "./skills/engineering/to-spec",
+    "./skills/engineering/to-tickets",
+    "./skills/engineering/implement",
+    "./skills/engineering/tdd",
+    "./skills/engineering/code-review",
+    "./skills/engineering/pr",
+    "./skills/engineering/retro",
+    "./skills/engineering/diagnosing-bugs",
+    "./skills/engineering/writing-for-agents",
+    "./skills/engineering/setup-matt-pocock-skills",
+    "./skills/monolith/config-project",
+    "./skills/monolith/config-new-module",
+    "./skills/monolith/config-prisma",
+    "./skills/monolith/config-shared-backend",
+    "./skills/monolith/config-shared-frontend",
+    "./skills/monolith/module-aggregate",
+    "./skills/monolith/module-entity",
+    "./skills/monolith/module-value-object",
+    "./skills/monolith/module-domain-service",
+    "./skills/monolith/module-dto",
+    "./skills/monolith/module-query-cqrs",
+    "./skills/monolith/module-repository",
+    "./skills/monolith/module-use-case",
+    "./skills/monolith/backend-controller",
+    "./skills/monolith/backend-prisma-data",
+    "./skills/monolith/frontend-form-schema"
+  ]
+}
