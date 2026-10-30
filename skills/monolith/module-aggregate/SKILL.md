@@ -7,7 +7,7 @@ description: Creates the standard scaffold for an aggregate inside an existing b
 
 Use `scripts/create-aggregate.js` to create the deterministic base scaffold for an aggregate inside an existing module in `modules/<module>`. The generated structure must always use English naming for folders, files, classes, interfaces, and use cases.
 
-Important: the skill may keep internal test templates under `.claude/skills/module-aggregate/assets/**`, but the generated test files must always be created at the module root under `modules/<module>/test/**`, never inside `modules/<module>/src/**`.
+Important: the skill may keep internal test templates under `${CLAUDE_PLUGIN_ROOT}/skills/monolith/module-aggregate/assets/**`, but the generated test files must always be created at the module root under `modules/<module>/test/**`, never inside `modules/<module>/src/**`.
 
 ## Required inputs
 
@@ -35,7 +35,7 @@ Do not execute the skill without that answer.
 5. Execute from the project root:
 
 ```bash
-node .claude/skills/module-aggregate/scripts/create-aggregate.js --module auth --aggregate user --mode crud
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/module-aggregate/scripts/create-aggregate.js --module auth --aggregate user --mode crud
 ```
 
 6. Verify at the end:
@@ -106,7 +106,7 @@ Creates only one minimal generic use case to demonstrate the structure:
 - Always import from the shared package resolved from `packages/shared/package.json`; never use relative paths into `packages/shared`.
 - Keep the production source tree free of in-memory repository implementations; place them only under `modules/<module>/test/<aggregate>/mock/`.
 - Generate use-case tests that depend on the test mock implementation, not on files inside `src/<aggregate>/provider/`.
-- Use only the resources contained in `.claude/skills/module-aggregate`.
+- Use only the resources contained in `${CLAUDE_PLUGIN_ROOT}/skills/monolith/module-aggregate`.
 
 ## Internal resources
 

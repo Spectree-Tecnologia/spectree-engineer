@@ -14,11 +14,11 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 
 1. Confirmar que o workspace contém `apps/backend/package.json`.
 2. Executar o script da skill:
-   - `node .claude/skills/config-prisma/scripts/init-prisma-backend.js --dry-run`
-   - `node .claude/skills/config-prisma/scripts/init-prisma-backend.js --apply --install`
+   - `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --dry-run`
+   - `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --install`
    - `npm --workspace apps/backend run prisma:generate` (obrigatório antes de qualquer `npm run build`)
 3. Incluir arquivos Prisma por módulo (repetível):
-   - `node .claude/skills/config-prisma/scripts/init-prisma-backend.js --apply --module auth --module product`
+   - `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --module auth --module product`
 4. Subir banco com Docker Compose do backend:
    - `npm --workspace apps/backend run db:start`
 5. Validar Prisma:
@@ -58,7 +58,6 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 - Para ambientes locais de desenvolvimento, após ajustes no schema, executar o fluxo completo:
   - `npx prisma migrate reset && npx prisma migrate dev && npx prisma generate && npx prisma db seed`
 - Em backends já evoluídos, o script evita regressão de `seed/main.ts` para template neutro quando o arquivo já estiver no padrão moderno com tasks registradas.
-- Seguir convenção global em `../skills-standards.md`.
 - Consultar `references/prisma-init-checklist.md` para checklist operacional.
 
 ## Risk Logging Guardrails
@@ -71,4 +70,3 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 
 ## Global Standards
 
-- Consultar `../skills-standards.md` para padroes globais de nomenclatura e convencoes gerais entre skills.

@@ -12,10 +12,10 @@ Execute sempre a partir da raiz do monorepo:
 
 ```bash
 # Autodetecta o app frontend quando há apenas um em apps/
-node .claude/skills/config-shared-frontend/scripts/apply.mjs
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/scripts/apply.mjs
 
 # Ou informe o nome do app de destino (frontend, web, ou outro)
-node .claude/skills/config-shared-frontend/scripts/apply.mjs <nome-do-app>
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/scripts/apply.mjs <nome-do-app>
 ```
 
 Esse script aplica toda a skill de forma idempotente (dependências, `shared/`, rotas e formatação).
@@ -49,7 +49,7 @@ Todos os arquivos necessários estão **embarcados** nesta skill em `assets/` �
 ## Localização dos assets
 
 ```
-.claude/skills/config-shared-frontend/assets/
+${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/assets/
   shared/          ← pasta shared completa, genérica, pronta para copiar (sem navegação)
   public/          ← assets estáticos servidos pela raiz (ilustrações etc.)
     illustrations/empty-dashboard-dark.svg  (usado por empty-dashboard-state)
@@ -275,7 +275,7 @@ Executar na raiz do monorepo.
 - **Dashboard aberto** — não adicionar `RouteGuard` ao layout de `(private)` por default.
 - **Dark-only** — sobrescrever `app/globals.css` com o template do tema escuro e manter a
   classe `dark` no `<html>`. Não reintroduzir `:root` claro nem `prefers-color-scheme`.
-- **Sempre** usar os assets embarcados em `.claude/skills/config-shared-frontend/assets/` como fonte.
+- **Sempre** usar os assets embarcados em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/assets/` como fonte.
 - **Confirmar** antes de sobrescrever arquivos existentes no destino.
 - **Manter** todos os imports `@/shared/...` intactos — não alterar o sistema de alias.
 - **Nunca perguntar** configuração ao usuário — resolver tudo pelos defaults da Fase 2.

@@ -70,4 +70,3 @@
 
 ## Referência Global
 
-- Convenção de nomenclatura compartilhada: `../../skills-standards.md`

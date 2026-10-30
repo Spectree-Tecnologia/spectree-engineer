@@ -719,7 +719,8 @@ async function ensureFrontendApp({ rootDir, frontendPath, frontendName, frontend
   await runCommand(
     'npx',
     // --disable-git: a nested apps/frontend/.git makes Next treat the app as workspace root
-    ['create-next-app@latest', frontendName, '--yes', '--use-npm', '--src-dir', '--disable-git'],
+    // pinned major: Next 16 Cache Components fail `next build` on dynamic routes that use usePathname
+    ['create-next-app@15', frontendName, '--yes', '--use-npm', '--src-dir', '--disable-git'],
     frontendParentDir,
   );
   return true;
@@ -760,8 +761,8 @@ async function ensureBackendApp({ rootDir, backendPath, backendName, backendPare
     await runCommand('nest', nestCreateArgs, backendParentDir);
   } else {
     console.log(`Creating NestJS app with npx: ${backendName}`);
-    // pinned major: @latest changed the scaffold under us (Nest 12 = Vitest + ESM)
-    await runCommand('npx', ['--yes', '@nestjs/cli@12', ...nestCreateArgs], backendParentDir);
+    // pinned major: Nest CLI 12 scaffolds Vitest + ESM; 11 is the course stack (Jest + CJS)
+    await runCommand('npx', ['--yes', '@nestjs/cli@11', ...nestCreateArgs], backendParentDir);
   }
 
   return true;
@@ -1277,6 +1278,25 @@ async function main() {
 
     const frontendPackagePath = path.join(frontendDir, 'package.json');
     const backendPackagePath = path.join(backendDir, 'package.json');
+
+    // the contract every other skill and the Engineer read; nothing else creates these files
+    await activeRunOps.writeJsonFile(
+      path.join(rootDir, 'skills.config.json'),
+      { namespace: scope, sharedModulePath: 'packages/shared', frontendAppPath: frontendPath, backendAppPath: backendPath, frontendPort, backendPort, frontendApiUrlEnvVar, backendPortEnvVar },
+      { note: 'skills config', markRiskOnOverwrite: false },
+    );
+    if (!(await pathExists(path.join(rootDir, '.gitattributes')))) {
+      await activeRunOps.writeTextFile(path.join(rootDir, '.gitattributes'), '* text=auto eol=lf\n', { note: 'LF everywhere, Windows included' });
+    }
+    // root typescript follows the backend scaffold: create-turbo's TS 7 breaks typescript-eslint in the frontend
+    const rootPkgPath = path.join(rootDir, 'package.json');
+    const rootPkg = await readJson(rootPkgPath);
+    const backendTs = (await readJson(backendPackagePath)).devDependencies?.typescript;
+    if (backendTs && rootPkg.devDependencies?.typescript && rootPkg.devDependencies.typescript !== backendTs) {
+      rootPkg.devDependencies.typescript = backendTs;
+      await activeRunOps.writeJsonFile(rootPkgPath, rootPkg, { note: `typescript ${backendTs} as in the backend`, markRiskOnOverwrite: false });
+      await runCommand('npm', ['install', '--no-audit', '--no-fund'], rootDir);
+    }
 
     const workspaceNamespaceResult = await applyNamespaceToWorkspacePackages({
       rootDir,

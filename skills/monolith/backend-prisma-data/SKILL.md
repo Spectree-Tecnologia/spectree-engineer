@@ -32,8 +32,6 @@ Aplicar o padrão Prisma do projeto cobrindo modelagem, migração, seed e imple
 ## References
 
 Consultar `references/prisma-pattern.md` para paths, checklist e armadilhas do projeto.
-Consultar `../skills-standards.md` para convenção global de nomenclatura.
 
 ## Global Standards
 
-- Consultar `../skills-standards.md` para padroes globais de nomenclatura e convencoes gerais entre skills.

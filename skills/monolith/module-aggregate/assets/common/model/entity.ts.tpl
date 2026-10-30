@@ -1,4 +1,4 @@
-import { Entity, EntityProps } from '__SHARED_PACKAGE__'
+import { Entity, EntityProps, Result } from '__SHARED_PACKAGE__'
 
 export interface __AGGREGATE_CLASS_NAME__Props extends EntityProps {}
 
@@ -10,7 +10,8 @@ export class __AGGREGATE_CLASS_NAME__ extends Entity<
     super(props)
   }
 
-  static create(props: __AGGREGATE_CLASS_NAME__Props): __AGGREGATE_CLASS_NAME__ {
-    return new __AGGREGATE_CLASS_NAME__(props)
+  // cloneWith() routes through tryCreate: invariants that span props live here, as Result codes
+  static tryCreate(props: __AGGREGATE_CLASS_NAME__Props): Result<__AGGREGATE_CLASS_NAME__> {
+    return Result.ok(new __AGGREGATE_CLASS_NAME__(props))
   }
 }

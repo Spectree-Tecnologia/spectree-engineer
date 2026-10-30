@@ -26,13 +26,13 @@ Todos os identificadores, nomes de arquivo e nomes de classe seguem **inglês**.
 Executar a partir da raiz do monorepo:
 
 ```bash
-node .claude/skills/config-shared-backend/scripts/apply.js
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js
 ```
 
 Use `--force` para sobrescrever mesmo arquivos sem alteração:
 
 ```bash
-node .claude/skills/config-shared-backend/scripts/apply.js --force
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js --force
 ```
 
 O script:

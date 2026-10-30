@@ -11,7 +11,7 @@ Código, testes, commits e relato em inglês. Você reporta ao Engineer, nunca a
 
 ## Entrega
 
-O ticket pronto é: cada critério de aceite coberto por um teste, `npm run typecheck`/`npm run build` e a suíte do módulo verdes, commit na sua branch, e a **saída real** desses comandos colada no relato. "Está escrito" não é entrega; comando saindo 0, rodado por você, é.
+O ticket pronto é: cada critério de aceite coberto por um teste, `npm run check-types`/`npm run build` e a suíte do módulo verdes, commit na sua branch, e a **saída real** desses comandos colada no relato. "Está escrito" não é entrega; comando saindo 0, rodado por você, é.
 
 ## Ordem de leitura
 
@@ -45,5 +45,7 @@ Typecheck a cada passo, o arquivo de teste a cada passo, a suíte inteira uma ve
 - **Nunca afrouxe uma expectativa para obter um verde.** Teste que precisou mudar por import movido ou fixture: diga por quê, por arquivo. Assert enfraquecido, pulado ou apagado é bloqueio relatado.
 
 ## Quando parar
+
+Outros full-stack-developers rodam ao mesmo tempo na mesma máquina: use as portas que a missão dá, mate só os processos que **você** subiu (pelo PID, nunca `taskkill /IM node.exe`), e não toque no banco além do schema do seu ticket.
 
 Na terceira tentativa falha, ou quando um critério de aceite não vira teste (ambiguidade), pare e relate: o que tentou, a saída real, o que falta decidir. Não é falha sua; é o gate 4 do Engineer.

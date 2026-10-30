@@ -31,8 +31,6 @@ Aplicar o padrão de Entidades do projeto com foco em identidade (`id`), invaria
 ## References
 
 Consultar `references/entity-pattern.md` para paths, checklist, exemplos e armadilhas comuns observadas no código atual.
-Consultar `../skills-standards.md` para convenção global de nomenclatura.
 
 ## Global Standards
 
-- Consultar `../skills-standards.md` para padroes globais de nomenclatura e convencoes gerais entre skills.

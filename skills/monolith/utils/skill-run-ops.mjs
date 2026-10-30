@@ -155,7 +155,11 @@ export function createSkillRunOps({ rootDir, logger, dryRun = false }) {
 
     return new Promise((resolve, reject) => {
       // npx/npm/nest are .cmd shims on Windows; spawn needs a shell to resolve them
-      const child = spawn(cmd, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
+      // (one command string, not args + shell: Node deprecates that mix, DEP0190)
+      const child =
+        process.platform === 'win32'
+          ? spawn([cmd, ...args].join(' '), { cwd, stdio: 'inherit', shell: true })
+          : spawn(cmd, args, { cwd, stdio: 'inherit' });
       child.on('error', reject);
       child.on('exit', (code) => {
         if (code === 0) {

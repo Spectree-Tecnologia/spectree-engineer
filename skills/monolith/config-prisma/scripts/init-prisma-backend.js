@@ -509,7 +509,8 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    await this.client.$connect();
+    // $connect is lazy with the pg adapter; a real query fails fast when the database is not there
+    await this.client.$queryRaw\`SELECT 1\`;
   }
 
   async onModuleDestroy() {
@@ -555,11 +556,12 @@ model PrismaBootstrap {
 `;
 }
 
-function renderDockerCompose(dbConfig) {
+function renderDockerCompose(dbConfig, rootDir) {
+  // one container per project: a generic name collides with the next project on the same machine
   return `services:
   postgres:
     image: postgres:16-alpine
-    container_name: app-db-postgres
+    container_name: ${path.basename(rootDir)}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${dbConfig.user}
@@ -740,7 +742,7 @@ async function main() {
 
     await writeFileIfChanged(path.join(backendDir, 'prisma.config.ts'), renderPrismaConfig(), ctx);
     await writeFileIfChanged(path.join(prismaDir, 'schema.prisma'), renderSchemaPrisma(), ctx);
-    await writeFileIfChanged(path.join(backendDir, 'docker-compose.yml'), renderDockerCompose(dbConfig), ctx);
+    await writeFileIfChanged(path.join(backendDir, 'docker-compose.yml'), renderDockerCompose(dbConfig, rootDir), ctx);
     await writeFileIfChanged(path.join(dbDir, 'prisma.service.ts'), renderPrismaService(sharedPackageName), ctx);
     await writeFileIfChanged(path.join(dbDir, 'db.module.ts'), renderDbModule(), ctx);
 

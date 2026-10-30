@@ -446,8 +446,8 @@ async function ensureBackendModuleImportedInAppModule({ appModulePath, moduleNam
 }
 
 async function main() {
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  const rootDir = path.resolve(scriptDir, '../../../..');
+  // the script lives in the plugin cache, not in the project: the project is wherever it is run from
+  const rootDir = process.cwd();
   const logger = await createSkillRunLogger({
     rootDir,
     skillName: 'config-new-module',

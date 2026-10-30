@@ -51,8 +51,8 @@ Gerar um módulo novo de forma determinística em três áreas do monorepo:
 - Namespace por precedência:
   - `--scope`
   - `PROJECT_NAMESPACE` ou `SKILLS_NAMESPACE`
-  - `skills.config.local.json` (em `.claude/skills/.env`, `.claude/skills/.env` ou `.env/`)
-  - `skills.config.json` (em `.claude/skills/.env`, `.claude/skills/.env` ou `.env/`)
+  - `skills.config.local.json` (em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`)
+  - `skills.config.json` (em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`)
   - fallback de `packages/shared/package.json`
 - Scripts padrão:
   - `dev: tsc --watch`
@@ -95,5 +95,4 @@ Gerar um módulo novo de forma determinística em três áreas do monorepo:
 - `--scope` permite forçar namespace explícito (ex.: `@namespace`, `@acme`).
 - Sem `--scope`, usar a precedência de configuração global da skill.
 - `--force` permite sobrescrever os diretórios de package/backend/frontend do módulo.
-- Seguir convenção global em `../../skills-standards.md`.
-- Comando recomendado (cross-platform): `node .claude/skills/config-new-module/scripts/create-module.mjs <module-name>` (ou ajuste para `.claude/skills` quando aplicável).
+- Comando recomendado (cross-platform): `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name>` (ou ajuste para `.claude/skills` quando aplicável).

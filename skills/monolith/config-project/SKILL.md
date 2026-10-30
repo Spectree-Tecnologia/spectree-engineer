@@ -11,7 +11,7 @@ Executar um script determinístico e idempotente para bootstrap web+backend no p
 O fluxo usa `npx create-turbo@latest` para gerar a base padrão do TurboRepo (incluindo configs compartilhadas e `.gitignore`) e reconcilia apenas o que estiver faltando na pasta atual.
 Se `.git` já existir no diretório atual, o scaffold é executado com `--no-git` para evitar recriação de repositório git.
 Depois cria frontend/backend apenas quando necessário, aplica namespace do `skills.config.json` nos pacotes e atualiza somente os arquivos pendentes.
-As configurações padrão são lidas de `skills.config.json` (em `.claude/skills/.env`, `.claude/skills/.env` ou `.env/` no repositório de skills).
+As configurações padrão são lidas de `skills.config.json` (em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/` no repositório de skills).
 
 ## Workflow
 
@@ -34,7 +34,7 @@ As configurações padrão são lidas de `skills.config.json` (em `.claude/skill
 Fluxo padrão:
 
 ```bash
-node .claude/skills/config-project/scripts/project-init.mjs
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.mjs
 ```
 
 > Se o repositório estiver instalado em `.claude/skills`, ajuste o caminho dos comandos.
@@ -42,13 +42,13 @@ node .claude/skills/config-project/scripts/project-init.mjs
 Pular instalação global do Nest CLI (forçar `npx`):
 
 ```bash
-node .claude/skills/config-project/scripts/project-init.mjs --skip-global-nest
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.mjs --skip-global-nest
 ```
 
 Customizar paths e portas:
 
 ```bash
-node .claude/skills/config-project/scripts/project-init.mjs \
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.mjs \
   --frontend-path apps/frontend \
   --backend-path apps/api \
   --frontend-port 3000 \
@@ -58,7 +58,7 @@ node .claude/skills/config-project/scripts/project-init.mjs \
 Customizar nomes das env vars de porta/url:
 
 ```bash
-node .claude/skills/config-project/scripts/project-init.mjs \
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.mjs \
   --frontend-api-env-var NEXT_PUBLIC_API_URL \
   --backend-port-env-var PORT
 ```
@@ -66,7 +66,7 @@ node .claude/skills/config-project/scripts/project-init.mjs \
 Sobrescrever namespace por CLI:
 
 ```bash
-node .claude/skills/config-project/scripts/project-init.mjs --scope @namespace
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.mjs --scope @namespace
 ```
 
 ## Resources
@@ -85,4 +85,3 @@ node .claude/skills/config-project/scripts/project-init.mjs --scope @namespace
 
 ## Global Standards
 
-- Consultar `../skills-standards.md` para padroes globais de nomenclatura e convencoes gerais entre skills.
