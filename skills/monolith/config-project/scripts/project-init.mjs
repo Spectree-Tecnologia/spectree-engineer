@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { loadSkillConfig, resolveNamespace } from '../../utils/resolve-skill-config.mjs';
 import { createSkillRunLogger } from '../../utils/skill-run-log.mjs';
 import { createSkillRunOps } from '../../utils/skill-run-ops.mjs';
@@ -388,7 +388,8 @@ async function ensureTurboRoot(rootDir, scope) {
   nextPkg.scripts.build = nextPkg.scripts.build ?? 'turbo run build';
   nextPkg.scripts.lint = nextPkg.scripts.lint ?? 'turbo run lint';
   nextPkg.scripts.test = 'turbo run test';
-  nextPkg.packageManager = nextPkg.packageManager ?? 'npm@latest';
+  // turbo rejects 'npm@latest' (invalid_package_manager_field); pin the installed version
+  nextPkg.packageManager = nextPkg.packageManager ?? `npm@${execSync('npm --version').toString().trim()}`;
 
   const turboExists = await pathExists(turboPath);
   if (!turboExists) {
@@ -717,7 +718,8 @@ async function ensureFrontendApp({ rootDir, frontendPath, frontendName, frontend
   console.log(`Creating Next.js app: ${frontendName}`);
   await runCommand(
     'npx',
-    ['create-next-app@latest', frontendName, '--yes', '--use-npm', '--src-dir'],
+    // --disable-git: a nested apps/frontend/.git makes Next treat the app as workspace root
+    ['create-next-app@latest', frontendName, '--yes', '--use-npm', '--src-dir', '--disable-git'],
     frontendParentDir,
   );
   return true;
