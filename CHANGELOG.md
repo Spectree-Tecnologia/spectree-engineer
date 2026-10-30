@@ -1,0 +1,34 @@
+# Changelog
+
+Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento.
+
+## [Unreleased]
+
+## [0.2.0] - 2026-10-30
+
+### Added
+- Retro: candidato que é do plugin vira issue em `Spectree-Tecnologia/spectree-engineer`, sem perguntar.
+- `CHANGELOG.md` e processo de release (README › Versão).
+- `security-engineer`: review como atacante em toda mudança, em paralelo ao `quality-engineer`, com o `security-audit` da Cloudflare (MIT) em modo guidance; fluxo "Auditoria" (full-audit) antes da primeira exposição pública e a cada cinco itens do roadmap; wrapper `skills/security/validate-findings.cjs` para Windows.
+- `ARCHITECTURE.md`: as dez regras do monólito modular, copiado para `docs/architecture.md` de todo projeto gerado; leitura obrigatória de toda missão.
+- `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro, dependência só do shared, teste fora de `src/`, rota do Next só importa a página, read é query e não use case.
+- `scripts/smoke.mjs`: prova do bootstrap inteiro a partir do plugin (build, testes, Postgres, `401` sem token).
+- Supply chain no projeto gerado: `.npmrc min-release-age=3`, Dependabot com cooldown, `npm audit --audit-level=high` no CI; `integration-engineer` vigia suporte e advisories da stack.
+- `docs/roadmap.md` e `.scratch/<feature>/decisions.md`: o Engineer decide sozinho depois da entrevista; quatro gates sobem ao fundador.
+
+### Changed
+- Squad autônomo: spec, tickets, review, PR e merge com CI verde sem aprovação; próxima spec começa sozinha.
+- Stack gerada sem pins: NestJS em ESM + Vitest, Next.js com Cache Components, Prisma + PostgreSQL, Node LTS por `.nvmrc`; `JwtGuard` global, `JWT_SECRET` obrigatório, throttler, helmet, CORS por `FRONTEND_URL`, `ValidationPipe` estrito.
+- Skills de monólito reescritas sem referência a material de curso; `create-module` resolve a raiz por `cwd`; `resolve-skill-config` procura `skills.config.json` nos lugares certos.
+
+### Fixed
+- Bootstrap no Windows; pacote `@<ns>/shared` incluído no plugin; designer grava os arquivos de Design.
+
+## [0.1.0] - 2026-10-30
+
+### Added
+- `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
+
+[Unreleased]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/releases/tag/v0.1.0

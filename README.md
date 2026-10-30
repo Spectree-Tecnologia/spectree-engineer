@@ -53,6 +53,7 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 
 ```
 ARCHITECTURE.md            as dez regras do monólito modular Spectree (vira docs/architecture.md no projeto)
+CHANGELOG.md               o que mudou por versão
 commands/engineer.md       o orquestrador
 agents/*.md                os sete especialistas
 skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
@@ -69,3 +70,9 @@ node scripts/smoke.mjs
 ```
 
 Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → backend → Prisma → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend e exige `401` em `GET /` sem token. `SMOKE_KEEP=1` preserva o projeto gerado.
+
+## Versão
+
+A versão vive em `.claude-plugin/plugin.json` e segue SemVer (regra no topo do [CHANGELOG.md](CHANGELOG.md)). Para lançar: mova `[Unreleased]` para a versão nova com a data, suba `version`, rode `claude plugin validate . --strict` e `node scripts/smoke.mjs`, faça o commit e a tag `v<versão>` no mesmo commit, e dê push de ambos. Quem instalou atualiza com `claude plugin update spectree-engineer`.
+
+Melhorias que o `/engineer` descobre nos projetos (retro) chegam aqui como [issues](https://github.com/Spectree-Tecnologia/spectree-engineer/issues).
