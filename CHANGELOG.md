@@ -4,6 +4,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 
 ## [Unreleased]
 
+### Added
+- `scripts/evals.mjs` + `evals/`: suíte de evals do squad com `claude plugin eval` — seis casos que medem o julgamento dos agentes (quality-engineer, security-engineer, solutions-architect, gate 2 do `/engineer`) por critério verificável pelo runner; `--control` prova que o caso 1 falha sem a lista de regras do card.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added
