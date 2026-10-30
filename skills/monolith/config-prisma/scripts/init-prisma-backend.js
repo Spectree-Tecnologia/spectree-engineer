@@ -505,6 +505,8 @@ export class PrismaService
       adapter: new PrismaPg({
         connectionString: process.env.DATABASE_URL!,
       }),
+      // query events feed test/query-budget.ts (architecture rule 11); without a listener they cost nothing visible
+      log: [{ level: 'query', emit: 'event' }],
     });
   }
 
@@ -524,6 +526,53 @@ export class PrismaService
       return operation({ client: tx });
     });
   }
+}`;
+}
+
+function renderQueryBudget() {
+  return `import type { PrismaClient } from '@prisma/client';
+import { expect } from 'vitest';
+
+type QueryEvent = { query: string; params: string; duration: number };
+type QueryEmitter = { $on(event: 'query', listener: (event: QueryEvent) => void): void };
+
+// Prisma has $on but no $off: one listener per client, feeding every budget that is open at the time.
+const openBudgets = new WeakMap<object, Set<QueryEvent[]>>();
+
+/**
+ * Runs \`fn\` and fails the test when the client emitted more than \`max\` queries meanwhile.
+ * Needs \`log: [{ level: 'query', emit: 'event' }]\` on the client; PrismaService sets it.
+ *
+ * A list of N rows must fit the same budget as a list of 1: that is how an N+1 is caught at
+ * its origin, in the e2e of the route, instead of in production (architecture rule 11).
+ */
+export async function expectQueryBudget<T>(
+  client: PrismaClient,
+  max: number,
+  fn: () => Promise<T>,
+): Promise<T> {
+  let sinks = openBudgets.get(client);
+  if (!sinks) {
+    sinks = new Set();
+    openBudgets.set(client, sinks);
+    const subscribers = sinks;
+    (client as unknown as QueryEmitter).$on('query', (event) => {
+      for (const sink of subscribers) sink.push(event);
+    });
+  }
+  const queries: QueryEvent[] = [];
+  sinks.add(queries);
+  let result: T;
+  try {
+    result = await fn();
+  } finally {
+    // the event of the last query can land one tick after its promise resolves
+    await new Promise((resolve) => setImmediate(resolve));
+    sinks.delete(queries);
+  }
+  const emitted = queries.map((q, i) => \`  \${i + 1}. \${q.query}\`).join('\\n');
+  expect(queries.length, \`query budget is \${max}, got \${queries.length}:\\n\${emitted}\`).toBeLessThanOrEqual(max);
+  return result;
 }`;
 }
 
@@ -745,6 +794,8 @@ async function main() {
     await writeFileIfChanged(path.join(backendDir, 'docker-compose.yml'), renderDockerCompose(dbConfig, rootDir), ctx);
     await writeFileIfChanged(path.join(dbDir, 'prisma.service.ts'), renderPrismaService(sharedPackageName), ctx);
     await writeFileIfChanged(path.join(dbDir, 'db.module.ts'), renderDbModule(), ctx);
+    await ensureDir(path.join(backendDir, 'test'), ctx);
+    await writeFileIfChanged(path.join(backendDir, 'test', 'query-budget.ts'), renderQueryBudget(), ctx);
 
     const seedMainPath = path.join(prismaSeedDir, 'main.ts');
     if (!fs.existsSync(seedMainPath)) {

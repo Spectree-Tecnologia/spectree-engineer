@@ -858,6 +858,186 @@ async function writeEnvFiles({
   return changedFiles;
 }
 
+// everything a release on one Docker host needs; created once, then the project owns them
+async function writeReleaseFiles({
+  rootDir,
+  frontendPath,
+  backendPath,
+  frontendPackageName,
+  backendPackageName,
+  frontendPort,
+  backendPort,
+  frontendApiUrlEnvVar,
+  backendPortEnvVar,
+}) {
+  const nodeMajor = (await fs.readFile(path.join(rootDir, '.nvmrc'), 'utf8')).trim();
+  // compose project name = directory name, normalized the way compose does it
+  const project = path.basename(rootDir).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const files = {
+    [`${backendPath}/Dockerfile`]: `# syntax=docker/dockerfile:1
+# Build context is the monorepo root: docker build -f ${backendPath}/Dockerfile .
+FROM node:${nodeMajor}-alpine AS base
+WORKDIR /app
+ENV TURBO_TELEMETRY_DISABLED=1
+
+# only the workspaces ${backendPackageName} depends on, with the lockfile pruned to them
+FROM base AS pruner
+RUN npm install -g turbo
+COPY . .
+RUN turbo prune ${backendPackageName} --docker
+
+FROM base AS builder
+COPY --from=pruner /app/out/json/ .
+RUN npm ci
+COPY --from=pruner /app/out/full/ .
+# prisma.config.ts resolves DATABASE_URL at load; generate never connects, so any well-formed URL will do here
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npm run prisma:generate --workspace ${backendPath} && npx turbo run build
+# ponytail: devDependencies stay so \`prisma migrate deploy\` runs from this image (service migrate); split a migrate image when size matters
+
+FROM base AS runner
+ENV NODE_ENV=production
+COPY --from=builder --chown=node:node /app .
+USER node
+EXPOSE ${backendPort}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \\
+  CMD wget -qO- http://127.0.0.1:\${${backendPortEnvVar}:-${backendPort}}/health || exit 1
+CMD ["node", "${backendPath}/dist/main.js"]
+`,
+    [`${frontendPath}/Dockerfile`]: `# syntax=docker/dockerfile:1
+# Build context is the monorepo root: docker build -f ${frontendPath}/Dockerfile .
+FROM node:${nodeMajor}-alpine AS base
+WORKDIR /app
+ENV TURBO_TELEMETRY_DISABLED=1 NEXT_TELEMETRY_DISABLED=1
+
+FROM base AS pruner
+RUN npm install -g turbo
+COPY . .
+RUN turbo prune ${frontendPackageName} --docker
+
+FROM base AS builder
+COPY --from=pruner /app/out/json/ .
+RUN npm ci
+COPY --from=pruner /app/out/full/ .
+# NEXT_PUBLIC_* is inlined at build time: this is the URL the browser calls
+ARG ${frontendApiUrlEnvVar}
+ENV ${frontendApiUrlEnvVar}=\$${frontendApiUrlEnvVar}
+RUN npx turbo run build
+
+# output: 'standalone' (next.config): the server and only the files it traced
+FROM base AS runner
+ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=${frontendPort}
+COPY --from=builder --chown=node:node /app/${frontendPath}/.next/standalone ./
+COPY --from=builder --chown=node:node /app/${frontendPath}/.next/static ./${frontendPath}/.next/static
+COPY --from=builder --chown=node:node /app/${frontendPath}/public ./${frontendPath}/public
+USER node
+EXPOSE ${frontendPort}
+CMD ["node", "${frontendPath}/server.js"]
+`,
+    '.dockerignore': `node_modules
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+coverage
+.git
+**/.env*
+.scratch
+.log
+`,
+    'docker-compose.prod.yml': `# One Docker host: Postgres, the backend (after \`prisma migrate deploy\`) and the frontend.
+# Variables come from ./.env (copy .env.example). \`npm run release\` builds, migrates and starts.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: \${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: \${POSTGRES_DB:-app}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $\${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # one-shot, same image as the backend: applies pending migrations, then exits
+  migrate:
+    build: &backend-build
+      context: .
+      dockerfile: ${backendPath}/Dockerfile
+    image: ${project}-backend
+    working_dir: /app/${backendPath}
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: &database-url postgresql://\${POSTGRES_USER:-app}:\${POSTGRES_PASSWORD}@postgres:5432/\${POSTGRES_DB:-app}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  backend:
+    build: *backend-build
+    image: ${project}-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ${backendPortEnvVar}: ${backendPort}
+      DATABASE_URL: *database-url
+      JWT_SECRET: \${JWT_SECRET:?set JWT_SECRET in .env}
+      FRONTEND_URL: \${FRONTEND_URL:-http://localhost:${frontendPort}}
+      LOG_LEVEL: \${LOG_LEVEL:-info}
+    ports:
+      - '\${BACKEND_PORT:-${backendPort}}:${backendPort}'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ${frontendPath}/Dockerfile
+      args:
+        ${frontendApiUrlEnvVar}: \${${frontendApiUrlEnvVar}:-http://localhost:${backendPort}}
+    image: ${project}-frontend
+    restart: unless-stopped
+    ports:
+      - '\${FRONTEND_PORT:-${frontendPort}}:${frontendPort}'
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+`,
+    '.env.example': `# Release variables for docker-compose.prod.yml (npm run release). Copy to .env on the host; never commit .env.
+# Local development reads ${backendPath}/.env and ${frontendPath}/.env instead.
+POSTGRES_USER=app
+POSTGRES_PASSWORD=
+POSTGRES_DB=app
+# at least 32 characters: openssl rand -hex 32
+JWT_SECRET=
+# the URLs the browser uses: the frontend (CORS origin for the backend) and the backend
+FRONTEND_URL=http://localhost:${frontendPort}
+${frontendApiUrlEnvVar}=http://localhost:${backendPort}
+# host ports
+BACKEND_PORT=${backendPort}
+FRONTEND_PORT=${frontendPort}
+LOG_LEVEL=info
+`,
+  };
+
+  const created = [];
+  for (const [relPath, content] of Object.entries(files)) {
+    const filePath = path.join(rootDir, relPath);
+    if (await pathExists(filePath)) continue;
+    await activeRunOps.writeTextFile(filePath, content, { ensureNewline: false, note: 'release' });
+    created.push(relPath);
+  }
+  return created;
+}
+
 async function patchRootPackageJson(rootDir, scope) {
   const packagePath = path.join(rootDir, 'package.json');
   const pkg = await readJson(packagePath);
@@ -870,7 +1050,11 @@ async function patchRootPackageJson(rootDir, scope) {
   pkg.scripts = pkg.scripts ?? {};
   // boundaries first: a module that imports a framework fails before any suite runs
   pkg.scripts.test = 'node scripts/check-boundaries.mjs && turbo run test';
+  // capacity is a test: p95 per route against perf.config.json, after npm test in CI (architecture rule 11)
+  pkg.scripts.perf = 'node scripts/perf.mjs';
   pkg.scripts.format = pkg.scripts.format ?? 'prettier --write "**/*.{ts,tsx,md}"';
+  // the release: build both images, run `prisma migrate deploy` (service migrate), start, wait for healthy
+  pkg.scripts.release = pkg.scripts.release ?? 'docker compose -f docker-compose.prod.yml up -d --build --wait';
 
   await writeJson(packagePath, pkg);
 
@@ -886,6 +1070,24 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'modular monolith boundaries, run by npm test',
   });
+  const perfScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'perf.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'perf.mjs'), await fs.readFile(perfScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'p95 budget per route, run by npm run perf',
+  });
+  // the budgets are the project's to tune, so they are written once; config-new-module adds each module's list route
+  const perfConfigPath = path.join(rootDir, 'perf.config.json');
+  if (!(await pathExists(perfConfigPath))) {
+    await writeJson(perfConfigPath, {
+      connections: 20,
+      durationSeconds: 10,
+      routes: [
+        { path: '/health', p95Ms: 50 },
+        { path: '/ready', p95Ms: 50 },
+      ],
+    });
+  }
 }
 
 async function ensureRootPrettierConfig(rootDir) {
@@ -1143,6 +1345,12 @@ function ensureNextRemotePatterns(content) {
   };
 }
 
+// output: 'standalone' is what apps/frontend/Dockerfile copies: the server plus only the files it traced
+function ensureNextStandaloneOutput(content) {
+  if (/\boutput\s*:/.test(content)) return content;
+  return content.replace(/(const\s+nextConfig(?:\s*:\s*NextConfig)?\s*=\s*\{)/m, "$1\n  output: 'standalone',");
+}
+
 async function patchFrontendNextConfig({ rootDir, frontendPath }) {
   const frontendDir = path.join(rootDir, frontendPath);
   const candidates = ['next.config.ts', 'next.config.mjs', 'next.config.js'];
@@ -1162,7 +1370,7 @@ async function patchFrontendNextConfig({ rootDir, frontendPath }) {
 
   const content = await fs.readFile(configPath, 'utf8');
   const patchResult = ensureNextRemotePatterns(content);
-  const nextContent = patchResult.nextContent;
+  const nextContent = ensureNextStandaloneOutput(patchResult.nextContent);
 
   if (nextContent === content) {
     return {
@@ -1318,6 +1526,21 @@ async function main() {
     // the Node line the project runs on, for CI (setup-node node-version-file) and for humans
     if (!(await pathExists(path.join(rootDir, '.nvmrc')))) {
       await activeRunOps.writeTextFile(path.join(rootDir, '.nvmrc'), `${process.versions.node.split('.')[0]}\n`, { note: 'Node major' });
+    }
+    const releaseFiles = await writeReleaseFiles({
+      rootDir,
+      frontendPath,
+      backendPath,
+      frontendPackageName,
+      backendPackageName,
+      frontendPort,
+      backendPort,
+      frontendApiUrlEnvVar,
+      backendPortEnvVar,
+    });
+    if (releaseFiles.length > 0) {
+      console.log(`Created release files: ${releaseFiles.join(', ')}`);
+      logger.step(`Arquivos de release criados: ${releaseFiles.join(', ')}.`);
     }
     const dependabotPath = path.join(rootDir, '.github', 'dependabot.yml');
     if (!(await pathExists(dependabotPath))) {

@@ -23,17 +23,21 @@ function log(msg) {
 
 // ─── resolve shared package name from skills.config.json ─────────────────────
 
-async function resolveSharedPackageName() {
+async function resolvePlaceholders() {
   // same resolver as the other skills: root skills.config.json first (config-project writes it there)
   const { loadSkillConfig, resolveNamespace } = await import('../../utils/resolve-skill-config.mjs')
   const config = await loadSkillConfig(ROOT)
   const { scope } = await resolveNamespace({ rootDir: ROOT })
-  return `${scope}/${path.basename(config.defaults.sharedModulePath)}`
+  return {
+    SHARED_PACKAGE: `${scope}/${path.basename(config.defaults.sharedModulePath)}`,
+    BACKEND_PORT_ENV_VAR: config.defaults.backendPortEnvVar,
+    BACKEND_PORT: String(config.defaults.backendPort),
+  }
 }
 
 // ─── copy asset with placeholder replacement ──────────────────────────────────
 
-function copyAsset(relPath, sharedPackageName) {
+function copyAsset(relPath, placeholders) {
   const src = path.join(SKILL_ASSETS, relPath)
   const dest = path.join(ROOT, relPath)
   const destDir = path.dirname(dest)
@@ -45,7 +49,9 @@ function copyAsset(relPath, sharedPackageName) {
   fs.mkdirSync(destDir, { recursive: true })
 
   let srcContent = fs.readFileSync(src, 'utf8')
-  srcContent = srcContent.split('{{SHARED_PACKAGE}}').join(sharedPackageName)
+  for (const [key, value] of Object.entries(placeholders)) {
+    srcContent = srcContent.split(`{{${key}}}`).join(value)
+  }
 
   if (!FORCE && fs.existsSync(dest)) {
     const destContent = fs.readFileSync(dest, 'utf8')
@@ -107,6 +113,10 @@ function ensureDependencies() {
     'helmet',
     'class-validator',
     'class-transformer',
+    'nestjs-pino',
+    'pino-http',
+    'pino',
+    'zod',
   ]
   const requiredTypes = ['@types/passport-jwt']
 
@@ -244,6 +254,7 @@ function patchMainTs() {
   const importLines = [
     `import { ValidationPipe } from '@nestjs/common';`,
     `import helmet from 'helmet';`,
+    `import { Logger } from 'nestjs-pino';`,
     `import { ApiExceptionFilter } from './shared/errors/api-exception.filter.js';`,
   ]
   for (const importLine of importLines) {
@@ -252,11 +263,19 @@ function patchMainTs() {
     changed = true
   }
 
-  // security defaults before app.listen(): secure headers, strict DTO validation, one error envelope
+  // Nest's own startup lines wait for the pino logger instead of going to the console as text
+  if (content.includes('NestFactory.create(AppModule)')) {
+    content = content.replace('NestFactory.create(AppModule)', 'NestFactory.create(AppModule, { bufferLogs: true })')
+    changed = true
+  }
+
+  // before app.listen(): JSON logs, secure headers, strict DTO validation, one error envelope, SIGTERM closes cleanly
   const bootstrapCalls = [
+    `app.useLogger(app.get(Logger));`,
     `app.use(helmet());`,
     `app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));`,
     `app.useGlobalFilters(new ApiExceptionFilter());`,
+    `app.enableShutdownHooks();`,
   ]
   for (const call of bootstrapCalls) {
     if (content.includes(call)) continue
@@ -272,9 +291,23 @@ function patchMainTs() {
 
   if (changed) {
     fs.writeFileSync(filePath, content, 'utf8')
-    log('Patched: apps/backend/src/main.ts (helmet, ValidationPipe, ApiExceptionFilter)')
+    log('Patched: apps/backend/src/main.ts (pino logger, helmet, ValidationPipe, ApiExceptionFilter, shutdown hooks)')
   } else {
     log('No changes: apps/backend/src/main.ts already configured')
+  }
+}
+
+// ─── patch test/app.e2e-spec.ts (idempotent) ─────────────────────────────────
+
+function patchAppE2eSpec() {
+  const filePath = path.join(ROOT, 'apps/backend/test/app.e2e-spec.ts')
+  if (!fs.existsSync(filePath)) return
+  const content = fs.readFileSync(filePath, 'utf8')
+  // the Nest scaffold expects 200 'Hello World!'; with JwtGuard as APP_GUARD, GET / without a token is 401
+  const updated = content.replace(/\.expect\(200\)\s*\.expect\('Hello World!'\)/, `.expect(401) // every route is closed unless @Public()`)
+  if (updated !== content) {
+    fs.writeFileSync(filePath, updated, 'utf8')
+    log('Patched: apps/backend/test/app.e2e-spec.ts (GET / is 401 behind the global guard)')
   }
 }
 
@@ -294,8 +327,8 @@ function buildSharedPackage() {
 async function main() {
   log('Starting...')
 
-  const sharedPackageName = await resolveSharedPackageName()
-  log(`Using shared package: ${sharedPackageName}`)
+  const placeholders = await resolvePlaceholders()
+  log(`Using shared package: ${placeholders.SHARED_PACKAGE}`)
 
   // 1. Ensure backend dependencies
   ensureDependencies()
@@ -304,7 +337,7 @@ async function main() {
   cleanLegacy()
 
   // 3. Copy shared assets
-  copyAsset('packages/shared/src/dto/authenticated-user.dto.ts', sharedPackageName)
+  copyAsset('packages/shared/src/dto/authenticated-user.dto.ts', placeholders)
   ensureSharedDtoIndex()
   ensureSharedIndex()
   removeStaleBaseErrors()
@@ -319,6 +352,8 @@ async function main() {
     'apps/backend/src/shared/auth/jwt.guard.ts',
     'apps/backend/src/shared/auth/auth-user.mapper.ts',
     'apps/backend/src/shared/auth/index.ts',
+    'apps/backend/src/shared/config/env.schema.ts',
+    'apps/backend/src/shared/health/health.controller.ts',
     'apps/backend/src/shared/decorators/public.decorator.ts',
     'apps/backend/src/shared/decorators/current-user.decorator.ts',
     'apps/backend/src/shared/decorators/index.ts',
@@ -332,12 +367,13 @@ async function main() {
   ]
 
   for (const asset of backendSharedAssets) {
-    copyAsset(asset, sharedPackageName)
+    copyAsset(asset, placeholders)
   }
 
   // 5. Patch app.module.ts and main.ts
   patchAppModule()
   patchMainTs()
+  patchAppE2eSpec()
 
   log('Done.')
 }

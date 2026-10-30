@@ -1,6 +1,6 @@
 # Spectree modular monolith
 
-One deployable, many modules, each one a bounded context that could become a service tomorrow without a rewrite. These ten rules are what makes that true. Four of them are enforced by `scripts/check-boundaries.mjs` (runs first in `npm test` and in CI); the rest by the review. A rule you want to break is an ADR, never a comment.
+One deployable, many modules, each one a bounded context that could become a service tomorrow without a rewrite. These eleven rules are what makes that true. Four of them are enforced by `scripts/check-boundaries.mjs` (runs first in `npm test` and in CI), one by `npm run perf` and the e2e suite; the rest by the review. A rule you want to break is an ADR, never a comment.
 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|
@@ -13,7 +13,8 @@ One deployable, many modules, each one a bounded context that could become a ser
 | 7 | **Identity comes from the token, never from the body.** `userId` is read from the JWT by the controller and passed in; the token itself never enters a module. Every route is closed unless marked `@Public()`. | The module cannot be tricked into acting for someone else, and auth is one guard, not a convention. | `JwtGuard` as `APP_GUARD` + review |
 | 8 | **Transactions are explicit.** A use case that touches more than one aggregate runs inside `TransactionManager.runInTransaction`, and repositories accept the `TransactionContext`. | No hidden implicit transactions; a partial write is impossible by construction, not by luck. | type system + review |
 | 9 | **A route is thin.** `apps/<frontend>/src/app/**/<m>/page.tsx` imports the module's page component and nothing else; the screen lives in `apps/<frontend>/src/modules/<m>/{components,data,pages}`. | The frontend has the same module boundaries as the backend; moving a module moves its screens. | script (rule 4) |
-| 10 | **Tests sit at the seam, outside `src/`.** `modules/<m>/test/<aggregate>/*.test.ts` exercises use cases and queries through `execute()` against an `InMemory<Aggregate>Repository`; the e2e covers the guard and status mapping only. | One seam catches most defects for the least coupling; the suite runs in seconds with no database. | script (rule 3) + review |
+| 10 | **Tests sit at the seam, outside `src/`.** `modules/<m>/test/<aggregate>/*.test.ts` exercises use cases and queries through `execute()` against an `InMemory<Aggregate>Repository`; the e2e covers the guard, the status mapping and the query budget only. | One seam catches most defects for the least coupling; the suite runs in seconds with no database. | script (rule 3) + review |
+| 11 | **Capacity is a test: a query budget per use case and a p95 budget per route, both in CI.** The e2e of a route wraps the request in `expectQueryBudget(prisma.client, K, ...)` (`apps/backend/test/query-budget.ts`); a list of N rows fits the same K as a list of one. Every route has a line in `perf.config.json`; `npm run perf` drives it at 20 connections for 10 s and fails CI when the p95 is over budget or any response is not 2xx. | "Scalable" is a number or it is an adjective. An N+1 dies in the e2e that first lists two rows, not in production; a route that got slower fails the build that made it slower. | `npm run test:e2e` + `npm run perf` in CI + review |
 
 ## Layout
 

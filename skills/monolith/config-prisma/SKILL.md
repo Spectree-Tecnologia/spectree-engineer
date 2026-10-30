@@ -44,6 +44,7 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 - Arquivos de módulos Prisma no padrão `<module-name>.model.prisma`.
 - `apps/backend/docker-compose.yml` alinhado ao `DATABASE_URL` carregado de `apps/backend/.env` (fallback para `.env.example`).
 - Criação/ajuste de `apps/backend/src/db/db.module.ts` e `apps/backend/src/db/prisma.service.ts`.
+- `apps/backend/test/query-budget.ts`: `expectQueryBudget(prisma.client, K, fn)` falha o teste quando o Prisma emite mais de K queries durante `fn` (o `PrismaService` nasce com `log: [{ level: 'query', emit: 'event' }]`). É o orçamento de queries por caso de uso da regra 11 de `docs/architecture.md`; o e2e gerado pelo `config-new-module` já o usa na listagem.
 - `PrismaService` com contrato transacional atual:
   - implementa `TransactionManager<PrismaTransactionContext>`
   - expõe `runInTransaction`

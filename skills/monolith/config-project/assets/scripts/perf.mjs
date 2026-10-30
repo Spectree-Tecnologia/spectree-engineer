@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+// Latency budget, checked by script instead of by adjective: each route in perf.config.json gets
+// `connections` concurrent clients for `durationSeconds`; its p95 must stay under `p95Ms` and
+// every response must be 2xx. Exit 1 with one line per route over budget. CI runs it after `npm test`.
+//   PERF_URL=http://host:port  measure a server that is already up; otherwise the script starts
+//   apps/backend/dist/main.js (needs `npm run build`, a reachable DATABASE_URL and apps/backend/.env).
+// ponytail: fetch + workers instead of autocannon; good enough for a budget, swap when you need histograms
+import { spawn } from 'node:child_process';
+import { createHmac } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const config = JSON.parse(fs.readFileSync(path.join(root, 'perf.config.json'), 'utf8'));
+const backendDir = path.join(root, config.backendPath ?? 'apps/backend');
+const env = { ...parseEnv(path.join(backendDir, '.env')), ...process.env };
+const port = env.PORT ?? '4000';
+const baseUrl = (process.env.PERF_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
+const token = signJwt(env.JWT_SECRET);
+
+function parseEnv(file) {
+  if (!fs.existsSync(file)) return {};
+  return Object.fromEntries(
+    fs
+      .readFileSync(file, 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
+      .map((line) => {
+        const i = line.indexOf('=');
+        return [line.slice(0, i).trim(), line.slice(i + 1).trim().replace(/^(['"])(.*)\1$/, '$2')];
+      }),
+  );
+}
+
+// HS256 by hand: the same token passport-jwt verifies, without importing the backend from a root script
+function signJwt(secret) {
+  if (!secret) return null;
+  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const body = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({
+    sub: '00000000-0000-4000-8000-000000000000',
+    name: 'perf',
+    email: 'perf@localhost',
+    iat: now,
+    exp: now + 3600,
+  })}`;
+  return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+}
+
+async function waitFor(url, ms = 60_000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (child?.exitCode !== null && child?.exitCode !== undefined) throw new Error(`backend exited with ${child.exitCode}`);
+    const res = await fetch(url).catch(() => null);
+    if (res) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`${url} did not answer in ${ms / 1000}s`);
+}
+
+async function measure(route) {
+  const url = `${baseUrl}${route.path}`;
+  const headers = route.auth ? { authorization: `Bearer ${token}` } : {};
+  if (route.auth && !token) throw new Error(`${route.path} needs a token, but JWT_SECRET is not set`);
+  const latencies = [];
+  const statuses = {};
+  const stop = Date.now() + (config.durationSeconds ?? 10) * 1000;
+  await Promise.all(
+    Array.from({ length: config.connections ?? 20 }, async () => {
+      while (Date.now() < stop) {
+        const t0 = performance.now();
+        const res = await fetch(url, { headers }).catch(() => ({ status: 0, arrayBuffer: async () => null }));
+        await res.arrayBuffer();
+        latencies.push(performance.now() - t0);
+        statuses[res.status] = (statuses[res.status] ?? 0) + 1;
+      }
+    }),
+  );
+  latencies.sort((a, b) => a - b);
+  const pct = (p) => latencies[Math.min(latencies.length - 1, Math.floor((p / 100) * latencies.length))] ?? NaN;
+  const non2xx = Object.entries(statuses).filter(([s]) => s < 200 || s >= 300);
+  return {
+    path: route.path,
+    requests: latencies.length,
+    rps: Math.round(latencies.length / (config.durationSeconds ?? 10)),
+    p50: pct(50),
+    p95: pct(95),
+    p99: pct(99),
+    max: latencies.at(-1) ?? NaN,
+    budget: route.p95Ms,
+    non2xx: non2xx.map(([s, n]) => `${n}x ${s}`).join(' '),
+    ok: pct(95) <= route.p95Ms && non2xx.length === 0 && latencies.length > 0,
+  };
+}
+
+let child = null;
+if (!process.env.PERF_URL) {
+  // THROTTLE_LIMIT lifts the global rate limit (100/min) for the run; the budget is about the handler, not the throttler
+  child = spawn(process.execPath, ['dist/main.js'], {
+    cwd: backendDir,
+    env: { ...env, THROTTLE_LIMIT: '1000000', NODE_ENV: env.NODE_ENV ?? 'production' },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+}
+
+let failed = false;
+try {
+  await waitFor(`${baseUrl}${config.routes[0]?.path ?? '/'}`);
+  const rows = [];
+  for (const route of config.routes) rows.push(await measure(route));
+  const ms = (n) => `${n.toFixed(1)}ms`;
+  console.table(
+    rows.map((r) => ({
+      route: r.path,
+      requests: r.requests,
+      'req/s': r.rps,
+      p50: ms(r.p50),
+      p95: ms(r.p95),
+      p99: ms(r.p99),
+      max: ms(r.max),
+      'p95 budget': `${r.budget}ms`,
+      'non-2xx': r.non2xx || '-',
+      result: r.ok ? 'OK' : 'OVER BUDGET',
+    })),
+  );
+  for (const r of rows.filter((r) => !r.ok)) {
+    failed = true;
+    console.error(`perf: ${r.path} p95 ${ms(r.p95)} > ${r.budget}ms${r.non2xx ? ` (${r.non2xx})` : ''}`);
+  }
+} finally {
+  child?.kill();
+}
+process.exit(failed ? 1 : 0);
