@@ -154,7 +154,8 @@ export function createSkillRunOps({ rootDir, logger, dryRun = false }) {
     logger?.command?.(cmd, args);
 
     return new Promise((resolve, reject) => {
-      const child = spawn(cmd, args, { cwd, stdio: 'inherit' });
+      // npx/npm/nest are .cmd shims on Windows; spawn needs a shell to resolve them
+      const child = spawn(cmd, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
       child.on('error', reject);
       child.on('exit', (code) => {
         if (code === 0) {

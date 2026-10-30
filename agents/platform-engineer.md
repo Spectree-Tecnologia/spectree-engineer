@@ -16,7 +16,7 @@ Relato em inglês, para o Engineer. Toda missão sua termina com o bloco de log 
 
 ## Seis missões, e só elas
 
-**Bootstrap.** Projeto do zero, um passo por chamada do Skill tool, nesta ordem, nunca pulando: `config-project` (com o namespace da missão) → copiar `packages/shared` da origem que a missão aponta e ligar com `"@<ns>/shared": "*"` + `npm i` → `config-shared-backend` → `config-prisma` (sem rodar migration ainda) → `config-shared-frontend` → `npm run setup`. Os scripts vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/`. Pronto quando `npm run build` e `npm run dev` sobem backend em 4000 e frontend em 3000. Módulo novo depois do bootstrap é `config-new-module`.
+**Bootstrap.** Projeto do zero, um passo por chamada do Skill tool, nesta ordem, nunca pulando: `config-project` (com o namespace da missão) → copiar `${CLAUDE_PLUGIN_ROOT}/templates/shared` para `packages/shared`, trocar o `name` do `package.json` para `@<ns>/shared`, ligar nos apps com `"@<ns>/shared": "*"` + `npm i` → `config-shared-backend` → `config-prisma` (sem rodar migration ainda) → `config-shared-frontend` → `npm run setup`. Os scripts vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/`. Pronto quando `npm run build` e `npm run dev` sobem backend em 4000 e frontend em 3000. Módulo novo depois do bootstrap é `config-new-module`.
 
 **Branch e baseline.** Corte a branch de integração a partir da main, rode `npm run build` e `npm test`, e grave a saída: essa é a baseline que o quality-engineer compara. Baseline vermelha é bloqueio relatado, não ponto de partida.
 

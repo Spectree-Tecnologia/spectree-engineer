@@ -28,4 +28,8 @@ SOFTWARE.
 
 ## skills/monolith — skills do curso Spec-Driven Development para Monólitos Modulares (Módulos 7/8)
 
-Copiadas de `sources/skills-modulo-7/skills`, sem alteração. Material do curso; uso interno Spectree.
+Copiadas de `sources/skills-modulo-7/skills`. Alterações: correções para Windows em `utils/skill-run-ops.mjs` (spawn com shell) e `config-project/scripts/project-init.mjs` (`packageManager` pinado, `--disable-git` no create-next-app); scaffold morto removido de `config-project`. Material do curso; uso interno Spectree.
+
+## templates/shared — o pacote `shared` feito à mão no curso (Módulo 8)
+
+Copiado de `sources/shared-modulo-8/shared` sem `node_modules`/`dist`. O `name` é trocado para `@<namespace>/shared` no bootstrap.
