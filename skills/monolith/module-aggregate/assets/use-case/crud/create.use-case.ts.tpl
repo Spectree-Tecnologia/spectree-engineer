@@ -1,6 +1,6 @@
 import { Result, UseCase } from '__SHARED_PACKAGE__'
-import { __AGGREGATE_CLASS_NAME__ } from '../model'
-import { __AGGREGATE_REPOSITORY_NAME__ } from '../provider'
+import { __AGGREGATE_CLASS_NAME__ } from '../model/index.js'
+import { __AGGREGATE_REPOSITORY_NAME__ } from '../provider/index.js'
 
 export interface Create__AGGREGATE_CLASS_NAME__Input {
   entity: __AGGREGATE_CLASS_NAME__

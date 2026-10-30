@@ -1,6 +1,6 @@
 ---
 name: backend-prisma-data
-description: 'Criar, revisar ou orientar a camada Prisma do backend no padrão Genérico. Usar quando o pedido envolver schema Prisma (`schema.prisma`, `models/*.model.prisma`), migrações SQL, geração de client, seeds (`prisma/seed/*`) e adapters `*.prisma.ts` que mapeiam banco para domínio/DTO.'
+description: 'Criar, revisar ou orientar a camada Prisma do backend no padrão do projeto. Usar quando o pedido envolver schema Prisma (`schema.prisma`, `models/*.model.prisma`), migrações SQL, geração de client, seeds (`prisma/seed/*`) e adapters `*.prisma.ts` que mapeiam banco para domínio/DTO.'
 ---
 
 # Backend Prisma Data
@@ -32,6 +32,4 @@ Aplicar o padrão Prisma do projeto cobrindo modelagem, migração, seed e imple
 ## References
 
 Consultar `references/prisma-pattern.md` para paths, checklist e armadilhas do projeto.
-
-## Global Standards
 

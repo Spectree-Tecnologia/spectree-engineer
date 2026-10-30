@@ -1,4 +1,4 @@
-import { Id } from '../../src';
+import { Id } from '../../src/index.js';
 import { validate as isUuid } from 'uuid';
 
 describe('Id', () => {

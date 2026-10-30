@@ -17,14 +17,10 @@ No eixo **Spec**, ticket com tela se confere contra `docs/design/<feature>.md`: 
 Ao eixo **Standards**, some o terceiro bloco que o `code-review` não conhece, `## Architecture`, verificado por comando e não por leitura:
 
 ```bash
-# core puro: nenhum import de framework ou infra dentro de modules/*
-grep -rnE "from '(@nestjs|next|react|@prisma|prisma)" modules/*/src || echo OK
-# módulo depende só de shared (chaves de dependência que começam com @, fora @types)
-grep -nE '"@[^"]+":' modules/*/package.json | grep -vE '/shared":|"@types/' || echo OK
-# rota do Next não compõe nada: só importa a página do módulo (lista = achado; rota anterior à mudança não conta)
-find apps/*/src/app -path '*(private)*' -name page.tsx -exec grep -L "modules/" {} +; echo "(fim: vazio = OK)"
-# teste fora de src/
-find modules/*/src -name "*.test.ts" | grep . || echo OK
+# fronteiras do monólito, as mesmas que o npm test e o CI cobram: core puro em modules/*/src (zero framework/infra,
+# zero import de outro módulo), modules/*/package.json só com @<ns>/shared, teste fora de src/, rota do Next
+# de um módulo importando só a página dele. Cada linha da saída é um achado `blocking`, com arquivo:linha.
+node scripts/check-boundaries.mjs
 ```
 
 Mais o que só a leitura pega, um achado por item com arquivo:linha:

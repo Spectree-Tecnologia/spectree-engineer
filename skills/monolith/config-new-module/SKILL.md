@@ -14,7 +14,7 @@ Padronizar a criação de novos módulos no monorepo com três entregas sincroni
 3. modulo frontend em `<frontendAppPath>/src/modules/<module-name>`, com pastas `components`, `data`, `pages` e rota principal em `<frontendAppPath>/src/app/(private)/<module-name>/page.tsx` quando o grupo `(private)` existir. O projeto usa um **shell único** (`AdminShell`) e um **menu de navegação único** declarado como `NAVIGATION_SECTIONS` no layout do grupo `(private)` — as páginas do módulo herdam esse shell, portanto **não** se gera `layout.tsx` por módulo. A entrada do módulo é registrada (de forma não destrutiva) em `NAVIGATION_SECTIONS`.
 
 Executar o script Node da skill para receber o nome do módulo e gerar os arquivos mínimos de código e teste, sem depender de shell específico de SO.
-O namespace e diretórios padrão devem ser resolvidos por configuração global compartilhada em `skills.config.json` (`${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`).
+O namespace e os diretórios padrão vêm do `skills.config.json` na raiz do projeto (escrito pelo `config-project`).
 
 ## Workflow
 
@@ -74,7 +74,7 @@ O script deve gerar exatamente:
 
 - `modules/<module-name>/package.json`
 - `modules/<module-name>/tsconfig.json`
-- `modules/<module-name>/jest.config.ts`
+- `modules/<module-name>/vitest.config.ts`
 - `modules/<module-name>/src/index.ts` (apenas a função `getModuleName`)
 - `modules/<module-name>/test/index.test.ts`
 - `<backendAppPath>/src/modules/<module-name>/<module-name>.controller.ts`
@@ -120,7 +120,7 @@ Consultar `references/module-template.md` para o contrato completo dos arquivos 
 
 ## Shared Config
 
-- Arquivo versionado: `skills.config.json` (`${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`)
+- Arquivo versionado: `skills.config.json` na raiz do projeto
 - Override local (gitignored): `skills.config.local.json` no mesmo diretório da configuração principal
 - Exemplo local: `skills.config.local.example.json` no mesmo diretório da configuração principal
 - Log local de execução: `.log/skills.log` (não versionado; `.log/` é adicionado ao `.gitignore` automaticamente, sem metadados extras).
@@ -133,5 +133,4 @@ Consultar `references/module-template.md` para o contrato completo dos arquivos 
 - Toda falha inesperada deve gerar `[FAIL]` com descricao factual curta do evento.
 - Operacoes de terminal e alteracoes de arquivos devem passar pelos utilitarios compartilhados em `../utils` para manter rastreabilidade consistente.
 
-## Global Standards
 

@@ -1,5 +1,5 @@
 import { Result, UseCase } from '__SHARED_PACKAGE__'
-import { __AGGREGATE_REPOSITORY_NAME__ } from '../provider'
+import { __AGGREGATE_REPOSITORY_NAME__ } from '../provider/index.js'
 
 export interface Delete__AGGREGATE_CLASS_NAME__Input {
   id: string

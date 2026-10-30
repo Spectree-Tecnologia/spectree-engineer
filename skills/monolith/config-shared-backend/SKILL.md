@@ -1,130 +1,67 @@
 ---
 name: config-shared-backend
-description: Reconstrói deterministicamente a camada compartilhada do backend NestJS em `apps/backend/src/shared/` com tratamento centralizado de erros, autenticação por JWT (passport), guard, decorators e tipos em inglês, compatível com a hierarquia de erros de `packages/shared`. Também adiciona `AuthenticatedUser` ao pacote compartilhado.
+description: Reconstrói deterministicamente a camada compartilhada do backend NestJS em `apps/backend/src/shared/` — autenticação JWT (passport) como guard global, rotas públicas por `@Public()`, `@CurrentUser()`, filtro global de exceções, rate limit, helmet e `ValidationPipe` estrita — compatível com `packages/shared`. Também adiciona `AuthenticatedUser` ao pacote compartilhado.
 ---
 
-# Backend Nest Config
+# Backend shared layer
 
 ## Objetivo
 
-Reconstruir deterministicamente a pasta `apps/backend/src/shared/` — a camada compartilhada do backend NestJS — usando os assets canônicos desta skill.
+Reconstruir `apps/backend/src/shared/` a partir dos assets desta skill, deixando o backend **fechado por padrão**:
 
-Essa skill garante que o projeto tenha:
+- `JwtGuard` registrado como `APP_GUARD`: toda rota exige Bearer token válido, salvo as marcadas com `@Public()`.
+- `ThrottlerGuard` como `APP_GUARD` com limite global (100 req/min por cliente).
+- `JWT_SECRET` sem valor padrão (`ConfigService.getOrThrow`): o app não sobe sem ele.
+- `ApiExceptionFilter` global: `ValidationError` → status da própria exceção (default 400), `HttpException` → status preservado, resto → 500 genérico para o cliente e causa completa no log.
+- `helmet()` e `ValidationPipe({ whitelist, forbidNonWhitelisted })` em `main.ts`; CORS restrito a `FRONTEND_URL` (sem a variável, CORS fechado).
+- `@CurrentUser()` / `@CurrentUser('id')` para ler o usuário do token; `userId` nunca vem do body.
+- `AuthenticatedUser` (`id`, `name`, `email`) em `packages/shared/src/dto/`.
 
-- Filtro global de exceção (`ApiExceptionFilter`) compatível com `DomainError`, `ValidationError`, `ValidationErrors` e `HttpException`
-- Guard JWT (`JwtGuard`) com suporte a rotas públicas via decorator `@Public()`
-- Decorator `@CurrentUser()` para extrair o usuário autenticado do request
-- Estratégia Passport JWT (`JwtStrategy`) que valida Bearer tokens e popula `request.user`
-- Tipos: `JwtPayload`, `AuthenticatedRequest`, `ApiErrorResponse`
-- Interface `AuthenticatedUser` em `packages/shared/src/dto/`
-- `SharedModule` registrado globalmente no NestJS
-
-Todos os identificadores, nomes de arquivo e nomes de classe seguem **inglês**.
+Identificadores, arquivos e classes em inglês. Imports relativos com sufixo `.js` (backend é ESM/`nodenext`).
 
 ## Uso
 
-Executar a partir da raiz do monorepo:
+Da raiz do monorepo, depois de `config-project` e do `packages/shared` instalado:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js
 ```
 
-Use `--force` para sobrescrever mesmo arquivos sem alteração:
+`--force` sobrescreve mesmo arquivos sem alteração. O script:
 
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js --force
-```
+1. Resolve o nome do pacote shared pelo `skills.config.json` (`utils/resolve-skill-config.mjs`).
+2. Instala no workspace do backend o que faltar: `@nestjs/jwt`, `@nestjs/passport`, `@nestjs/config`, `@nestjs/throttler`, `passport`, `passport-jwt`, `helmet`, `class-validator`, `class-transformer` (e `@types/passport-jwt` como dev).
+3. Remove arquivos legados com nomes em português, se existirem.
+4. Copia `packages/shared/src/dto/authenticated-user.dto.ts` e garante os exports em `dto/index.ts` e `src/index.ts`; builda o shared.
+5. Copia os 14 arquivos de `apps/backend/src/shared/`.
+6. Patcha `app.module.ts` (`SharedModule` em `imports`) e `main.ts` (helmet, `ValidationPipe`, `ApiExceptionFilter`, CORS restrito). Idempotente.
 
-O script:
-
-1. Lê o namespace do `skills.config.json` para resolver o nome do pacote shared
-2. Instala dependências ausentes no workspace do backend (`@nestjs/jwt`, `@nestjs/passport`, `@nestjs/config`, `passport`, `passport-jwt`, `@types/passport-jwt`)
-3. Remove arquivos legados com nomes em português (se existirem)
-4. Copia `packages/shared/src/dto/authenticated-user.dto.ts`
-5. Garante que `packages/shared/src/dto/index.ts` exporta `authenticated-user.dto`
-6. Garante que `packages/shared/src/index.ts` exporta `./dto`
-7. Copia `packages/shared/src/base/errors.ts` (`DomainError`, `ValidationError`, `ValidationErrors`)
-8. Garante que `packages/shared/src/base/index.ts` exporta `./errors`
-9. Executa `npm run build` no pacote shared para gerar os tipos compilados
-10. Copia todos os arquivos de `apps/backend/src/shared/`
-11. Formata todos os arquivos do projeto com Prettier executando `npm run format` na raiz do monorepo.
+Formatação fica para o `npm run format` da raiz (o `config-shared-frontend` roda no fim do bootstrap).
 
 ## Estrutura criada
 
 ```text
-packages/shared/src/dto/
-  authenticated-user.dto.ts    ← interface AuthenticatedUser { id, name, email }
-
-packages/shared/src/base/
-  errors.ts                    ← DomainError (abstract), ValidationError (abstract, 422), ValidationErrors
+packages/shared/src/dto/authenticated-user.dto.ts   AuthenticatedUser { id, name, email }
 
 apps/backend/src/shared/
-  auth/
-    jwt.strategy.ts            ← JwtStrategy extends PassportStrategy(Strategy)
-    jwt.guard.ts               ← JwtGuard extends AuthGuard('jwt'), respects @Public()
-    auth-user.mapper.ts        ← mapPayloadToAuthenticatedUser(payload: JwtPayload)
-    index.ts
-  decorators/
-    public.decorator.ts        ← @Public() marks open routes, PUBLIC_ROUTE token
-    current-user.decorator.ts  ← @CurrentUser() and @CurrentUser('field')
-    index.ts
-  errors/
-    api-exception.filter.ts    ← ApiExceptionFilter handles DomainError, ValidationError, ValidationErrors, HttpException
-    api-error-response.type.ts ← ApiErrorResponse { statusCode, error, message, details?, path?, timestamp }
-    index.ts
-  types/
-    jwt-payload.type.ts        ← JwtPayload { sub, name, email, iat?, exp? }
-    authenticated-request.type.ts ← AuthenticatedRequest extends Request with user: AuthenticatedUser
-    index.ts
-  shared.module.ts             ← SharedModule @Global() with JwtStrategy, JwtGuard, JwtModule
+  auth/        jwt.strategy.ts, jwt.guard.ts (respeita @Public), auth-user.mapper.ts
+  decorators/  public.decorator.ts (@Public, PUBLIC_ROUTE), current-user.decorator.ts (@CurrentUser)
+  errors/      api-exception.filter.ts, api-error-response.type.ts
+  types/       jwt-payload.type.ts, authenticated-request.type.ts
+  shared.module.ts   @Global: ConfigModule, PassportModule, JwtModule, ThrottlerModule, APP_GUARD × 2
 ```
 
-## Integração manual pós-aplicação
-
-O script **não altera** `app.module.ts` nem `main.ts`. Após aplicar, verificar e ajustar manualmente:
-
-**`apps/backend/src/app.module.ts`** — importar `SharedModule`:
-
-```ts
-import { SharedModule } from './shared/shared.module'
-
-@Module({
-  imports: [SharedModule, ...],
-})
-export class AppModule {}
-```
-
-**`apps/backend/src/main.ts`** — registrar o filtro global:
-
-```ts
-import { ApiExceptionFilter } from './shared/errors/api-exception.filter';
-
-app.useGlobalFilters(new ApiExceptionFilter());
-```
-
-## Compatibilidade com packages/shared
-
-O filtro `ApiExceptionFilter` importa diretamente do pacote shared (resolvido via `skills.config.json`):
-
-- `DomainError` — retorna `statusCode` da própria exceção + `message: [code]`
-- `ValidationError` — retorna 422 + `message: [code]`
-- `ValidationErrors` — retorna 422 + `message: string[]` extraído de `toJSON().errors`
-- `HttpException` — preserva status; `message` sempre `string[]`
-- Erros inesperados — 500 sem vazar stack trace; `message` sempre `string[]`
-
-`message` é **sempre** `string[]`, mesmo quando há apenas um erro — facilita o tratamento uniforme no frontend.
-
-Não recria hierarquia de erros. Consome exclusivamente a de `packages/shared`.
+`ApiErrorResponse.message` é sempre `string[]`, mesmo com um erro só.
 
 ## Guardrails
 
 - Nunca importar de `modules/` dentro de `apps/backend/src/shared/`.
-- Nunca alterar `AuthenticatedUser` para campos de um módulo específico.
-- Nunca sobrescrever `app.module.ts` ou `main.ts` automaticamente.
+- Nunca acrescentar campos de um módulo específico a `AuthenticatedUser`.
+- Nunca dar valor padrão a `JWT_SECRET` nem registrar rota aberta sem `@Public()`.
 - Nunca duplicar classes de erro que já existem em `packages/shared`.
 
 ## Referências internas
 
-- `assets/` — arquivos canônicos em inglês prontos para cópia
-- `scripts/apply.js` — script determinístico de aplicação
-- `references/mandatory-readings.md` — checklist de leitura para ajustes manuais
+- `assets/` — arquivos canônicos.
+- `scripts/apply.js` — aplicação determinística.
+- `references/mandatory-readings.md` — o que ler antes de ajustar à mão.

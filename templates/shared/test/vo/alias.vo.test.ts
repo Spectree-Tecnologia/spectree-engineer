@@ -1,4 +1,4 @@
-import { Alias, Result } from '../../src';
+import { Alias, Result } from '../../src/index.js';
 
 describe('Alias', () => {
   describe('format', () => {
@@ -152,7 +152,7 @@ describe('Alias', () => {
   });
 
   test('should fallback to default error when an unknown error is thrown', () => {
-    const resultOkSpy = jest.spyOn(Result, 'ok').mockImplementation(() => {
+    const resultOkSpy = vi.spyOn(Result, 'ok').mockImplementation(() => {
       throw {};
     });
 

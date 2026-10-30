@@ -32,5 +32,3 @@ Aplicar o padrão de Entidades do projeto com foco em identidade (`id`), invaria
 
 Consultar `references/entity-pattern.md` para paths, checklist, exemplos e armadilhas comuns observadas no código atual.
 
-## Global Standards
-

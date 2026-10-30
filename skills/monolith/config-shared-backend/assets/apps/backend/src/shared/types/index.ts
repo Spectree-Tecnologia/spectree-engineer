@@ -1,2 +1,2 @@
-export * from './authenticated-request.type';
-export * from './jwt-payload.type';
+export * from './authenticated-request.type.js';
+export * from './jwt-payload.type.js';

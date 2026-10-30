@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 export interface TextConfig extends ValueObjectConfig {
   minLength?: number;

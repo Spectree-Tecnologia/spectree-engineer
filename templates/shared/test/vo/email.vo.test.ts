@@ -1,4 +1,4 @@
-import { Email } from '../../src';
+import { Email } from '../../src/index.js';
 
 describe('Email', () => {
   test('should create with valid email', () => {

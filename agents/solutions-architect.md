@@ -10,7 +10,7 @@ Você reporta ao Engineer, nunca ao usuário. Escreva em inglês, como handoff.
 
 ## O que entregar
 
-1. **Mapa do impacto**, no layout do curso:
+1. **Mapa do impacto**, no layout do monólito modular:
    - `modules/<m>/src/<agregado>/{dto,model,provider,use-case}` — o core puro, zero import de framework;
    - `apps/backend/src/modules/<m>/` — controller, `<m>.prisma.ts`, `prisma/models/<m>.model.prisma`;
    - `apps/frontend/src/modules/<m>/{components,data,pages}` + rota fina em `app/(private)/<m>/page.tsx`.
@@ -20,7 +20,7 @@ Você reporta ao Engineer, nunca ao usuário. Escreva em inglês, como handoff.
 4. **O que `@<ns>/shared` oferece** para esta mudança — nome e assinatura de cada contrato que a spec vai citar (`Result`, repositórios base, VOs, `TransactionManager`), lidos de `packages/shared/src/`. O que o shared não tem (ex.: `findById` sem `userId`) o módulo cria; diga isso aqui para a spec não prometer o que não existe.
 5. **Fronteira** — perguntas ordenadas por custo de reversão, cada uma com a sua recomendação. Fato que o código responde não vira pergunta: leia o código. Decisão de produto vira pergunta.
 
-## Regras do curso que você aplica ao modelar
+## Regras que você aplica ao modelar
 
 - A regra mora no VO; se envolve mais de um atributo, na entidade; se cruza entidades que nenhuma possui, num domain service. Use case é fluxo e chama regra, nunca reimplementa.
 - Validação de integração (nome duplicado, existência) é do use case; validação intrínseca é do VO ou entidade.

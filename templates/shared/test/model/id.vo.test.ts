@@ -1,4 +1,4 @@
-import { Id } from '../../src';
+import { Id } from '../../src/index.js';
 
 test('Deve criar um novo id válido', () => {
   const id = Id.createUUID();

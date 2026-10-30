@@ -50,10 +50,10 @@ async function resolveSharedPackageName(rootDir) {
 }
 
 function printHelp() {
-  console.log(`Prisma init (Genérico)
+  console.log(`Prisma init
 
 Usage:
-  node .claude/skills/config-prisma/scripts/init-prisma-backend.js [options]
+  node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js [options]
 
 Options:
   --apply                      Apply file changes (default is dry-run)
@@ -529,7 +529,7 @@ export class PrismaService
 
 function renderDbModule() {
   return `import { Module } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from './prisma.service.js';
 
 @Module({
   providers: [PrismaService],
@@ -638,8 +638,8 @@ async function ensureDbModuleImportedInAppModule(backendDir, ctx) {
   const content = await fsp.readFile(appModulePath, 'utf8');
   let updated = content;
 
-  const hasDbImport = /from ['"]\.\/db\/db\.module['"]/.test(updated);
-  const dbImportLine = "import { DbModule } from './db/db.module';";
+  const hasDbImport = /from ['"]\.\/db\/db\.module(\.js)?['"]/.test(updated);
+  const dbImportLine = "import { DbModule } from './db/db.module.js';";
 
   if (!hasDbImport) {
     const importBlockMatch = updated.match(/^(import[^\n]*\n)+/m);
@@ -655,7 +655,7 @@ async function ensureDbModuleImportedInAppModule(backendDir, ctx) {
 
   if (importsArrayMatch && !/\bDbModule\b/.test(importsArrayMatch[1])) {
     const inner = importsArrayMatch[1];
-    const replacement = inner.trim().length === 0 ? '\n    DbModule,\n  ' : `\n    DbModule,${inner}`;
+    const replacement = inner.trim().length === 0 ? 'DbModule' : `DbModule, ${inner.trim()}`;
     updated = updated.replace(importsArrayRegex, `imports: [${replacement}],`);
   }
 

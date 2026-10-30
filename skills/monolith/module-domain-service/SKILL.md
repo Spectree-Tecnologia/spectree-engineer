@@ -1,6 +1,6 @@
 ---
 name: module-domain-service
-description: Criar, revisar ou orientar a implementação de serviços de domínio de módulo no padrão Genérico, restritos ao núcleo de domínio (`modules/*`). Usar quando o pedido envolver "domain service", "serviço de domínio", arquivos `*.service.ts` em `modules/*/src/**`, políticas de domínio, cálculos/regras puras entre entidades e VOs, criação/ajuste de testes desses serviços ou a skill `module-domain-service`.
+description: Criar, revisar ou orientar a implementação de serviços de domínio de módulo no padrão do projeto, restritos ao núcleo de domínio (`modules/*`). Usar quando o pedido envolver "domain service", "serviço de domínio", arquivos `*.service.ts` em `modules/*/src/**`, políticas de domínio, cálculos/regras puras entre entidades e VOs, criação/ajuste de testes desses serviços ou a skill `module-domain-service`.
 ---
 
 # Module Domain Service
@@ -30,6 +30,4 @@ Aplicar o padrão de serviço de domínio para encapsular regras que não perten
 ## References
 
 Consultar `references/domain-service-pattern.md` para critérios de fronteira, exemplos reais e checklist de implementação/testes.
-
-## Global Standards
 

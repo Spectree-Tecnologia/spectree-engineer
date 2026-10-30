@@ -1,4 +1,4 @@
-import { ResultValidator } from './result-validator';
+import { ResultValidator } from './result-validator.js';
 
 declare global {
   interface String {

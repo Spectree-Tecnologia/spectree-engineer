@@ -1,6 +1,6 @@
 ---
 name: module-query-cqrs
-description: Criar, revisar ou orientar queries de módulo no padrão CQRS de leitura no Genérico. Usar quando o pedido envolver interfaces `*Query`, arquivos `*.query.ts`, use cases de leitura (`find-*`), projeções/DTOs para consumo da API/front, paginação/filtros/agregações, separação entre leitura (query) e escrita (repository/comando) ou a skill `module-query-cqrs`.
+description: Criar, revisar ou orientar queries de módulo no padrão CQRS de leitura no projeto. Usar quando o pedido envolver interfaces `*Query`, arquivos `*.query.ts`, use cases de leitura (`find-*`), projeções/DTOs para consumo da API/front, paginação/filtros/agregações, separação entre leitura (query) e escrita (repository/comando) ou a skill `module-query-cqrs`.
 ---
 
 # Module Query CQRS
@@ -33,6 +33,4 @@ Aplicar o padrão de consultas de leitura desacopladas dos comandos, retornando 
 ## References
 
 Consultar `references/query-cqrs-pattern.md` para exemplos reais, checklist e critérios de modelagem de DTO.
-
-## Global Standards
 

@@ -1,4 +1,4 @@
-import { StrongPassword, ValidationError } from '../../src';
+import { StrongPassword, ValidationError } from '../../src/index.js';
 
 const error = 'strong-password.too-weak';
 

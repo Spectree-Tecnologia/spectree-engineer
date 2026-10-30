@@ -14,7 +14,7 @@ Gerar um módulo novo de forma determinística em três áreas do monorepo:
 
 - `package.json`
 - `tsconfig.json`
-- `jest.config.ts`
+- `vitest.config.ts`
 - `src/index.ts`
 - `test/index.test.ts`
 
@@ -51,17 +51,19 @@ Gerar um módulo novo de forma determinística em três áreas do monorepo:
 - Namespace por precedência:
   - `--scope`
   - `PROJECT_NAMESPACE` ou `SKILLS_NAMESPACE`
-  - `skills.config.local.json` (em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`)
-  - `skills.config.json` (em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`)
+  - `skills.config.local.json` (raiz do projeto, gitignored)
+  - `skills.config.json` (raiz do projeto)
   - fallback de `packages/shared/package.json`
 - Scripts padrão:
   - `dev: tsc --watch`
   - `build: tsc`
-  - `test: jest --coverage`
-  - `test:watch: jest --watchAll`
+  - `test: vitest run`
+  - `test:watch: vitest`
+  - `test:cov: vitest run --coverage`
 
 ## Source Rules
 
+- Pacote ESM (`"type": "module"`, `nodenext`): imports relativos com sufixo `.js`.
 - `src/index.ts` deve exportar uma API mínima do módulo (`getModuleName`).
 - `test/index.test.ts` deve validar essa API mínima.
 

@@ -1,4 +1,4 @@
-# Query CQRS Pattern (Genérico)
+# Query CQRS Pattern
 
 ## Quando usar Query (CQRS)
 

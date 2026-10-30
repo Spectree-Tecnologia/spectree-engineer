@@ -1,5 +1,5 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
-import { ValidationError } from '../base/validation-error';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
+import { ValidationError } from '../base/validation-error.js';
 
 export class Alias extends ValueObject<string, ValueObjectConfig> {
   private static readonly INVALID_ALIAS = 'INVALID_ALIAS';

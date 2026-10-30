@@ -3,7 +3,7 @@
  * apply.js — deterministically rebuilds the shared backend NestJS layer
  * and ensures packages/shared/src/dto/authenticated-user.dto.ts exists.
  *
- * Usage: node .claude/skills/config-shared-backend/scripts/apply.js [--force]
+ * Usage: node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js [--force]
  *
  * --force  overwrites existing files even if unchanged
  */
@@ -97,21 +97,32 @@ function ensureDependencies() {
   const pkg = JSON.parse(fs.readFileSync(backendPkg, 'utf8'))
   const deps = { ...pkg.dependencies, ...pkg.devDependencies }
 
-  const required = ['@nestjs/jwt', '@nestjs/passport', '@nestjs/config', 'passport', 'passport-jwt']
+  const required = [
+    '@nestjs/jwt',
+    '@nestjs/passport',
+    '@nestjs/config',
+    '@nestjs/throttler',
+    'passport',
+    'passport-jwt',
+    'helmet',
+    'class-validator',
+    'class-transformer',
+  ]
   const requiredTypes = ['@types/passport-jwt']
 
   const missing = required.filter(d => !deps[d])
   const missingTypes = requiredTypes.filter(d => !deps[d])
 
-  if (missing.length > 0 || missingTypes.length > 0) {
-    const allMissing = [...missing, ...missingTypes]
-    log(`Installing missing dependencies: ${allMissing.join(', ')}`)
-    execSync(
-      `npm install --workspace ${pkg.name} ${allMissing.join(' ')}`,
-      { cwd: ROOT, stdio: 'inherit' }
-    )
-  } else {
-    log('JWT/Passport dependencies already present.')
+  if (missing.length > 0) {
+    log(`Installing missing dependencies: ${missing.join(', ')}`)
+    execSync(`npm install --workspace ${pkg.name} ${missing.join(' ')}`, { cwd: ROOT, stdio: 'inherit' })
+  }
+  if (missingTypes.length > 0) {
+    log(`Installing missing dev dependencies: ${missingTypes.join(', ')}`)
+    execSync(`npm install --save-dev --workspace ${pkg.name} ${missingTypes.join(' ')}`, { cwd: ROOT, stdio: 'inherit' })
+  }
+  if (missing.length === 0 && missingTypes.length === 0) {
+    log('Auth and security dependencies already present.')
   }
 }
 
@@ -119,7 +130,7 @@ function ensureDependencies() {
 
 function ensureSharedDtoIndex() {
   const indexPath = path.join(ROOT, 'packages/shared/src/dto/index.ts')
-  const exportLine = `export * from './authenticated-user.dto'`
+  const exportLine = `export * from './authenticated-user.dto.js'`
 
   if (!fs.existsSync(indexPath)) {
     fs.writeFileSync(indexPath, `${exportLine}\n`, 'utf8')
@@ -138,7 +149,7 @@ function ensureSharedDtoIndex() {
 
 function ensureSharedIndex() {
   const indexPath = path.join(ROOT, 'packages/shared/src/index.ts')
-  const exportLine = `export * from './dto'`
+  const exportLine = `export * from './dto/index.js'`
 
   if (!fs.existsSync(indexPath)) {
     log('WARNING: packages/shared/src/index.ts not found, skipping check.')
@@ -194,7 +205,7 @@ function patchAppModule() {
   let content = fs.readFileSync(filePath, 'utf8')
   let changed = false
 
-  const importLine = `import { SharedModule } from './shared/shared.module';`
+  const importLine = `import { SharedModule } from './shared/shared.module.js';`
   if (!content.includes(importLine)) {
     // insert after the last existing import line
     content = content.replace(
@@ -206,7 +217,7 @@ function patchAppModule() {
 
   // add SharedModule to imports array if not already there
   if (!/imports:\s*\[([^\]]*\bSharedModule\b)/.test(content)) {
-    content = content.replace(/imports:\s*\[/, 'imports: [SharedModule, ')
+    content = content.replace(/imports:\s*\[(\s*\])?/, (_m, empty) => (empty ? 'imports: [SharedModule]' : 'imports: [SharedModule, '))
     changed = true
   }
 
@@ -230,30 +241,40 @@ function patchMainTs() {
   let content = fs.readFileSync(filePath, 'utf8')
   let changed = false
 
-  const importLine = `import { ApiExceptionFilter } from './shared/errors/api-exception.filter';`
-  if (!content.includes(importLine)) {
-    content = content.replace(
-      /^(import .+;\n)(?!import)/m,
-      (match) => `${match}${importLine}\n`,
-    )
+  const importLines = [
+    `import { ValidationPipe } from '@nestjs/common';`,
+    `import helmet from 'helmet';`,
+    `import { ApiExceptionFilter } from './shared/errors/api-exception.filter.js';`,
+  ]
+  for (const importLine of importLines) {
+    if (content.includes(importLine)) continue
+    content = content.replace(/^(import .+;\n)(?!import)/m, (match) => `${match}${importLine}\n`)
     changed = true
   }
 
-  const filterCall = `app.useGlobalFilters(new ApiExceptionFilter());`
-  if (!content.includes(filterCall)) {
-    // insert before the first app.listen() call
-    content = content.replace(
-      /([ \t]*)(await app\.listen\()/,
-      `$1${filterCall}\n$1$2`,
-    )
+  // security defaults before app.listen(): secure headers, strict DTO validation, one error envelope
+  const bootstrapCalls = [
+    `app.use(helmet());`,
+    `app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));`,
+    `app.useGlobalFilters(new ApiExceptionFilter());`,
+  ]
+  for (const call of bootstrapCalls) {
+    if (content.includes(call)) continue
+    content = content.replace(/([ \t]*)(await app\.listen\()/, `$1${call}\n$1$2`)
+    changed = true
+  }
+
+  // config-project already writes CORS restricted to FRONTEND_URL; upgrade an older open enableCors()
+  if (content.includes('app.enableCors();')) {
+    content = content.replace('app.enableCors();', `app.enableCors({ origin: process.env.FRONTEND_URL?.split(',') ?? false });`)
     changed = true
   }
 
   if (changed) {
     fs.writeFileSync(filePath, content, 'utf8')
-    log('Patched: apps/backend/src/main.ts (added ApiExceptionFilter)')
+    log('Patched: apps/backend/src/main.ts (helmet, ValidationPipe, ApiExceptionFilter)')
   } else {
-    log('No changes: apps/backend/src/main.ts already has ApiExceptionFilter')
+    log('No changes: apps/backend/src/main.ts already configured')
   }
 }
 

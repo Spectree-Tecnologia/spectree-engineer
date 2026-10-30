@@ -1,5 +1,5 @@
-import { Result } from '../base/result';
-import { ValueObject, ValueObjectConfig } from '../base/vo';
+import { Result } from '../base/result.js';
+import { ValueObject, ValueObjectConfig } from '../base/vo.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class Id extends ValueObject<string, ValueObjectConfig> {

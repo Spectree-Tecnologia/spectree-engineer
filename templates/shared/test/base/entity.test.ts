@@ -1,6 +1,5 @@
-/// <reference types="jest" />
-import { TestEntity } from '../data/test.entity';
-import { Entity, type EntityProps } from '../../src/base/entity';
+import { TestEntity } from '../data/test.entity.js';
+import { Entity, type EntityProps } from '../../src/base/entity.js';
 
 interface FallbackEntityProps extends EntityProps {
   name: string;

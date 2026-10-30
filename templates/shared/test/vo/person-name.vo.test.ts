@@ -1,4 +1,4 @@
-import { PersonName } from '../../src';
+import { PersonName } from '../../src/index.js';
 
 describe('PersonName', () => {
   test('should create with valid first and last name', () => {

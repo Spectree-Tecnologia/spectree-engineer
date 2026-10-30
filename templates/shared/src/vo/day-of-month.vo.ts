@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 export class DayOfMonth extends ValueObject<number, ValueObjectConfig> {
   private static readonly INVALID_DAY_OF_MONTH = 'INVALID_DAY_OF_MONTH';

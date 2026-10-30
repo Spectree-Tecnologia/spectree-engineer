@@ -1,4 +1,4 @@
-import { EncryptedPassword, ValidationError } from '../../src';
+import { EncryptedPassword, ValidationError } from '../../src/index.js';
 
 const VALID_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 const INVALID_HASH = 'not-a-bcrypt-hash';

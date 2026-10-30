@@ -1,5 +1,5 @@
-import { ValidationError } from '../../src';
-import type { Message } from '../../src/base/message';
+import { ValidationError } from '../../src/index.js';
+import type { Message } from '../../src/base/message.js';
 
 test('Deve criar um ValidationError com uma falha', () => {
   const msg: Message = {

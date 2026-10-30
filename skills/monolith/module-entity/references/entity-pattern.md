@@ -1,4 +1,4 @@
-# Entity Pattern (Genérico)
+# Entity Pattern
 
 ## Paths
 

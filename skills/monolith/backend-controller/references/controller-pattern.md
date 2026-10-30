@@ -1,19 +1,13 @@
-# Controller Pattern (Genérico)
+# Controller Pattern
 
 ## Paths de referência
 
-- Controllers:
-  - `apps/backend/src/modules/auth/auth.controller.ts`
-  - `apps/backend/src/modules/auth/role.controller.ts`
-  - `apps/backend/src/modules/product/product.controller.ts`
-  - `apps/backend/src/modules/branch/branch.controller.ts`
-  - `apps/backend/src/modules/category/category.controller.ts`
-  - `apps/backend/src/modules/brand/brand.controller.ts`
-- Segurança:
-  - `apps/backend/src/modules/auth/jwt-auth.guard.ts`
-  - `apps/backend/src/shared/guards/require-permission.guard.ts`
-  - `apps/backend/src/shared/decorators/require-permission.decorator.ts`
-  - `apps/backend/src/shared/decorators/current-user.decorator.ts`
+- Controllers: `apps/backend/src/modules/<m>/<m>.controller.ts` (o `config-new-module` gera o primeiro).
+- Segurança (gerada pelo `config-shared-backend`):
+  - `apps/backend/src/shared/auth/jwt.guard.ts` — `JwtGuard`, registrado como `APP_GUARD`: toda rota fechada por padrão
+  - `apps/backend/src/shared/decorators/public.decorator.ts` — `@Public()` abre uma rota
+  - `apps/backend/src/shared/decorators/current-user.decorator.ts` — `@CurrentUser()` / `@CurrentUser('id')`
+  - `apps/backend/src/shared/errors/api-exception.filter.ts` — envelope de erro único
 
 ## Papel do controller
 
@@ -25,7 +19,7 @@
 
 - [ ] `@Controller('rota-base')` definido.
 - [ ] Decorators de método HTTP corretos (`@Get`, `@Post`, `@Patch`, `@Delete`).
-- [ ] Guards/permissões aplicados quando endpoint protegido.
+- [ ] `@Public()` só em rota realmente aberta; `userId` sempre de `@CurrentUser('id')`.
 - [ ] Inputs extraídos por `@Body/@Param/@Query`.
 - [ ] Normalização básica de tipos feita no controller (page/pageSize/bool string).
 - [ ] Falhas mapeadas para exceções HTTP coerentes:
@@ -38,10 +32,8 @@
 ## Padrões observados no código
 
 - Controller instancia/chama use case e não executa regra de domínio.
-- `@UseGuards(JwtAuthGuard, RequirePermissionGuard)` é comum em módulos protegidos.
-- `@RequirePermission(PERMISSIONS....)` é aplicado por endpoint.
+- Nenhum `@UseGuards` por controller: o guard JWT é global; permissão por papel, quando o projeto tiver, entra como guard próprio sobre `@CurrentUser()`.
 - Listagens paginadas recebem `page/pageSize` como query string e fazem parsing.
-- Alguns endpoints de listagem retornam fallback vazio em falha (padrão existente em auth/roles).
 
 ## Armadilhas comuns
 

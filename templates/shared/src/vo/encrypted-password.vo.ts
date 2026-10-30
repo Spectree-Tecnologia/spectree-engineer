@@ -1,6 +1,6 @@
-import { Result } from '../base';
-import { Metadata } from '../base/metadata';
-import { ValidationError } from '../base/validation-error';
+import { Result } from '../base/index.js';
+import { Metadata } from '../base/metadata.js';
+import { ValidationError } from '../base/validation-error.js';
 
 export class EncryptedPassword {
   static readonly REGEX = /^\$2[ayb]\$[0-9]{2}\$[A-Za-z0-9\.\/]{53}$/;

@@ -408,7 +408,7 @@ async function ensureBackendModuleImportedInAppModule({ appModulePath, moduleNam
     throw new Error(`Missing backend app module file: ${appModulePath}`);
   }
 
-  const importPath = `./modules/${moduleName}/${moduleName}.module`;
+  const importPath = `./modules/${moduleName}/${moduleName}.module.js`;
   const importLine = `import { ${moduleClassName}Module } from '${importPath}';`;
   let content = await fs.readFile(appModulePath, 'utf8');
   let updated = content;
@@ -427,8 +427,7 @@ async function ensureBackendModuleImportedInAppModule({ appModulePath, moduleNam
   const importsArrayMatch = updated.match(importsArrayRegex);
   if (importsArrayMatch && !new RegExp(`\\b${moduleClassName}Module\\b`).test(importsArrayMatch[1])) {
     const inner = importsArrayMatch[1];
-    const replacement =
-      inner.trim().length === 0 ? `\n    ${moduleClassName}Module,\n  ` : `\n    ${moduleClassName}Module,${inner}`;
+    const replacement = inner.trim().length === 0 ? `${moduleClassName}Module` : `${moduleClassName}Module, ${inner.trim()}`;
     updated = updated.replace(importsArrayRegex, `imports: [${replacement}],`);
   }
 
@@ -587,28 +586,28 @@ async function main() {
     const packageJson = {
       name: packageName,
       version: '0.1.0',
+      type: 'module',
       main: 'dist/index.js',
       types: 'dist/index.d.ts',
       exports: {
         '.': {
-          import: './dist/index.js',
-          require: './dist/index.js',
           types: './dist/index.d.ts',
+          import: './dist/index.js',
         },
       },
       scripts: {
         dev: 'tsc --watch',
         build: 'tsc',
-        test: 'jest --coverage',
-        'test:watch': 'jest --watchAll',
+        test: 'vitest run',
+        'test:watch': 'vitest',
+        'test:cov': 'vitest run --coverage',
       },
       dependencies: {
         [sharedDependency]: '*',
       },
       devDependencies: {
-        '@types/jest': '^30.0.0',
-        jest: '^30.2.0',
-        'ts-jest': '^29.4.5',
+        '@vitest/coverage-v8': '^4.1.2',
+        vitest: '^4.1.2',
       },
     };
 
@@ -618,20 +617,21 @@ async function main() {
         rootDir: 'src',
         outDir: './dist',
         declaration: true,
+        types: ['node', 'vitest/globals'],
       },
       include: ['src'],
       exclude: ['dist', 'build', 'node_modules'],
     };
 
-    const jestConfig = `import type { Config } from "jest";
+    const vitestConfig = `import { defineConfig } from 'vitest/config';
 
-const config: Config = {
-\tverbose: true,
-\tpreset: "ts-jest",
-\ttestMatch: ["**/test/**/*.test.ts"],
-};
-
-export default config;
+export default defineConfig({
+  test: {
+    globals: true,
+    include: ['test/**/*.test.ts'],
+    coverage: { include: ['src/**/*.ts'] },
+  },
+});
 `;
 
     const indexTs = `export function getModuleName(): string {
@@ -639,7 +639,7 @@ export default config;
 }
 `;
 
-    const indexTest = `import { getModuleName } from "../src";
+    const indexTest = `import { getModuleName } from '../src/index.js';
 
 describe("getModuleName", () => {
   it("returns module name", () => {
@@ -661,7 +661,7 @@ export class ${backendControllerClassName} {
 }
 `;
     const backendPrismaTs = `import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../db/prisma.service';
+import { PrismaService } from '../../db/prisma.service.js';
 
 @Injectable()
 export class ${backendPrismaClassName} {
@@ -673,9 +673,9 @@ export class ${backendPrismaClassName} {
 }
 `;
     const backendModuleTs = `import { Module } from '@nestjs/common';
-import { DbModule } from '../../db/db.module';
-import { ${backendControllerClassName} } from './${moduleName}.controller';
-import { ${backendPrismaClassName} } from './${moduleName}.prisma';
+import { DbModule } from '../../db/db.module.js';
+import { ${backendControllerClassName} } from './${moduleName}.controller.js';
+import { ${backendPrismaClassName} } from './${moduleName}.prisma.js';
 
 @Module({
   imports: [DbModule],
@@ -748,7 +748,7 @@ export default function Page() {
 export * from "./data";
 export * from "./pages/dashboard.page";
 `;
-    const backendModuleIndexTs = `export * from "./${moduleName}.module";
+    const backendModuleIndexTs = `export * from './${moduleName}.module.js';
 `;
 
     await activeRunOps.ensureDir(path.join(targetDir, 'src'), {
@@ -762,8 +762,8 @@ export * from "./pages/dashboard.page";
     logger.step(`criou arquivo: ${path.join(targetDir, 'package.json')}`);
     await writeFile(path.join(targetDir, 'tsconfig.json'), stringifyJson(tsconfigJson));
     logger.step(`criou arquivo: ${path.join(targetDir, 'tsconfig.json')}`);
-    await writeFile(path.join(targetDir, 'jest.config.ts'), jestConfig);
-    logger.step(`criou arquivo: ${path.join(targetDir, 'jest.config.ts')}`);
+    await writeFile(path.join(targetDir, 'vitest.config.ts'), vitestConfig);
+    logger.step(`criou arquivo: ${path.join(targetDir, 'vitest.config.ts')}`);
     await writeFile(path.join(targetDir, 'src', 'index.ts'), indexTs);
     logger.step(`criou arquivo: ${path.join(targetDir, 'src', 'index.ts')}`);
     await writeFile(path.join(targetDir, 'test', 'index.test.ts'), indexTest);

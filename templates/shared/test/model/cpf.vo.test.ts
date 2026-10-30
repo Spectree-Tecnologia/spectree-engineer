@@ -1,4 +1,4 @@
-import { Cpf, ValidationError } from '../../src';
+import { Cpf, ValidationError } from '../../src/index.js';
 
 test('Deve validar um CPF', () => {
   const cpf = new Cpf('12345678909');

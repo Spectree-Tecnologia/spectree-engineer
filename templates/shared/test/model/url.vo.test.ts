@@ -1,4 +1,4 @@
-import { Url, ValidationError } from '../../src';
+import { URL, Url, ValidationError } from '../../src/index.js';
 
 const errPadrao = 'url.invalid';
 
@@ -48,7 +48,6 @@ test('Deve tentar criar uma url inválida', () => {
 });
 
 test('Deve criar instância via subclasse URL', () => {
-  const { URL } = require('../../src');
   const url = new URL('https://example.com');
   expect(url.value).toBe('https://example.com');
 });

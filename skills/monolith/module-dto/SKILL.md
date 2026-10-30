@@ -1,6 +1,6 @@
 ---
 name: module-dto
-description: 'Criar, revisar ou orientar Data Transfer Objects de módulo no padrão Genérico. Usar quando o pedido envolver arquivos `dto/*.ts`, contratos de entrada (`InDTO`), saída (`OutDTO`), DTOs de query CQRS para leitura, paginação/filtros/metadados, adaptação de tipagem para consumo da API/front sem vazar detalhes de entidade/ORM ou a skill `module-dto`.'
+description: 'Criar, revisar ou orientar Data Transfer Objects de módulo no padrão do projeto. Usar quando o pedido envolver arquivos `dto/*.ts`, contratos de entrada (`InDTO`), saída (`OutDTO`), DTOs de query CQRS para leitura, paginação/filtros/metadados, adaptação de tipagem para consumo da API/front sem vazar detalhes de entidade/ORM ou a skill `module-dto`.'
 ---
 
 # Module DTO
@@ -37,6 +37,4 @@ Aplicar o padrão de DTOs para fronteiras de aplicação/leitura, separando clar
 ## References
 
 Consultar `references/dto-pattern.md` para exemplos reais do projeto, convenções e checklist.
-
-## Global Standards
 

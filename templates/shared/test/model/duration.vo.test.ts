@@ -1,4 +1,4 @@
-import { Duration, ValidationError } from '../../src';
+import { Duration, ValidationError } from '../../src/index.js';
 
 test('Deve criar uma duração a partir de segundos', () => {
   const duration = Duration.inSeconds(123);

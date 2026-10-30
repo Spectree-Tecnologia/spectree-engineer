@@ -1,6 +1,6 @@
 ---
 name: module-use-case
-description: Criar, revisar ou orientar a implementação de casos de uso de módulo (application services) no padrão Genérico. Usar quando o pedido envolver "caso de uso", "use case", arquivos `*.use-case.ts`, orquestração de entidades/repositórios/queries, regras de negócio de aplicação, mapeamento de falhas com `Result`, criação/ajuste de testes de use case ou a skill `module-use-case`.
+description: Criar, revisar ou orientar a implementação de casos de uso de módulo (application services) no padrão do projeto. Usar quando o pedido envolver "caso de uso", "use case", arquivos `*.use-case.ts`, orquestração de entidades/repositórios/queries, regras de negócio de aplicação, mapeamento de falhas com `Result`, criação/ajuste de testes de use case ou a skill `module-use-case`.
 ---
 
 # Module Use Case
@@ -31,6 +31,4 @@ Aplicar o padrão de casos de uso do projeto com foco em orquestração de depen
 ## References
 
 Consultar `references/use-case-pattern.md` para paths, checklist, exemplos e armadilhas frequentes do projeto.
-
-## Global Standards
 

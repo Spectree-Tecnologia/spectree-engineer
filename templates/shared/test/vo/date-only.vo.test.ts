@@ -1,4 +1,4 @@
-import { DateOnly } from '../../src';
+import { DateOnly } from '../../src/index.js';
 
 describe('DateOnly', () => {
   test('should create valid date-only with create', () => {
