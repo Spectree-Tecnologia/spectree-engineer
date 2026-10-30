@@ -23,23 +23,12 @@ function log(msg) {
 
 // ─── resolve shared package name from skills.config.json ─────────────────────
 
-function resolveSharedPackageName() {
-  const candidates = ['.claude/skills/.env', '.claude/skills/.env', '.claude/skills/.env', '.env']
-  for (const rel of candidates) {
-    const configPath = path.join(ROOT, rel, 'skills.config.json')
-    if (fs.existsSync(configPath)) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
-        const defaults = config.defaults ?? config
-        const namespace = defaults.namespace ?? ''
-        const sharedModule = path.basename(defaults.sharedModulePath ?? 'packages/shared')
-        if (namespace) {
-          return `${namespace}/${sharedModule}`
-        }
-      } catch {}
-    }
-  }
-  return '@namespace/shared'
+async function resolveSharedPackageName() {
+  // same resolver as the other skills: root skills.config.json first (config-project writes it there)
+  const { loadSkillConfig, resolveNamespace } = await import('../../utils/resolve-skill-config.mjs')
+  const config = await loadSkillConfig(ROOT)
+  const { scope } = await resolveNamespace({ rootDir: ROOT })
+  return `${scope}/${path.basename(config.defaults.sharedModulePath)}`
 }
 
 // ─── copy asset with placeholder replacement ──────────────────────────────────
@@ -281,51 +270,58 @@ function buildSharedPackage() {
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 
-log('Starting...')
+async function main() {
+  log('Starting...')
 
-const sharedPackageName = resolveSharedPackageName()
-log(`Using shared package: ${sharedPackageName}`)
+  const sharedPackageName = await resolveSharedPackageName()
+  log(`Using shared package: ${sharedPackageName}`)
 
-// 1. Ensure backend dependencies
-ensureDependencies()
+  // 1. Ensure backend dependencies
+  ensureDependencies()
 
-// 2. Remove legacy PT-BR named files
-cleanLegacy()
+  // 2. Remove legacy PT-BR named files
+  cleanLegacy()
 
-// 3. Copy shared assets
-copyAsset('packages/shared/src/dto/authenticated-user.dto.ts', sharedPackageName)
-ensureSharedDtoIndex()
-ensureSharedIndex()
-removeStaleBaseErrors()
-ensureSharedErrorExport()
+  // 3. Copy shared assets
+  copyAsset('packages/shared/src/dto/authenticated-user.dto.ts', sharedPackageName)
+  ensureSharedDtoIndex()
+  ensureSharedIndex()
+  removeStaleBaseErrors()
+  ensureSharedErrorExport()
 
-// 3b. Build shared package so backend can resolve types
-buildSharedPackage()
+  // 3b. Build shared package so backend can resolve types
+  buildSharedPackage()
 
-// 4. Copy all backend shared assets
-const backendSharedAssets = [
-  'apps/backend/src/shared/auth/jwt.strategy.ts',
-  'apps/backend/src/shared/auth/jwt.guard.ts',
-  'apps/backend/src/shared/auth/auth-user.mapper.ts',
-  'apps/backend/src/shared/auth/index.ts',
-  'apps/backend/src/shared/decorators/public.decorator.ts',
-  'apps/backend/src/shared/decorators/current-user.decorator.ts',
-  'apps/backend/src/shared/decorators/index.ts',
-  'apps/backend/src/shared/errors/api-exception.filter.ts',
-  'apps/backend/src/shared/errors/api-error-response.type.ts',
-  'apps/backend/src/shared/errors/index.ts',
-  'apps/backend/src/shared/types/jwt-payload.type.ts',
-  'apps/backend/src/shared/types/authenticated-request.type.ts',
-  'apps/backend/src/shared/types/index.ts',
-  'apps/backend/src/shared/shared.module.ts',
-]
+  // 4. Copy all backend shared assets
+  const backendSharedAssets = [
+    'apps/backend/src/shared/auth/jwt.strategy.ts',
+    'apps/backend/src/shared/auth/jwt.guard.ts',
+    'apps/backend/src/shared/auth/auth-user.mapper.ts',
+    'apps/backend/src/shared/auth/index.ts',
+    'apps/backend/src/shared/decorators/public.decorator.ts',
+    'apps/backend/src/shared/decorators/current-user.decorator.ts',
+    'apps/backend/src/shared/decorators/index.ts',
+    'apps/backend/src/shared/errors/api-exception.filter.ts',
+    'apps/backend/src/shared/errors/api-error-response.type.ts',
+    'apps/backend/src/shared/errors/index.ts',
+    'apps/backend/src/shared/types/jwt-payload.type.ts',
+    'apps/backend/src/shared/types/authenticated-request.type.ts',
+    'apps/backend/src/shared/types/index.ts',
+    'apps/backend/src/shared/shared.module.ts',
+  ]
 
-for (const asset of backendSharedAssets) {
-  copyAsset(asset, sharedPackageName)
+  for (const asset of backendSharedAssets) {
+    copyAsset(asset, sharedPackageName)
+  }
+
+  // 5. Patch app.module.ts and main.ts
+  patchAppModule()
+  patchMainTs()
+
+  log('Done.')
 }
 
-// 5. Patch app.module.ts and main.ts
-patchAppModule()
-patchMainTs()
-
-log('Done.')
+main().catch((error) => {
+  console.error(`${LOG} ${error.message}`)
+  process.exit(1)
+})

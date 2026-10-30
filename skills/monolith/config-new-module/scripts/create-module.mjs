@@ -821,6 +821,8 @@ export * from "./pages/dashboard.page";
       logger,
       label: 'Frontend package',
     });
+    // new workspace + new deps: without this the lockfile is stale and `npm ci` fails
+    await activeRunOps.runCommand('npm', ['install', '--no-audit', '--no-fund'], rootDir);
 
     console.log(`Created domain module at: ${targetDir}`);
     console.log(`Package name: ${packageName}`);
