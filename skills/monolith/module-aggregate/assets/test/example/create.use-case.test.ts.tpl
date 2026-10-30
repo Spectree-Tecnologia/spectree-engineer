@@ -8,9 +8,9 @@ describe('Create__AGGREGATE_CLASS_NAME__', () => {
   test('should persist the aggregate in the in-memory repository', async () => {
     const repository = new __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__()
     const useCase = new Create__AGGREGATE_CLASS_NAME__(repository)
-    const entity = __AGGREGATE_CLASS_NAME__.create({
+    const entity = __AGGREGATE_CLASS_NAME__.tryCreate({
       id: '550e8400-e29b-41d4-a716-446655440000',
-    })
+    }).instance
 
     const result = await useCase.execute({ entity })
 

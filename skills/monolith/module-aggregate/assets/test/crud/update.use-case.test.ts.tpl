@@ -8,13 +8,13 @@ describe('Update__AGGREGATE_CLASS_NAME__', () => {
   test('should replace the stored aggregate in the in-memory repository', async () => {
     const repository = new __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__()
     const useCase = new Update__AGGREGATE_CLASS_NAME__(repository)
-    const originalEntity = __AGGREGATE_CLASS_NAME__.create({
+    const originalEntity = __AGGREGATE_CLASS_NAME__.tryCreate({
       id: '550e8400-e29b-41d4-a716-446655440001',
-    })
-    const updatedEntity = __AGGREGATE_CLASS_NAME__.create({
+    }).instance
+    const updatedEntity = __AGGREGATE_CLASS_NAME__.tryCreate({
       id: '550e8400-e29b-41d4-a716-446655440001',
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-    })
+    }).instance
 
     await repository.create(originalEntity)
 
