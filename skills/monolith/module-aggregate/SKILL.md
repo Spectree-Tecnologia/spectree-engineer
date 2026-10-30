@@ -72,7 +72,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/module-aggregate/scripts/create-aggre
 - Entity class in `PascalCase` from the aggregate name (`User`).
 - Repository interface as `<PascalCaseAggregate>Repository` (`UserRepository`).
 - In-memory test repository implementation as `InMemory<PascalCaseAggregate>Repository` (`InMemoryUserRepository`).
-- Use cases with English verbs: `Create`, `Update`, `Delete`, `FindById`.
+- Use cases with English verbs: `Create`, `Update`, `Delete`. Reads (`FindById`, `List`) are queries in `query/`, never use cases.
 
 ## Use-case modes
 

@@ -874,6 +874,12 @@ async function patchRootPackageJson(rootDir, scope) {
 
   await writeJson(packagePath, pkg);
 
+  // the architecture the script enforces, in the project where every agent reads it first
+  const architectureDoc = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'ARCHITECTURE.md');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'docs', 'architecture.md'), await fs.readFile(architectureDoc, 'utf8'), {
+    note: 'architecture rules',
+    markRiskOnOverwrite: false,
+  });
   const checkScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'check-boundaries.mjs');
   await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'check-boundaries.mjs'), await fs.readFile(checkScript, 'utf8'), {
     ensureNewline: false,

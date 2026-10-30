@@ -4,6 +4,7 @@
 //   2. modules/<m>/package.json depends only on the shared package (plus plain libraries)
 //   3. no test file inside modules/<m>/src
 //   4. a Next route of a module composes nothing: it only imports that module's page
+//   5. CQRS: a use case is a command (execute() returns Result<void>); reads are queries, outside use-case/
 // Exit 1 with one `file:line: reason` per violation; `npm test` and CI run it first.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,6 +47,12 @@ for (const mod of modules) {
       if (FRAMEWORK.test(spec)) violations.push(`${file}:${line}: "${spec}" — framework/infra import inside the pure core ${src}`);
       else if (spec.startsWith(`${scope}/`) && spec !== shared) violations.push(`${file}:${line}: "${spec}" — a module depends on data, never on another module's code`);
       else if (spec.startsWith('.') && !resolveRelative(file, spec).startsWith(`${src}/`)) violations.push(`${file}:${line}: "${spec}" — relative import leaves ${src}`);
+    }
+    if (/\/use-case\/[^/]+\.ts$/.test(file) && !file.endsWith('/index.ts')) {
+      const text = fs.readFileSync(path.join(root, file), 'utf8');
+      if (/\/(find|list|get|search|count)-[^/]*$/.test(file)) violations.push(`${file}: a read is a query (${src}/<aggregate>/query/), never a use case`);
+      const execute = text.match(/execute\s*\([^)]*\)\s*:\s*Promise<\s*Result<\s*([^>]+)>/);
+      if (execute && execute[1].trim() !== 'void') violations.push(`${file}: a use case is a command — execute() returns Result<void>, not Result<${execute[1].trim()}>`);
     }
   }
 
