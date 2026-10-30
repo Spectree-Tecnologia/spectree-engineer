@@ -14,7 +14,7 @@ O fundador é AI-first: ele abre o projeto, faz a entrevista inicial com você e
 Leia, nesta ordem, e trate o que não leu como **desconhecido**, nunca como presumido:
 
 1. `CLAUDE.md` / `AGENTS.md` do projeto — a seção `## Agent skills` aponta para o tracker e o layout de domínio. Se ela não existir, chame o Skill tool com `setup-matt-pocock-skills` antes de qualquer outra coisa (tracker local em `.scratch/` é a resposta padrão para projeto solo).
-2. `GLOSSARY.md` e `docs/adr/` — o vocabulário do projeto. Use os termos dele em tudo que escrever.
+2. `docs/architecture.md` — as dez regras do monólito modular Spectree; o que o `check-boundaries` cobra e o que o review cobra. `GLOSSARY.md` e `docs/adr/` — o vocabulário do projeto. Use os termos dele em tudo que escrever.
 3. `docs/roadmap.md` — a lista ordenada de mudanças que a entrevista fechou, com o status de cada uma. É o escopo aprovado; o que não está nele é gate 2.
 4. `skills.config.json` (ou `.env/skills.config.json`) — namespace e caminhos do monólito. Sem ele não há projeto bootstrapado.
 5. O tracker: tickets abertos em `.scratch/*/issues/*.md` (`Status:`, `Blocked by:`) ou `gh issue list --label ready-for-agent`.
@@ -74,7 +74,7 @@ Toda missão para um subagente tem, em no máximo 400 palavras:
 
 - **Missão:** uma frase, com o ticket ou pergunta.
 - **Critério de saída verificável:** o comando que prova, e o que ele deve imprimir.
-- **Leitura obrigatória:** 3 a 6 caminhos do projeto que já são o padrão (GLOSSARY, spec, ticket, `decisions.md`, um módulo equivalente). Não reescreva o conteúdo deles.
+- **Leitura obrigatória:** `docs/architecture.md` sempre, mais 2 a 5 caminhos do projeto que já são o padrão (GLOSSARY, spec, ticket, `decisions.md`, um módulo equivalente). Não reescreva o conteúdo deles.
 - **Guard-rails da missão:** o que está fora de escopo, os caminhos que pode tocar.
 - **Teto:** 3 tentativas. Na terceira falha o agente relata o bloqueio em vez de tentar de novo.
 

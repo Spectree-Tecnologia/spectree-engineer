@@ -65,12 +65,7 @@ const SOURCE_FILES_BY_MODE = {
         path.join('use-case', `delete-${aggregateName}.use-case.ts`),
       exportLine: ({ aggregateName }) => `export * from './delete-${aggregateName}.use-case.js'`,
     },
-    {
-      template: path.join('assets', 'use-case', 'crud', 'find-by-id.use-case.ts.tpl'),
-      output: ({ aggregateName }) =>
-        path.join('use-case', `find-${aggregateName}-by-id.use-case.ts`),
-      exportLine: ({ aggregateName }) => `export * from './find-${aggregateName}-by-id.use-case.js'`,
-    },
+    // no find-by-id here: a read is a query (module-query-cqrs), never a use case — check-boundaries rule 5
   ],
   example: [
     {
@@ -98,11 +93,6 @@ const TEST_FILES_BY_MODE = {
       template: path.join('assets', 'test', 'crud', 'delete.use-case.test.ts.tpl'),
       output: ({ aggregateName }) =>
         path.join('test', aggregateName, `delete-${aggregateName}.use-case.test.ts`),
-    },
-    {
-      template: path.join('assets', 'test', 'crud', 'find-by-id.use-case.test.ts.tpl'),
-      output: ({ aggregateName }) =>
-        path.join('test', aggregateName, `find-${aggregateName}-by-id.use-case.test.ts`),
     },
   ],
   example: [
