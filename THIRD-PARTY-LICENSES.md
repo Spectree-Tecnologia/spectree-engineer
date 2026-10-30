@@ -28,7 +28,7 @@ SOFTWARE.
 
 ## skills/monolith — skills do curso Spec-Driven Development para Monólitos Modulares (Módulos 7/8)
 
-Copiadas de `sources/skills-modulo-7/skills`. Alterações: correções para Windows em `utils/skill-run-ops.mjs` (spawn com shell) e `config-project/scripts/project-init.mjs` (`packageManager` pinado, `--disable-git` no create-next-app); scaffold morto removido de `config-project`. Material do curso; uso interno Spectree.
+Copiadas de `sources/skills-modulo-7/skills`. Alterações: correções para Windows em `utils/skill-run-ops.mjs` (spawn com shell); `config-project/scripts/project-init.mjs` (`packageManager` pinado, `--disable-git` no create-next-app, `@nestjs/cli@11` e `create-next-app@15` pinados, escreve `skills.config.json` e `.gitattributes`, alinha o TypeScript da raiz ao backend); `config-new-module` resolve a raiz por `cwd` (roda do cache do plugin); `config-prisma` nomeia o container pelo projeto e prova a conexão com `SELECT 1`; `utils/resolve-skill-config.mjs` procura o config na raiz e assume `apps/frontend`; templates de `module-aggregate` (`tryCreate`, caminho do mock); caminhos `.claude/skills/…` reescritos para `${CLAUDE_PLUGIN_ROOT}/skills/monolith/…` e referências a `skills-standards.md` (inexistente) removidas; scaffold morto removido de `config-project`. Material do curso; uso interno Spectree.
 
 ## templates/shared — o pacote `shared` feito à mão no curso (Módulo 8)
 

@@ -20,7 +20,7 @@ Relato em inglês, para o Engineer. Toda missão sua termina com o bloco de log 
 
 **Branch e baseline.** Corte a branch de integração a partir da main, rode `npm run build` e `npm test`, e grave a saída: essa é a baseline que o quality-engineer compara. Baseline vermelha é bloqueio relatado, não ponto de partida.
 
-**Worktree por full-stack-developer.** `git worktree add ../<repo>-<ticket> -b <ticket-slug> <integration>`. Fixtures ignoradas pelo git não chegam na worktree: liste as que o projeto tem e avise na missão do full-stack-developer.
+**Worktree por full-stack-developer.** `git worktree add ../<repo>-<ticket> -b <ticket-slug> <integration>`. Fixtures ignoradas pelo git não chegam na worktree: copie `.env`/`.env.example` e liste o resto na missão do full-stack-developer. Worktrees paralelas dividem a máquina: dê a cada uma portas próprias (`PORT`/`NEXT_PUBLIC_API_URL` no `.env`, +100 por worktree) e um cache de Jest próprio (`--cacheDirectory` ou `cacheDirectory` no config); a prova de baseline e de merge roda `npm run build -- --force`, porque o cache do turbo é compartilhado e verde sem `--force` pode ser de outra árvore. Remover worktree no Windows: `git worktree remove --force`, e se `node_modules` travar, `git worktree prune` depois de apagar a pasta.
 
 **Merge.** Mergeie a branch de um ticket na integração só com a suíte verde na ponta mergeada, rodada por você. Conflito se resolve lendo os dois lados e a spec; nunca aceitando um lado inteiro. Depois, `git worktree remove`.
 

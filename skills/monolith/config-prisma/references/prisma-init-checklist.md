@@ -25,8 +25,8 @@ Padronizar bootstrap do Prisma no backend NestJS com:
 5. Gerar client Prisma.
 
 ```bash
-node .claude/skills/config-prisma/scripts/init-prisma-backend.js --dry-run
-node .claude/skills/config-prisma/scripts/init-prisma-backend.js --apply --install
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --dry-run
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --install
 npm --workspace apps/backend run db:start
 npm --workspace apps/backend run prisma:generate
 ```
@@ -34,7 +34,7 @@ npm --workspace apps/backend run prisma:generate
 ## Escaffold de módulos Prisma
 
 ```bash
-node .claude/skills/config-prisma/scripts/init-prisma-backend.js --apply --module auth --module stock --module billing
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --module auth --module stock --module billing
 ```
 
 ## Arquivos críticos
@@ -74,4 +74,3 @@ node .claude/skills/config-prisma/scripts/init-prisma-backend.js --apply --modul
 - Atualizar adapters `*.prisma.ts` para mapear domínio/DTO
 - Remover `prisma/models/bootstrap.model.prisma` após entrada dos modelos reais e gerar migration de substituição
 - Em rebootstrap de projetos antigos, o script corrige automaticamente `prisma/seed/main.ts` legado quando detecta imports de `generated/client`, `generated/prisma` ou `cid`.
-- Seguir convenção global em `../../skills-standards.md`.

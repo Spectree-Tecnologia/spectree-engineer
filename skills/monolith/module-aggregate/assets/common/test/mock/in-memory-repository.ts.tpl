@@ -2,7 +2,7 @@ import { Result, TransactionContext } from '__SHARED_PACKAGE__'
 import {
   __AGGREGATE_CLASS_NAME__,
   __AGGREGATE_REPOSITORY_NAME__,
-} from '../../../src/__AGGREGATE_NAME__'
+} from '../../src/__AGGREGATE_NAME__'
 
 export class __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__
   implements __AGGREGATE_REPOSITORY_NAME__

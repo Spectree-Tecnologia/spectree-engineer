@@ -1,14 +1,15 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-const SKILL_CONFIG_DIR_CANDIDATES = ['.claude/skills/.env', '.claude/skills/.env', '.cloud/skills/.env', '.env'];
+// root first: config-project writes it there and the Engineer reads it there
+const SKILL_CONFIG_DIR_CANDIDATES = ['.', '.env', '.claude/skills/.env', '.cloud/skills/.env'];
 const REPO_CONFIG_FILE = 'skills.config.json';
 const LOCAL_CONFIG_FILE = 'skills.config.local.json';
 
 const DEFAULT_CONFIG = {
   namespace: '',
   sharedModulePath: 'packages/shared',
-  frontendAppPath: 'apps/web',
+  frontendAppPath: 'apps/frontend',
   backendAppPath: 'apps/backend',
   frontendPort: 3000,
   backendPort: 4000,
@@ -120,20 +121,20 @@ async function readJsonIfExists(filePath) {
   }
 }
 
-async function directoryExists(dirPath) {
+async function fileExists(filePath) {
   try {
-    const stat = await fs.stat(dirPath);
-    return stat.isDirectory();
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return false;
-    throw error;
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 
 async function resolveConfigDir(rootDir) {
   for (const relativeDir of SKILL_CONFIG_DIR_CANDIDATES) {
     const candidate = path.join(rootDir, relativeDir);
-    if (await directoryExists(candidate)) {
+    // the dir existing says nothing (root always does); the config file does
+    if (await fileExists(path.join(candidate, REPO_CONFIG_FILE))) {
       return { configDir: candidate, relativeDir };
     }
   }

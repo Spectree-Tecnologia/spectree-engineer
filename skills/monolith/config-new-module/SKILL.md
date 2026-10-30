@@ -14,7 +14,7 @@ Padronizar a criação de novos módulos no monorepo com três entregas sincroni
 3. modulo frontend em `<frontendAppPath>/src/modules/<module-name>`, com pastas `components`, `data`, `pages` e rota principal em `<frontendAppPath>/src/app/(private)/<module-name>/page.tsx` quando o grupo `(private)` existir. O projeto usa um **shell único** (`AdminShell`) e um **menu de navegação único** declarado como `NAVIGATION_SECTIONS` no layout do grupo `(private)` — as páginas do módulo herdam esse shell, portanto **não** se gera `layout.tsx` por módulo. A entrada do módulo é registrada (de forma não destrutiva) em `NAVIGATION_SECTIONS`.
 
 Executar o script Node da skill para receber o nome do módulo e gerar os arquivos mínimos de código e teste, sem depender de shell específico de SO.
-O namespace e diretórios padrão devem ser resolvidos por configuração global compartilhada em `skills.config.json` (`.claude/skills/.env`, `.claude/skills/.env` ou `.env/`).
+O namespace e diretórios padrão devem ser resolvidos por configuração global compartilhada em `skills.config.json` (`${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`).
 
 ## Workflow
 
@@ -45,7 +45,7 @@ O namespace e diretórios padrão devem ser resolvidos por configuração global
 Criar módulo no namespace padrão do projeto:
 
 ```bash
-node .claude/skills/config-new-module/scripts/create-module.mjs <module-name>
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name>
 ```
 
 > Se o repositório estiver em `.claude/skills`, ajuste o caminho do comando.
@@ -53,19 +53,19 @@ node .claude/skills/config-new-module/scripts/create-module.mjs <module-name>
 Definir namespace por variável de ambiente:
 
 ```bash
-PROJECT_NAMESPACE=@namespace node .claude/skills/config-new-module/scripts/create-module.mjs <module-name>
+PROJECT_NAMESPACE=@namespace node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name>
 ```
 
 Criar módulo com namespace explícito:
 
 ```bash
-node .claude/skills/config-new-module/scripts/create-module.mjs <module-name> --scope @namespace
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name> --scope @namespace
 ```
 
 Sobrescrever diretório existente:
 
 ```bash
-node .claude/skills/config-new-module/scripts/create-module.mjs <module-name> --force
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name> --force
 ```
 
 ## Output Contract
@@ -115,13 +115,12 @@ Regra do shell e layout:
 
 - Pastas: sempre minúsculas em kebab-case.
 - Arquivos: sempre minúsculos em kebab-case, com sufixo de tipo no nome (ex.: `branch.controller.ts`, `branch.module.ts`, `branch-dashboard.component.tsx`, `dashboard.page.tsx`).
-- Convenção global compartilhada: `../skills-standards.md`.
 
 Consultar `references/module-template.md` para o contrato completo dos arquivos gerados.
 
 ## Shared Config
 
-- Arquivo versionado: `skills.config.json` (`.claude/skills/.env`, `.claude/skills/.env` ou `.env/`)
+- Arquivo versionado: `skills.config.json` (`${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/`)
 - Override local (gitignored): `skills.config.local.json` no mesmo diretório da configuração principal
 - Exemplo local: `skills.config.local.example.json` no mesmo diretório da configuração principal
 - Log local de execução: `.log/skills.log` (não versionado; `.log/` é adicionado ao `.gitignore` automaticamente, sem metadados extras).
@@ -136,4 +135,3 @@ Consultar `references/module-template.md` para o contrato completo dos arquivos 
 
 ## Global Standards
 
-- Consultar `../skills-standards.md` para padroes globais de nomenclatura e convencoes gerais entre skills.

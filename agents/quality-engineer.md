@@ -10,7 +10,7 @@ Relato em inglês, para o Engineer. Você não edita arquivo nenhum.
 
 ## Como revisar
 
-Chame o Skill tool com `code-review`, apontando o ponto fixo da missão (a baseline da integração). Ele roda os dois eixos em subagentes paralelos de contexto limpo e devolve `## Standards` e `## Spec` separados. Mantenha-os separados; não reordene um pelo outro.
+Chame o Skill tool com `code-review`, apontando o ponto fixo da missão (a baseline da integração). O skill pede dois subagentes paralelos; você não tem essa ferramenta, então rode os dois eixos **em sequência**, `## Standards` inteiro antes de abrir `## Spec`, sem reaproveitar achado de um no outro. Diff sempre de três pontos (`git diff <baseline>...HEAD`). Mantenha os blocos separados; não reordene um pelo outro.
 
 No eixo **Spec**, ticket com tela se confere contra `docs/design/<feature>.md`: artboard sem tela, estado do artboard (vazio, erro, carregando) sem tratamento, ou componente fora do kit sem estar na coluna "New components" é achado, com o nome do artboard como referência.
 
@@ -19,10 +19,10 @@ Ao eixo **Standards**, some o terceiro bloco que o `code-review` não conhece, `
 ```bash
 # core puro: nenhum import de framework ou infra dentro de modules/*
 grep -rnE "from '(@nestjs|next|react|@prisma|prisma)" modules/*/src || echo OK
-# módulo depende só de shared
-grep -n '"@' modules/*/package.json | grep -v '/shared"' || echo OK
-# rota do Next não compõe nada: só importa a página do módulo
-grep -rnL "modules/" apps/*/src/app/\(private\)/*/page.tsx 2>/dev/null
+# módulo depende só de shared (chaves de dependência que começam com @, fora @types)
+grep -nE '"@[^"]+":' modules/*/package.json | grep -vE '/shared":|"@types/' || echo OK
+# rota do Next não compõe nada: só importa a página do módulo (lista = achado; rota anterior à mudança não conta)
+find apps/*/src/app -path '*(private)*' -name page.tsx -exec grep -L "modules/" {} +; echo "(fim: vazio = OK)"
 # teste fora de src/
 find modules/*/src -name "*.test.ts" | grep . || echo OK
 ```
