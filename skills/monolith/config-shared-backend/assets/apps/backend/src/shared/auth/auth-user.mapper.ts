@@ -6,5 +6,6 @@ export function mapPayloadToAuthenticatedUser(payload: JwtPayload): Authenticate
     id: payload.sub,
     name: payload.name,
     email: payload.email,
+    roles: payload.roles ?? [],
   };
 }

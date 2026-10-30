@@ -943,6 +943,8 @@ coverage
 **/.env*
 .scratch
 .log
+backups
+.claude
 `,
     'docker-compose.prod.yml': `# One Docker host: Postgres, the backend (after \`prisma migrate deploy\`) and the frontend.
 # Variables come from ./.env (copy .env.example). \`npm run release\` builds, migrates and starts.
@@ -1076,6 +1078,18 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'p95 budget per route, run by npm run perf',
   });
+  // the squad runs unattended after the interview: without this allowlist every npm/git/gh/docker call stops for a prompt.
+  // Written once; the project widens or narrows it. Destructive git stays denied.
+  const claudeSettingsPath = path.join(rootDir, '.claude', 'settings.json');
+  if (!(await pathExists(claudeSettingsPath))) {
+    await fs.mkdir(path.dirname(claudeSettingsPath), { recursive: true });
+    await writeJson(claudeSettingsPath, {
+      permissions: {
+        allow: ['Bash(npm *)', 'Bash(npx *)', 'Bash(node *)', 'Bash(turbo *)', 'Bash(git *)', 'Bash(gh *)', 'Bash(docker *)', 'Bash(curl *)'],
+        deny: ['Bash(git push --force*)', 'Bash(git push -f*)', 'Bash(git reset --hard*)', 'Bash(git clean*)', 'Bash(gh repo delete*)'],
+      },
+    });
+  }
   // the budgets are the project's to tune, so they are written once; config-new-module adds each module's list route
   const perfConfigPath = path.join(rootDir, 'perf.config.json');
   if (!(await pathExists(perfConfigPath))) {

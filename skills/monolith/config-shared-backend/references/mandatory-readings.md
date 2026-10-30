@@ -13,4 +13,4 @@ Depois, localize o que o projeto já tem sobre autenticação antes de criar qua
 rg -n -S "jwt|token|claims|CurrentUser|request.user|req.user|passport|AuthGuard|Bearer|@Public" apps/backend/src modules --glob '!**/node_modules/**'
 ```
 
-Objetivo: reaproveitar a infraestrutura existente, confirmar os status HTTP que o filtro devolve e garantir que `AuthenticatedUser` (`id`, `name`, `email`) cobre o que os controllers precisam. Arquivo obrigatório ausente: pare, encontre o equivalente, registre a suposição no relato.
+Objetivo: reaproveitar a infraestrutura existente, confirmar os status HTTP que o filtro devolve e garantir que `AuthenticatedUser` (`id`, `name`, `email`, `roles`) cobre o que os controllers precisam. Arquivo obrigatório ausente: pare, encontre o equivalente, registre a suposição no relato.

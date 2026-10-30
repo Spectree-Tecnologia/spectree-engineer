@@ -190,6 +190,31 @@ interface CrudRepository<T extends Entity<any, any>>
 
 ---
 
+## Eventos de domínio
+
+A única porta entre módulos (regra 13 de `docs/architecture.md`): quem publica não conhece quem assina.
+
+```typescript
+interface DomainEvent<Payload> {
+  name: string; // 'account.created'
+  aggregateId: string;
+  occurredAt: Date;
+  payload: Payload;
+}
+interface EventPublisher {
+  publish(event: DomainEvent): Promise<void>;
+} // o port que o use case recebe
+interface EventSubscriptions {
+  subscribe(name, subscriber): () => void;
+} // o que o wiring do outro módulo usa
+
+new InMemoryEventBus(); // implementa os dois; in-process, sequencial
+```
+
+O use case publica **depois** que `runInTransaction` devolveu `ok`; o assinante vive em `apps/backend/src/modules/<b>/`, nunca no core.
+
+---
+
 ## DTOs de paginação
 
 ```typescript

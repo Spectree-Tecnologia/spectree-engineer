@@ -15,7 +15,9 @@ Seguro por padrão no que o bootstrap gera:
 - `@nestjs/throttler` com limite global, `helmet`, CORS restrito a `FRONTEND_URL`, `ValidationPipe` com `whitelist` + `forbidNonWhitelisted`, `ApiExceptionFilter` logando a causa dos 500.
 - Review de segurança em toda mudança (`security-engineer`, em paralelo ao review de padrões) e auditoria completa em seis fases antes da primeira exposição pública e a cada cinco itens do roadmap — `confirmed` vira ticket, `needs_validation` vira teste.
 - Supply chain: `.npmrc` com `min-release-age=3`, `.github/dependabot.yml` com o mesmo cooldown, `npm audit --audit-level=high` no CI.
-- Fronteiras do monólito verificadas por `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro em `modules/*/src`, módulo depende só do shared, teste fora de `src/`, rota do Next só importa a página do módulo.
+- Fronteiras do monólito verificadas por `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro em `modules/*/src`, módulo depende só do shared, teste fora de `src/`, rota do Next só importa a página do módulo, read é query, toda tabela com a mesma espinha (uuid, `createdAt`, `updatedAt`, `Decimal` e nunca `Float`).
+- Fundação decidida uma vez, não por agregado: módulos conversam por `DomainEvent` (`InMemoryEventBus` no shared), o token carrega `roles` e `@Roles()` fecha rotas, `identity` é o primeiro item de todo roadmap, e tenants, papéis e tipo de login são perguntas fixas da entrevista.
+- Autonomia de verdade: o bootstrap grava `.claude/settings.json` com a allowlist de `npm`, `git`, `gh`, `docker` (e nega `push --force`, `reset --hard`, `clean`); o release faz `pg_dump` antes de migrar e a primeira exposição pública exige restore provado.
 
 ## Instalação
 
@@ -52,7 +54,7 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 ## Layout
 
 ```
-ARCHITECTURE.md            as dez regras do monólito modular Spectree (vira docs/architecture.md no projeto)
+ARCHITECTURE.md            as catorze regras do monólito modular Spectree (vira docs/architecture.md no projeto)
 CHANGELOG.md               o que mudou por versão
 commands/engineer.md       o orquestrador
 agents/*.md                os sete especialistas

@@ -15,7 +15,7 @@ Reconstruir `apps/backend/src/shared/` a partir dos assets desta skill, deixando
 - `ApiExceptionFilter` global: `ValidationError` → status da própria exceção (default 400), `HttpException` → status preservado, resto → 500 genérico para o cliente e causa completa no log.
 - `helmet()` e `ValidationPipe({ whitelist, forbidNonWhitelisted })` em `main.ts`; CORS restrito a `FRONTEND_URL` (sem a variável, CORS fechado).
 - `@CurrentUser()` / `@CurrentUser('id')` para ler o usuário do token; `userId` nunca vem do body.
-- `AuthenticatedUser` (`id`, `name`, `email`) em `packages/shared/src/dto/`.
+- `AuthenticatedUser` (`id`, `name`, `email`, `roles`) em `packages/shared/src/dto/`; `@Roles('admin')` fecha a rota a essas claims por cima do JWT (403 `FORBIDDEN_ROLE`).
 
 E **operável em produção**:
 
