@@ -5,6 +5,7 @@
 //   3. no test file inside modules/<m>/src
 //   4. a Next route of a module composes nothing: it only imports that module's page
 //   5. CQRS: a use case is a command (execute() returns Result<void>); reads are queries, outside use-case/
+//   6. every Prisma model has the same spine: uuid id, createdAt, updatedAt; money is Decimal, never Float
 // Exit 1 with one `file:line: reason` per violation; `npm test` and CI run it first.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -74,6 +75,20 @@ for (const mod of modules) {
       const ok = spec.startsWith('@/modules/' + mod + '/') || (spec.startsWith('.') && resolveRelative(file, spec).startsWith(pages));
       if (!ok) violations.push(`${file}:${line}: "${spec}" — a route only imports the module's page (${pages}pages/*)`);
     }
+  }
+}
+
+// rule 6: one spine per table (docs/architecture.md rule 12); the bootstrap placeholder model is exempt
+for (const file of glob('apps/*/prisma/models/*.prisma')) {
+  const text = fs.readFileSync(path.join(root, file), 'utf8');
+  for (const m of text.matchAll(/^model\s+(\w+)\s*\{([^}]*)\}/gm)) {
+    const [, name, body] = m;
+    if (name === 'PrismaBootstrap') continue;
+    const line = text.slice(0, m.index).split('\n').length;
+    if (!/^\s*id\s+String\s+@id\s+@default\(uuid\(\)\)\s+@db\.Uuid/m.test(body)) violations.push(`${file}:${line}: model ${name} — id must be \`String @id @default(uuid()) @db.Uuid\` (the Id value object accepts UUIDs only)`);
+    if (!/^\s*createdAt\s+DateTime\s+@default\(now\(\)\)\s+@db\.Timestamptz/m.test(body)) violations.push(`${file}:${line}: model ${name} — missing \`createdAt DateTime @default(now()) @db.Timestamptz\``);
+    if (!/^\s*updatedAt\s+DateTime\s+@updatedAt\s+@db\.Timestamptz/m.test(body)) violations.push(`${file}:${line}: model ${name} — missing \`updatedAt DateTime @updatedAt @db.Timestamptz\``);
+    if (/^\s*\w+\s+Float\b/m.test(body)) violations.push(`${file}:${line}: model ${name} — Float is never a column; money is \`Decimal @db.Decimal(19, 4)\``);
   }
 }
 

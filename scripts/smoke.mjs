@@ -151,7 +151,7 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     const adapter = path.join(moduleDir, 'probe.prisma.ts');
     const controller = path.join(moduleDir, 'probe.controller.ts');
     const originals = [adapter, controller].map((file) => [file, fs.readFileSync(file, 'utf8')]);
-    fs.writeFileSync(path.join(root, 'seed-rows.sql'), 'INSERT INTO "PrismaBootstrap" ("id", "updatedAt") SELECT gen_random_uuid()::text, now() FROM generate_series(1, 5);\n');
+    fs.writeFileSync(path.join(root, 'seed-rows.sql'), 'INSERT INTO "PrismaBootstrap" ("id", "updatedAt") SELECT gen_random_uuid(), now() FROM generate_series(1, 5);\n');
     run('seed-rows', 'npx prisma db execute --file ../../seed-rows.sql', { cwd: backendDir });
     fs.writeFileSync(adapter, `import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma.service.js';

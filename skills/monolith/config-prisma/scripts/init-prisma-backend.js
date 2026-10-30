@@ -598,9 +598,9 @@ function renderBootstrapModelPrismaFile() {
   return `// Temporary bootstrap model to keep initial Prisma setup operational.
 // Remove this file once real domain models/migrations are in place.
 model PrismaBootstrap {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
 }
 `;
 }

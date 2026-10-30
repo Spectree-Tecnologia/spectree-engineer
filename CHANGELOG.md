@@ -5,6 +5,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 ## [Unreleased]
 
 ### Added
+- Fundação transversal, decidida uma vez: regras 12–14 em `ARCHITECTURE.md` (espinha das tabelas, eventos de domínio, identidade como módulo); `check-boundaries` regra 6 (uuid, `createdAt`, `updatedAt`, nunca `Float`); `DomainEvent`/`EventPublisher`/`InMemoryEventBus` no shared; `roles` no token e `@Roles()` no guard (403 `FORBIDDEN_ROLE`); tenants, papéis e tipo de login como perguntas fixas da entrevista; `identity` como primeiro item do roadmap.
+- Bootstrap grava `.claude/settings.json` com a allowlist que o loop autônomo precisa (`npm`, `npx`, `node`, `turbo`, `git`, `gh`, `docker`, `curl`) e nega git destrutivo.
+- Release: `pg_dump` antes de migrar banco com dado; gate 3 (primeira exposição pública) exige restore provado com contagem de linhas.
+
+### Fixed
+- O modelo bootstrap do Prisma usava `cuid()`, mas o `Id` do shared só aceita UUID: primeira entidade hidratada quebraria. Agora `uuid()` com `@db.Uuid` e `@db.Timestamptz`.
 - Produção pelas skills: log JSON por requisição (`nestjs-pino`, `requestId`, `userId`, segredos redigidos), `.env` validado no boot (zod, `JWT_SECRET` 32+), `GET /health` e `GET /ready`, shutdown gracioso, Dockerfiles multi-stage, `docker-compose.prod.yml` com `migrate` one-shot, `npm run release`; missão Release do `platform-engineer` com rollback por imagem anterior.
 - Capacidade como teste: `PrismaService` com log de queries e `expectQueryBudget` (falha listando as SQL), e2e por módulo com budget, `scripts/perf.mjs` + `perf.config.json` (p95 por rota, sai 1 acima do orçamento), `npm run perf` no CI depois de `npm test`; regra 11 em `ARCHITECTURE.md`.
 - `scripts/evals.mjs` + `evals/`: suíte de evals do squad com `claude plugin eval` — seis casos que medem o julgamento dos agentes (quality-engineer, security-engineer, solutions-architect, gate 2 do `/engineer`) por critério verificável pelo runner; `--control` prova que o caso 1 falha sem a lista de regras do card.

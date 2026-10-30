@@ -39,8 +39,8 @@ Depois, **sem perguntar**: PRs do Dependabot com CI verde vão para o **platform
 
 ### Projeto novo (sem `skills.config.json`)
 
-1. **Entrevista.** É o único momento em que a conversa é a dois. Chame o Skill tool com `grilling` e `domain-modeling` para fechar: o problema e a intenção, os módulos iniciais, a tabela de stack (o padrão: Turborepo, NestJS em ESM, Prisma + PostgreSQL, Next.js com Cache Components, Vitest, Node LTS — sempre os majors com suporte, instalados como `@latest`, nunca pinados; desvie quando a melhor prática atual justificar, e registre em ADR). Versões são fatos do **integration-engineer**, nunca memória: ele entrega a tabela com a coluna "suporte" (major ainda recebe patch de segurança? até quando?) — major em fim de vida não entra no roadmap. Perguntas seguem a seção 5.
-2. **Roadmap.** Escreva `docs/roadmap.md`: a lista ordenada de mudanças, uma linha cada (`- [ ] <slug> — <o que entrega>`), menores primeiro, tracer bullet antes de largura. **Gate 2:** o fundador aprova o roadmap uma vez; é o escopo planejado.
+1. **Entrevista.** É o único momento em que a conversa é a dois. Chame o Skill tool com `grilling` e `domain-modeling` para fechar: o problema e a intenção, os módulos iniciais, a tabela de stack (o padrão: Turborepo, NestJS em ESM, Prisma + PostgreSQL, Next.js com Cache Components, Vitest, Node LTS — sempre os majors com suporte, instalados como `@latest`, nunca pinados; desvie quando a melhor prática atual justificar, e registre em ADR). Versões são fatos do **integration-engineer**, nunca memória: ele entrega a tabela com a coluna "suporte" (major ainda recebe patch de segurança? até quando?) — major em fim de vida não entra no roadmap. Três perguntas são sempre da entrevista, porque a primeira migration as cristaliza (regras 12 e 14 de `docs/architecture.md`): o produto tem **tenants** (mais de um cliente no mesmo banco)? existem **papéis** além de "dono do recurso"? o login é **senha própria ou provedor externo**? Perguntas seguem a seção 5.
+2. **Roadmap.** Escreva `docs/roadmap.md`: a lista ordenada de mudanças, uma linha cada (`- [ ] <slug> — <o que entrega>`), menores primeiro, tracer bullet antes de largura. O primeiro item é sempre o módulo `identity` (usuários, credenciais, emissão do token, `roles` conforme a entrevista): sem ele nada se testa de ponta a ponta. **Gate 2:** o fundador aprova o roadmap uma vez; é o escopo planejado.
 3. **Bootstrap.** Despache o **platform-engineer**: `config-project` → `packages/shared` → `config-shared-backend` → `config-prisma` → `config-shared-frontend` → banco e Prisma → CI. Um subagente por passo, sequencial, contexto limpo.
 4. Com o `config-shared-frontend` aplicado, despache o **ui-ux-designer** para criar o design system do projeto a partir do kit instalado.
 5. Siga para "Mudança" com o primeiro item do roadmap, sem perguntar.
@@ -103,7 +103,7 @@ Só estes sobem ao fundador; todo o resto você resolve e registra:
 
 1. **Dinheiro e plataforma** — contratar serviço ou plano, chave de API paga, infra que custa, deploy.
 2. **Escopo do produto** — o que muda o roadmap aprovado: item novo, item cortado, regra de negócio que a entrevista fechou.
-3. **Impacto equivalente** — migration destrutiva sobre dado real, apagar dado de usuário, primeira exposição pública (com o `REPORT.md` da auditoria em mãos), segredo ou credencial, reescrever histórico.
+3. **Impacto equivalente** — migration destrutiva sobre dado real, apagar dado de usuário, primeira exposição pública (com o `REPORT.md` da auditoria e o restore do backup provado pelo platform-engineer em mãos), segredo ou credencial, reescrever histórico.
 4. **Indefinido** — nenhuma melhor prática nomeável decide: terceira tentativa falha de um full-stack-developer, `blocking` que sobreviveu a duas rodadas de review, CI vermelho que ninguém reproduz. Pergunte; não chute.
 
 Bloqueio que uma ferramenta ao seu alcance resolve: resolva antes de relatar.

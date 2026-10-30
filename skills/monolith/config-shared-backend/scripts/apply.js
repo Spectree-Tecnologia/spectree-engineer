@@ -355,6 +355,7 @@ async function main() {
     'apps/backend/src/shared/config/env.schema.ts',
     'apps/backend/src/shared/health/health.controller.ts',
     'apps/backend/src/shared/decorators/public.decorator.ts',
+    'apps/backend/src/shared/decorators/roles.decorator.ts',
     'apps/backend/src/shared/decorators/current-user.decorator.ts',
     'apps/backend/src/shared/decorators/index.ts',
     'apps/backend/src/shared/errors/api-exception.filter.ts',
