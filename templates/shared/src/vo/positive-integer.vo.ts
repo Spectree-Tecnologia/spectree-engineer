@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 export class PositiveInteger extends ValueObject<number, ValueObjectConfig> {
   private static readonly INVALID_POSITIVE_INTEGER = 'INVALID_POSITIVE_INTEGER';

@@ -51,25 +51,25 @@ const SOURCE_FILES_BY_MODE = {
       template: path.join('assets', 'use-case', 'crud', 'create.use-case.ts.tpl'),
       output: ({ aggregateName }) =>
         path.join('use-case', `create-${aggregateName}.use-case.ts`),
-      exportLine: ({ aggregateName }) => `export * from './create-${aggregateName}.use-case'`,
+      exportLine: ({ aggregateName }) => `export * from './create-${aggregateName}.use-case.js'`,
     },
     {
       template: path.join('assets', 'use-case', 'crud', 'update.use-case.ts.tpl'),
       output: ({ aggregateName }) =>
         path.join('use-case', `update-${aggregateName}.use-case.ts`),
-      exportLine: ({ aggregateName }) => `export * from './update-${aggregateName}.use-case'`,
+      exportLine: ({ aggregateName }) => `export * from './update-${aggregateName}.use-case.js'`,
     },
     {
       template: path.join('assets', 'use-case', 'crud', 'delete.use-case.ts.tpl'),
       output: ({ aggregateName }) =>
         path.join('use-case', `delete-${aggregateName}.use-case.ts`),
-      exportLine: ({ aggregateName }) => `export * from './delete-${aggregateName}.use-case'`,
+      exportLine: ({ aggregateName }) => `export * from './delete-${aggregateName}.use-case.js'`,
     },
     {
       template: path.join('assets', 'use-case', 'crud', 'find-by-id.use-case.ts.tpl'),
       output: ({ aggregateName }) =>
         path.join('use-case', `find-${aggregateName}-by-id.use-case.ts`),
-      exportLine: ({ aggregateName }) => `export * from './find-${aggregateName}-by-id.use-case'`,
+      exportLine: ({ aggregateName }) => `export * from './find-${aggregateName}-by-id.use-case.js'`,
     },
   ],
   example: [
@@ -77,7 +77,7 @@ const SOURCE_FILES_BY_MODE = {
       template: path.join('assets', 'use-case', 'example', 'create.use-case.ts.tpl'),
       output: ({ aggregateName }) =>
         path.join('use-case', `create-${aggregateName}.use-case.ts`),
-      exportLine: ({ aggregateName }) => `export * from './create-${aggregateName}.use-case'`,
+      exportLine: ({ aggregateName }) => `export * from './create-${aggregateName}.use-case.js'`,
     },
   ],
 }
@@ -292,7 +292,7 @@ function normalizeMode(value) {
 
 function printHelp() {
   console.log(
-    'Usage: node .claude/skills/module-aggregate/scripts/create-aggregate.js --module <module-name> --aggregate <aggregate-name> --mode <crud|example>',
+    'Usage: node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/module-aggregate/scripts/create-aggregate.js --module <module-name> --aggregate <aggregate-name> --mode <crud|example>',
   )
 }
 
@@ -312,7 +312,7 @@ function applyReplacements(template, replacements) {
 }
 
 function updateModuleIndex(indexPath, aggregateName) {
-  const exportLine = `export * from './${aggregateName}'`
+  const exportLine = `export * from './${aggregateName}/index.js'`
   const content = fs.readFileSync(indexPath, 'utf8')
 
   if (content.includes(exportLine)) {

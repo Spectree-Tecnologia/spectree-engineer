@@ -1,4 +1,4 @@
-import { StrongPassword } from '../../src';
+import { StrongPassword } from '../../src/index.js';
 
 describe('StrongPassword', () => {
   test('should create a strong password with tryCreate', () => {

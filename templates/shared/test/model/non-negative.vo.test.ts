@@ -1,4 +1,4 @@
-import { NonNegative, ValidationError } from '../../src';
+import { NonNegative, ValidationError } from '../../src/index.js';
 
 test('Deve criar um NonNegative com valores válidos', () => {
   expect(new NonNegative(0).value).toBe(0);

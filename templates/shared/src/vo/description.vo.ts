@@ -1,4 +1,4 @@
-import { Text } from './text.vo';
+import { Text } from './text.vo.js';
 
 export class Description extends Text {
   protected static override readonly TOO_SHORT: string = 'DESCRIPTION_TOO_SHORT';

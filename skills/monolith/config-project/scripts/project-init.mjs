@@ -4,6 +4,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, execSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { loadSkillConfig, resolveNamespace } from '../../utils/resolve-skill-config.mjs';
 import { createSkillRunLogger } from '../../utils/skill-run-log.mjs';
 import { createSkillRunOps } from '../../utils/skill-run-ops.mjs';
@@ -22,7 +24,7 @@ const DEFAULT_PRETTIER_CONFIG = {
 
 function usage() {
   console.log(`Usage:
-  node project-init.mjs [--frontend-path apps/frontend] [--backend-path apps/backend] [--frontend-port 3000] [--backend-port 4000] [--scope @namespace] [--skip-global-nest]
+  node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.mjs [--frontend-path apps/frontend] [--backend-path apps/backend] [--frontend-port 3000] [--backend-port 4000] [--scope @namespace] [--skip-global-nest]
 
 Examples:
   node project-init.mjs
@@ -719,8 +721,8 @@ async function ensureFrontendApp({ rootDir, frontendPath, frontendName, frontend
   await runCommand(
     'npx',
     // --disable-git: a nested apps/frontend/.git makes Next treat the app as workspace root
-    // pinned major: Next 16 Cache Components fail `next build` on dynamic routes that use usePathname
-    ['create-next-app@15', frontendName, '--yes', '--use-npm', '--src-dir', '--disable-git'],
+    // latest, never a pinned major: only the current major gets security patches (Next 15 went EOL on 2026-10-21)
+    ['create-next-app@latest', frontendName, '--yes', '--use-npm', '--src-dir', '--disable-git'],
     frontendParentDir,
   );
   return true;
@@ -761,8 +763,8 @@ async function ensureBackendApp({ rootDir, backendPath, backendName, backendPare
     await runCommand('nest', nestCreateArgs, backendParentDir);
   } else {
     console.log(`Creating NestJS app with npx: ${backendName}`);
-    // pinned major: Nest CLI 12 scaffolds Vitest + ESM; 11 is the course stack (Jest + CJS)
-    await runCommand('npx', ['--yes', '@nestjs/cli@11', ...nestCreateArgs], backendParentDir);
+    // latest, never a pinned major: the scaffold is ESM + Vitest and every asset of these skills matches it
+    await runCommand('npx', ['--yes', '@nestjs/cli@latest', ...nestCreateArgs], backendParentDir);
   }
 
   return true;
@@ -827,9 +829,16 @@ async function writeEnvFiles({
   };
   const backendEntries = {
     [backendPortEnvVar]: String(backendPort),
+    FRONTEND_URL: `http://localhost:${frontendPort}`,
     DATABASE_URL: '"postgresql://docker:docker@localhost:5432/docker?schema=public"',
-    JWT_SECRET: '"YOUR_SECRET_HERE"',
   };
+  // the example documents the key; the real .env gets a secret of its own, generated once and never rewritten
+  const backendEnvPath = path.join(backendDir, '.env');
+  const backendEnv = (await pathExists(backendEnvPath)) ? await fs.readFile(backendEnvPath, 'utf8') : '';
+  const backendExampleEntries = { ...backendEntries, JWT_SECRET: '"YOUR_SECRET_HERE"' };
+  const backendEnvEntries = /^\s*JWT_SECRET\s*=/m.test(backendEnv)
+    ? backendEntries
+    : { ...backendEntries, JWT_SECRET: randomBytes(32).toString('hex') };
 
   const changedFiles = [];
 
@@ -839,10 +848,10 @@ async function writeEnvFiles({
   if (await upsertEnvFile(path.join(webDir, '.env'), frontendEntries)) {
     changedFiles.push(path.join(frontendPath, '.env'));
   }
-  if (await upsertEnvFile(path.join(backendDir, '.env.example'), backendEntries)) {
+  if (await upsertEnvFile(path.join(backendDir, '.env.example'), backendExampleEntries)) {
     changedFiles.push(path.join(backendPath, '.env.example'));
   }
-  if (await upsertEnvFile(path.join(backendDir, '.env'), backendEntries)) {
+  if (await upsertEnvFile(backendEnvPath, backendEnvEntries)) {
     changedFiles.push(path.join(backendPath, '.env'));
   }
 
@@ -859,15 +868,18 @@ async function patchRootPackageJson(rootDir, scope) {
   }
 
   pkg.scripts = pkg.scripts ?? {};
-  pkg.scripts.test = 'turbo run test';
+  // boundaries first: a module that imports a framework fails before any suite runs
+  pkg.scripts.test = 'node scripts/check-boundaries.mjs && turbo run test';
   pkg.scripts.format = pkg.scripts.format ?? 'prettier --write "**/*.{ts,tsx,md}"';
 
-  pkg.devDependencies = pkg.devDependencies ?? {};
-  if (!pkg.devDependencies['ts-node']) {
-    pkg.devDependencies['ts-node'] = '^10.9.2';
-  }
-
   await writeJson(packagePath, pkg);
+
+  const checkScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'check-boundaries.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'check-boundaries.mjs'), await fs.readFile(checkScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'modular monolith boundaries, run by npm test',
+  });
 }
 
 async function ensureRootPrettierConfig(rootDir) {
@@ -949,10 +961,11 @@ async function patchBackendMain({ rootDir, backendPath, backendPort, backendPort
     content = `import 'dotenv/config';\n${content}`;
   }
 
-  if (!content.includes('app.enableCors();')) {
+  // CORS only for the frontend; without FRONTEND_URL the API answers no cross-origin request at all
+  if (!content.includes('app.enableCors(')) {
     content = content.replace(
       /const app = await NestFactory\.create\(AppModule\);\s*/,
-      'const app = await NestFactory.create(AppModule);\n  app.enableCors();\n',
+      "const app = await NestFactory.create(AppModule);\n  app.enableCors({ origin: process.env.FRONTEND_URL?.split(',') ?? false });\n",
     );
   }
 
@@ -1143,8 +1156,9 @@ async function patchFrontendNextConfig({ rootDir, frontendPath }) {
 
   const content = await fs.readFile(configPath, 'utf8');
   const patchResult = ensureNextRemotePatterns(content);
+  const nextContent = patchResult.nextContent;
 
-  if (!patchResult.updated) {
+  if (nextContent === content) {
     return {
       updated: false,
       skipped: false,
@@ -1156,7 +1170,7 @@ async function patchFrontendNextConfig({ rootDir, frontendPath }) {
   if (!activeRunOps) {
     throw new Error('Run operations are not initialized.');
   }
-  await activeRunOps.writeTextFile(configPath, patchResult.nextContent, {
+  await activeRunOps.writeTextFile(configPath, nextContent, {
     ensureNewline: false,
     markRiskOnOverwrite: true,
     note: path.basename(configPath),
@@ -1288,6 +1302,25 @@ async function main() {
     if (!(await pathExists(path.join(rootDir, '.gitattributes')))) {
       await activeRunOps.writeTextFile(path.join(rootDir, '.gitattributes'), '* text=auto eol=lf\n', { note: 'LF everywhere, Windows included' });
     }
+    // supply-chain floor: a 3-day cooldown on new releases (npm >= 11.10) outlives most npm worm waves;
+    // a security patch the integration-engineer flagged installs with --min-release-age 0
+    const npmrcPath = path.join(rootDir, '.npmrc');
+    const npmrc = (await pathExists(npmrcPath)) ? await fs.readFile(npmrcPath, 'utf8') : '';
+    if (!/^min-release-age=/m.test(npmrc)) {
+      await activeRunOps.writeTextFile(npmrcPath, `${npmrc.trimEnd()}\nmin-release-age=3\n`.trimStart(), { note: 'release cooldown', markRiskOnOverwrite: false });
+    }
+    // the Node line the project runs on, for CI (setup-node node-version-file) and for humans
+    if (!(await pathExists(path.join(rootDir, '.nvmrc')))) {
+      await activeRunOps.writeTextFile(path.join(rootDir, '.nvmrc'), `${process.versions.node.split('.')[0]}\n`, { note: 'Node major' });
+    }
+    const dependabotPath = path.join(rootDir, '.github', 'dependabot.yml');
+    if (!(await pathExists(dependabotPath))) {
+      await activeRunOps.writeTextFile(
+        dependabotPath,
+        'version: 2\nupdates:\n  - package-ecosystem: npm\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 3\n    groups:\n      all:\n        patterns: ["*"]\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: weekly\n',
+        { note: 'weekly dependency PRs with the same cooldown' },
+      );
+    }
     // root typescript follows the backend scaffold: create-turbo's TS 7 breaks typescript-eslint in the frontend
     const rootPkgPath = path.join(rootDir, 'package.json');
     const rootPkg = await readJson(rootPkgPath);
@@ -1331,20 +1364,6 @@ async function main() {
       logger.step('Dependência turbo já presente na raiz.');
     } else {
       logger.step('Dependência turbo instalada na raiz.');
-    }
-
-    const tsNodeInstalled = await ensureDependency({
-      packageJsonPath: path.join(rootDir, 'package.json'),
-      depName: 'ts-node',
-      installCommand: 'npm',
-      installArgs: ['install', '-D', 'ts-node'],
-      cwd: rootDir,
-    });
-    if (!tsNodeInstalled) {
-      console.log('Dependency already present at root: ts-node');
-      logger.step('Dependência ts-node já presente na raiz.');
-    } else {
-      logger.step('Dependência ts-node instalada na raiz.');
     }
 
     const prettierInstalled = await ensureDependency({

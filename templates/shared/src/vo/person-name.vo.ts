@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 interface PersonNameConfig extends ValueObjectConfig {}
 

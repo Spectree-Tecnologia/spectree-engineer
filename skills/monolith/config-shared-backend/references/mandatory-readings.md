@@ -1,52 +1,16 @@
-# Leituras Obrigatórias
+# Leituras obrigatórias
 
-Leia estes arquivos antes de ajustar manualmente qualquer parte da configuração compartilhada do backend NestJS:
+Antes de ajustar à mão qualquer parte da camada compartilhada do backend, leia:
 
-1. `packages/shared/src/error/index.ts`
-2. `packages/shared/src/error/erro-de-dominio.ts`
-3. `packages/shared/src/error/erro-de-validacao.ts`
-4. `packages/shared/src/error/erros-de-validacao.ts`
-5. `packages/shared/src/dto/usuario-autenticado.dto.ts`
-6. `apps/backend/src/app.module.ts`
-7. `apps/backend/src/main.ts`
-8. `apps/backend/src/shared/modulo-compartilhado.ts`
+1. `packages/shared/src/base/validation-error.ts` e `packages/shared/src/base/result.ts` — os erros que o filtro traduz.
+2. `packages/shared/src/dto/authenticated-user.dto.ts` — o shape de `request.user`.
+3. `apps/backend/src/app.module.ts` e `apps/backend/src/main.ts` — o que já está registrado globalmente.
+4. `apps/backend/src/shared/shared.module.ts` — guards globais (`APP_GUARD`), JWT, throttler.
 
-Alem disso, e obrigatorio localizar e ler a entidade ou classe `Usuario` dentro do modulo de autenticacao do projeto:
-
-- Buscar em `modules/auth/src/` ou `apps/backend/src/modules/auth/` por arquivos como `usuario.entity.ts`, `usuario.ts`, `user.entity.ts` ou equivalente.
-- Identificar quais campos a classe `Usuario` expoe (especialmente `id`, nome e email).
-- Verificar se a classe ja implementa alguma interface ou contrato de usuario autenticado.
-- Essa leitura e obrigatoria para garantir que a interface `IUsuarioAutenticado` definida no `shared/` seja compativel com a classe real do dominio.
-
-Depois dessas leituras base, localizar e ler qualquer arquivo existente do projeto que trate de:
-
-- autenticacao
-- JWT
-- token
-- claims
-- usuario logado
-- `request.user` ou `req.user`
-- guards de autenticacao
-- decorators de contexto autenticado
-- contexto do request
-
-Busca sugerida:
+Depois, localize o que o projeto já tem sobre autenticação antes de criar qualquer coisa nova:
 
 ```bash
-rg -n --hidden -S "jwt|token|claims|CurrentUser|currentUser|request.user|req.user|passport|AuthGuard|Bearer|Authorization|authenticated user|user context" apps/backend/src modules packages/shared --glob '!**/node_modules/**'
+rg -n -S "jwt|token|claims|CurrentUser|request.user|req.user|passport|AuthGuard|Bearer|@Public" apps/backend/src modules --glob '!**/node_modules/**'
 ```
 
-Objetivo das leituras:
-
-- Confirmar como a hierarquia de erros compartilhados funciona e quais status HTTP devem ser respeitados.
-- Identificar se o bootstrap atual do backend ja tem filtros globais, pipes, interceptors ou configuracoes correlatas.
-- Detectar repeticao de `try/catch` em controllers para convergir tudo para um filtro global.
-- Reaproveitar qualquer infraestrutura de autenticacao ja existente antes de criar uma nova.
-- Inferir, quando possivel, o shape local de `request.user` e do payload autenticado.
-- Mapear os campos reais da classe `Usuario` para garantir que a interface `IUsuarioAutenticado` definida no `shared/` seja compativel e suficiente para uso no guard e no decorator.
-
-Se algum arquivo obrigatorio nao existir no projeto alvo:
-
-- parar para reavaliar a estrutura real
-- localizar o arquivo equivalente antes de editar
-- registrar a suposicao feita no resultado final da execucao
+Objetivo: reaproveitar a infraestrutura existente, confirmar os status HTTP que o filtro devolve e garantir que `AuthenticatedUser` (`id`, `name`, `email`) cobre o que os controllers precisam. Arquivo obrigatório ausente: pare, encontre o equivalente, registre a suposição no relato.

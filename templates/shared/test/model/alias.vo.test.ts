@@ -1,4 +1,4 @@
-import { Alias, ValidationError } from '../../src';
+import { Alias, ValidationError } from '../../src/index.js';
 
 test('Deve criar um Alias válido', () => {
   const alias = new Alias('valid-alias');

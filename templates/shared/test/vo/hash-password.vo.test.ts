@@ -1,4 +1,4 @@
-import { HashPassword } from '../../src';
+import { HashPassword } from '../../src/index.js';
 
 describe('HashPassword', () => {
   test('should create hash password with tryCreate', () => {

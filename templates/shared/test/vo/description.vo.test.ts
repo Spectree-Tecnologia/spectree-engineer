@@ -1,4 +1,4 @@
-import { Description } from '../../src';
+import { Description } from '../../src/index.js';
 
 describe('Description', () => {
   test('should create valid description with tryCreate', () => {

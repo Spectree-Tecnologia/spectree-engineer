@@ -1,1 +1,1 @@
-export * from './authenticated-user.dto';
+export * from './authenticated-user.dto.js';

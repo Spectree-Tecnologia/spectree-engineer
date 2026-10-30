@@ -1,4 +1,4 @@
-import { Text } from '../../src';
+import { Text } from '../../src/index.js';
 
 describe('Text', () => {
   test('should create valid text with tryCreate', () => {

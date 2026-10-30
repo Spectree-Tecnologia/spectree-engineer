@@ -1,4 +1,4 @@
-import { Password } from '../../src';
+import { Password } from '../../src/index.js';
 
 test('Deve retornar uma senha', () => {
   expect(new Password('123').value).toBeDefined();

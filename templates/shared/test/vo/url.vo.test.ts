@@ -1,4 +1,4 @@
-import { URL as URLVo } from '../../src';
+import { URL as URLVo } from '../../src/index.js';
 
 describe('URL', () => {
   test('should create valid url with tryCreate', () => {

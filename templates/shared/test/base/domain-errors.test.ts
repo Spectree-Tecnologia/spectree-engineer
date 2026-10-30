@@ -1,4 +1,4 @@
-import { Result } from '../../src';
+import { Result } from '../../src/index.js';
 
 describe('Domain errors with Result', () => {
   const userErrors = {

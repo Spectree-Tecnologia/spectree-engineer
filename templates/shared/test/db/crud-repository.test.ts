@@ -1,4 +1,4 @@
-import { CrudRepository, Entity, EntityProps, Result } from '../../src';
+import { CrudRepository, Entity, EntityProps, Result } from '../../src/index.js';
 
 interface TestProps extends EntityProps {
   name: string;

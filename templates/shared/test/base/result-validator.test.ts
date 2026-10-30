@@ -1,4 +1,4 @@
-import { Result, ResultError, ResultValidator } from '../../src';
+import { Result, ResultError, ResultValidator } from '../../src/index.js';
 
 describe('ResultValidator', () => {
   test('should throw in throwsIfTrue when source instance is truthy', () => {

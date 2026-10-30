@@ -1,6 +1,6 @@
 ---
 name: module-value-object
-description: Criar, revisar ou orientar a implementação de Value Objects de módulo no projeto Genérico. Usar quando o pedido envolver "value object", "objeto de valor", "VO", regras de validação e normalização para atributos de domínio, criação de novos arquivos com padrão `ValueObject` + `Result`, ou a skill `module-value-object`.
+description: Criar, revisar ou orientar a implementação de Value Objects de módulo no projeto. Usar quando o pedido envolver "value object", "objeto de valor", "VO", regras de validação e normalização para atributos de domínio, criação de novos arquivos com padrão `ValueObject` + `Result`, ou a skill `module-value-object`.
 ---
 
 # Module Value Object
@@ -27,6 +27,4 @@ Aplicar o padrão de Value Object do projeto, garantindo imutabilidade, validaç
 ## References
 
 Consultar `references/vo-pattern.md` para padrões, exemplos e caminhos relevantes do projeto.
-
-## Global Standards
 

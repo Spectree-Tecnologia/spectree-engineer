@@ -1,3 +1,3 @@
-export * from './model'
-export * from './provider'
-export * from './use-case'
+export * from './model/index.js'
+export * from './provider/index.js'
+export * from './use-case/index.js'

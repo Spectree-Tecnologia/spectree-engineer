@@ -1,4 +1,4 @@
-# DTO Pattern (Genérico)
+# DTO Pattern
 
 ## Tipos de DTO
 

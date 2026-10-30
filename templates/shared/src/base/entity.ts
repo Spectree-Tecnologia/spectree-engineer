@@ -1,5 +1,5 @@
-import { Id } from '../vo/id.vo';
-import { Result } from './result';
+import { Id } from '../vo/id.vo.js';
+import { Result } from './result.js';
 
 export interface EntityProps {
   id?: string;

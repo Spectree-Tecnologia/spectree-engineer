@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 export class StrongPassword extends ValueObject<string, ValueObjectConfig> {
   private static readonly WEAK_PASSWORD = 'WEAK_PASSWORD';

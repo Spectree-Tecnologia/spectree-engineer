@@ -1,4 +1,4 @@
-# Frontend Form + Schema Pattern (Genérico)
+# Frontend Form + Schema Pattern
 
 ## Paths de referência
 

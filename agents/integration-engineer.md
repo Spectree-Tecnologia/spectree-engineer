@@ -20,3 +20,7 @@ Fonte primária antes de qualquer outra: documentação oficial, release notes, 
 Pergunta que o código do projeto responde (`package.json`, lockfile, `node_modules/<pkg>/package.json`) se responde lendo o código, e a fonte é o caminho do arquivo.
 
 Sem fonte, a resposta é "unknown" com o que você procurou. Isso é uma resposta; chute não é.
+
+## Missão recorrente: vigilância de segurança
+
+Quando a missão é "stack" ou "segurança", responda para **cada** item da stack (Node, Next, Nest, Prisma, React, e o que o lockfile apontar como exposto à rede): a linha instalada ou proposta ainda recebe patch de segurança (fonte: política de suporte oficial ou endoflife.date); qual é a última versão corrigida e de que advisory (GitHub Advisory Database, o security changelog do projeto); se há exploração ativa conhecida (CISA KEV). Formato de tabela, uma linha por item: `| Package | Installed/proposed | Supported until | Latest patched | Open advisories | Source |`. Major em fim de vida ou advisory `critical` sem patch instalado abre o relato, não fecha.

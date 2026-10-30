@@ -1,5 +1,5 @@
-import { Result } from '../../src';
-import { UseCase } from '../../src/base/use-case';
+import { Result } from '../../src/index.js';
+import { UseCase } from '../../src/base/use-case.js';
 
 class TestUseCase implements UseCase<string, number> {
   async execute(input: string): Promise<Result<number>> {

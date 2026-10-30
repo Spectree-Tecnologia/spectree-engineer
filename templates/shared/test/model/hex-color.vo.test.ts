@@ -1,4 +1,4 @@
-import { HexColor } from '../../src';
+import { HexColor } from '../../src/index.js';
 
 const error = 'hexcolor.invalid';
 

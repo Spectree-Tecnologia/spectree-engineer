@@ -1,4 +1,4 @@
-# Use Case Pattern (Genérico)
+# Use Case Pattern
 
 ## Paths
 
@@ -90,7 +90,7 @@ export class CreateThingUseCase implements UseCase<CreateThingIn, void> {
   constructor(private readonly repo: ThingRepository) {}
 
   async execute(data: CreateThingIn): Promise<Result<void>> {
-    return Result.try(async () => {
+    return Result.tryAsync(async () => {
       const thingResult = Thing.tryCreate({ name: data.name }).validator.throwsIfFailed().result.instance;
 
       const tryCreateThing = await this.repo.create(thingResult);
@@ -104,7 +104,7 @@ export class CreateThingUseCase implements UseCase<CreateThingIn, void> {
 
 ```ts
 import { Password, PasswordCryptoProvider, PasswordRepository } from 'fake/path';
-import { Currency, DEFAULT_CURRENCY, Result, TransactionManager, UseCase } from '@poupig/shared';
+import { Result, TransactionManager, UseCase } from '@namespace/shared';
 import { User, UserErrors, UserRepository } from 'fake/path';
 import { UserExistsQuery } from 'fake/path';
 
@@ -112,7 +112,6 @@ export interface CreateUserIn {
   name: string;
   email: string;
   avatarUrl?: string;
-  currency?: string;
   password: string;
 }
 
@@ -126,7 +125,7 @@ export class CreateUserUseCase implements UseCase<CreateUserIn, void> {
   ) {}
 
   async execute(data: CreateUserIn): Promise<Result<void>> {
-    return Result.try(async () => {
+    return Result.tryAsync(async () => {
       const tryUserExists = await this.userExistsQuery.execute({
         email: data.email,
       });
@@ -134,17 +133,10 @@ export class CreateUserUseCase implements UseCase<CreateUserIn, void> {
 
       const tryHashedPassword = await this.passwordCryptoProvider.hash(data.password);
       const password = Password.create({ content: tryHashedPassword });
-      const tryCurrency = Currency.tryCreate(normalizedCode, {
-        attribute: 'currency',
-      }).validator.throwsIfFailed().result;
-
-      tryCurrency.validator.throwsIfFailed();
-
       const user = User.tryCreate({
         name: data.name,
         email: data.email,
         avatarUrl: data.avatarUrl?.trim() || undefined,
-        currency: tryCurrency.instance,
       }).validator.throwsIfFailed().result.instance;
 
       await this.transactionManager.runInTransaction(async (tx) => {

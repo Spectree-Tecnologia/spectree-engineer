@@ -92,7 +92,7 @@ Capture:
 
 Extrair do `package.json > name` do destino:
 
-- Com namespace (`@arquitetura/frontend`): usar a parte após `/` em PascalCase → `Frontend`
+- Com namespace (`@acme/frontend`): usar a parte após `/` em PascalCase → `Frontend`
 - Sem namespace (`myapp`): usar o nome em PascalCase → `Myapp`
 
 ### Navegação (menu único, no layout)

@@ -11,7 +11,7 @@ Executar um script determinístico e idempotente para bootstrap web+backend no p
 O fluxo usa `npx create-turbo@latest` para gerar a base padrão do TurboRepo (incluindo configs compartilhadas e `.gitignore`) e reconcilia apenas o que estiver faltando na pasta atual.
 Se `.git` já existir no diretório atual, o scaffold é executado com `--no-git` para evitar recriação de repositório git.
 Depois cria frontend/backend apenas quando necessário, aplica namespace do `skills.config.json` nos pacotes e atualiza somente os arquivos pendentes.
-As configurações padrão são lidas de `skills.config.json` (em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env`, `${CLAUDE_PLUGIN_ROOT}/skills/monolith/.env` ou `.env/` no repositório de skills).
+As configurações ficam em `skills.config.json` na raiz do projeto: o script o escreve na primeira execução e todas as outras skills o leem de lá.
 
 ## Workflow
 
@@ -21,11 +21,11 @@ As configurações padrão são lidas de `skills.config.json` (em `${CLAUDE_PLUG
 4. Criar app frontend com `create-next-app --src-dir` somente se `frontendAppPath` ainda não existir como app Next.js, garantindo estrutura `src/` no frontend.
 5. Criar app backend com `nest new --skip-git` somente se `backendAppPath` ainda não existir como app NestJS.
 6. Garantir namespace em todos os projetos do workspace (`apps/*`, `modules/*` e `packages/*`), incluindo frontend/backend, usando `namespace` do config (ou `--scope`).
-7. Instalar apenas dependências faltantes (`turbo`, `ts-node` e `prettier` no root, `dotenv` no backend).
-8. Atualizar `package.json` root, garantir `.prettierrc` no root e atualizar `turbo.json` de forma incremental.
+7. Instalar apenas dependências faltantes (`turbo` e `prettier` no root, `dotenv` no backend).
+8. Atualizar `package.json` root (`test` = `node scripts/check-boundaries.mjs && turbo run test`), copiar `scripts/check-boundaries.mjs` (fronteiras do monólito: core puro, módulo depende só do shared, rota do Next só importa a página do módulo), garantir `.prettierrc` no root e atualizar `turbo.json` de forma incremental.
 9. Ajustar `next.config.ts|js|mjs` do frontend para garantir `images.remotePatterns` liberando imagens remotas em `http` e `https` com `hostname: "**"` (idempotente).
-10. Atualizar `.env` e `.env.example` de frontend/backend via upsert (sem apagar chaves extras existentes).
-11. Ajustar `main.ts` do backend de forma incremental (`dotenv/config`, `app.enableCors()`, porta via `backendPortEnvVar`).
+10. Atualizar `.env` e `.env.example` de frontend/backend via upsert (sem apagar chaves extras existentes); o backend ganha `FRONTEND_URL` e um `JWT_SECRET` aleatório no `.env` (placeholder no `.env.example`), gerado uma vez e nunca reescrito.
+11. Ajustar `main.ts` do backend de forma incremental (`dotenv/config`, CORS restrito a `FRONTEND_URL`, porta via `backendPortEnvVar`).
 12. Registrar execução em `.log/skills.log` com título da skill e lista simples dos comandos/ações relevantes (sem timestamps e sem status), garantindo `.log/` no `.gitignore`.
 13. Formatar todos os arquivos do projeto com Prettier executando `npm run format` na raiz do monorepo.
 
@@ -72,6 +72,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.m
 ## Resources
 
 - `scripts/project-init.mjs`: script principal de bootstrap.
+- `assets/scripts/check-boundaries.mjs`: copiado para `scripts/` do projeto; `npm test` e o CI o rodam antes das suítes.
 - `references/bootstrap-contract.md`: contrato dos arquivos e alterações que o bootstrap aplica.
 - Log local de execução: `.log/skills.log` (não versionado; `.log/` é adicionado ao `.gitignore` automaticamente, sem metadados extras).
 
@@ -83,5 +84,4 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.m
 - Toda falha inesperada deve gerar `[FAIL]` com descricao factual curta do evento.
 - Operacoes de terminal e alteracoes de arquivos devem passar pelos utilitarios compartilhados em `../utils` para manter rastreabilidade consistente.
 
-## Global Standards
 

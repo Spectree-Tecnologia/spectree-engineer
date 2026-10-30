@@ -1,8 +1,8 @@
 import {
   __AGGREGATE_CLASS_NAME__,
   Update__AGGREGATE_CLASS_NAME__,
-} from '../../src/__AGGREGATE_NAME__'
-import { __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__ } from '../mock/in-memory-__AGGREGATE_NAME__.repository'
+} from '../../src/__AGGREGATE_NAME__/index.js'
+import { __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__ } from '../mock/in-memory-__AGGREGATE_NAME__.repository.js'
 
 describe('Update__AGGREGATE_CLASS_NAME__', () => {
   test('should replace the stored aggregate in the in-memory repository', async () => {

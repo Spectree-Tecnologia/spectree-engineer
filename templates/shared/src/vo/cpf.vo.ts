@@ -1,6 +1,6 @@
-import { ValidationError } from '../base/validation-error';
-import { Metadata } from '../base/metadata';
-import { Result } from '../base';
+import { ValidationError } from '../base/validation-error.js';
+import { Metadata } from '../base/metadata.js';
+import { Result } from '../base/index.js';
 
 export class Cpf {
   readonly formatted: string;

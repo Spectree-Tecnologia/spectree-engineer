@@ -1,10 +1,12 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ValidationError } from '{{SHARED_PACKAGE}}';
-import { ApiErrorResponse } from './api-error-response.type';
+import { ApiErrorResponse } from './api-error-response.type.js';
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -43,6 +45,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
       };
     }
 
+    // the client gets a generic 500; the cause goes to the log, never to the response
+    this.logger.error(`${path}: ${exception instanceof Error ? (exception.stack ?? exception.message) : String(exception)}`);
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'Internal Error',

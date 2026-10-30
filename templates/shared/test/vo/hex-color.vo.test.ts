@@ -1,4 +1,4 @@
-import { HexColor } from '../../src';
+import { HexColor } from '../../src/index.js';
 
 describe('HexColor', () => {
   test('should create with valid 6-digit color', () => {
@@ -81,7 +81,7 @@ describe('HexColor', () => {
   });
 
   test('should fallback to default error when an unknown error is thrown', () => {
-    const trimSpy = jest.spyOn(String.prototype, 'trim').mockImplementation(() => {
+    const trimSpy = vi.spyOn(String.prototype, 'trim').mockImplementation(() => {
       throw {};
     });
 

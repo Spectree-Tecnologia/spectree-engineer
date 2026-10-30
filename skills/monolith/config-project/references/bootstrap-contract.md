@@ -35,17 +35,15 @@ Com defaults obtidos de `skills.config.json`:
    - backend: `<namespace>/<backendName>`
 7. Instalar apenas dependências faltantes:
    - root: `turbo` (dev dependency)
-   - root: `ts-node` (dev dependency)
    - root: `prettier` (dev dependency)
    - backend: `dotenv`
 8. Atualizar `package.json` root:
    - `name` preenchido (default: `<namespace>/workspace`)
-   - `scripts.test = "turbo run test"`
+   - `scripts.test = "node scripts/check-boundaries.mjs && turbo run test"` e `scripts/check-boundaries.mjs` copiado dos assets da skill
    - `scripts.format = "prettier --write \"**/*.{ts,tsx,md}\""` quando ausente
    - `private = true`
    - `workspaces` contendo `apps/*` e `modules/*`
    - `devDependencies.turbo` presente
-   - `devDependencies.ts-node` presente
    - `devDependencies.prettier` presente
 9. Garantir `.prettierrc` na raiz com configuração padrão de formatação do workspace.
 10. Atualizar `turbo.json`:
@@ -64,12 +62,13 @@ Com defaults obtidos de `skills.config.json`:
   - `PORT=<frontendPort>`
 - `<backendAppPath>/.env` e `.env.example` com:
   - `<backendPortEnvVar>=<backendPort>`
+  - `FRONTEND_URL=http://localhost:<frontendPort>`
   - `DATABASE_URL`
-  - `JWT_SECRET`
+  - `JWT_SECRET` (placeholder no `.env.example`; valor aleatório no `.env`, gerado uma vez)
 
 13. Atualizar `<backendAppPath>/src/main.ts` de forma incremental com:
 
-- `app.enableCors()`
+- `app.enableCors({ origin: FRONTEND_URL })` — sem a variável, CORS fechado
 - leitura de `process.env.<backendPortEnvVar>` (default `<backendPort>`)
 - `import "dotenv/config"`
 

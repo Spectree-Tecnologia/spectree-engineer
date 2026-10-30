@@ -1,5 +1,5 @@
 import { AuthenticatedUser } from '{{SHARED_PACKAGE}}';
-import { JwtPayload } from '../types/jwt-payload.type';
+import { JwtPayload } from '../types/jwt-payload.type.js';
 
 export function mapPayloadToAuthenticatedUser(payload: JwtPayload): AuthenticatedUser {
   return {

@@ -1,4 +1,4 @@
-# Prisma Init Checklist (Genérico Backend)
+# Prisma Init Checklist
 
 ## Objetivo
 

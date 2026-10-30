@@ -1,4 +1,4 @@
-# Prisma Pattern (Genérico)
+# Prisma Pattern
 
 ## Paths principais
 

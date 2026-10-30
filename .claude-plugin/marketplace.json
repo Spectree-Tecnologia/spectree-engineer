@@ -8,7 +8,7 @@
     {
       "name": "spectree-engineer",
       "source": "./",
-      "description": "Orquestrador em pt-BR com sub-agentes especialistas: skills de engenharia de Matt Pocock como processo, skills do curso de monólito modular como padrão de arquitetura.",
+      "description": "Orquestrador em pt-BR com sub-agentes especialistas: skills de engenharia de Matt Pocock como processo, skills de monólito modular da Spectree como padrão de arquitetura.",
       "category": "engineering",
       "keywords": ["orchestrator", "spec-driven", "modular-monolith", "tdd"]
     }

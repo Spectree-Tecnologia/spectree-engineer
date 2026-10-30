@@ -1,8 +1,8 @@
 import {
   __AGGREGATE_CLASS_NAME__,
   Find__AGGREGATE_CLASS_NAME__ById,
-} from '../../src/__AGGREGATE_NAME__'
-import { __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__ } from '../mock/in-memory-__AGGREGATE_NAME__.repository'
+} from '../../src/__AGGREGATE_NAME__/index.js'
+import { __AGGREGATE_IN_MEMORY_REPOSITORY_NAME__ } from '../mock/in-memory-__AGGREGATE_NAME__.repository.js'
 
 describe('Find__AGGREGATE_CLASS_NAME__ById', () => {
   test('should return the aggregate from the in-memory repository', async () => {

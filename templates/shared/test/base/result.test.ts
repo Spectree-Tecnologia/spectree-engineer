@@ -1,4 +1,4 @@
-import { Result } from '../../src';
+import { Result } from '../../src/index.js';
 
 describe('Result', () => {
   test('should create ok result with instance', () => {
@@ -229,10 +229,9 @@ describe('Result', () => {
     expect(validatedResult.instance).toBe(true);
   });
 
-  test('should skip String.prototype property definitions when already defined', () => {
-    jest.isolateModules(() => {
-      require('../../src/base/result');
-    });
+  test('should skip String.prototype property definitions when already defined', async () => {
+    vi.resetModules();
+    await import('../../src/base/result.js');
 
     expect('INVALID_ALIAS'.code).toBe('alias.invalid');
     expect('hello'.value).toBe('hello');

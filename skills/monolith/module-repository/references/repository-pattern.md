@@ -1,4 +1,4 @@
-# Repository Pattern (Genérico)
+# Repository Pattern
 
 ## Paths
 

@@ -1,9 +1,20 @@
 # spectree-engineer
 
-Plugin Claude Code da Spectree Tecnologia: um orquestrador em pt-BR (`/engineer`) com sub-agentes especialistas, para monólitos modulares spec-driven.
+Plugin Claude Code da Spectree Tecnologia: um orquestrador em pt-BR (`/engineer`) com sub-agentes especialistas, para **monólitos modulares seguros e escaláveis na stack atual**.
 
 - **Processo:** as skills de engenharia de [Matt Pocock](https://github.com/mattpocock/skills) — entrevista → roadmap → **design** → spec → tickets → TDD → code review → PR → **merge automático com CI verde** → próxima spec. A tela é prototipada no artefato Design antes da spec, não vista semanas depois do código. Depois da entrevista o squad anda sozinho; só sobem a você dinheiro/plataforma, mudança de escopo, impacto irreversível e o que nenhuma melhor prática decide.
-- **Arquitetura:** as skills do curso *Spec-Driven Development para Monólitos Modulares* — `config-*`, `module-*`, `backend-*`, `frontend-*` — e as regras de DDD tático que elas encodam.
+- **Arquitetura:** as skills de monólito modular da Spectree — `config-*`, `module-*`, `backend-*`, `frontend-*` — e as regras de DDD tático que elas encodam: módulos puros em `modules/<m>/src/<agregado>/{dto,model,provider,use-case}`, um repositório por raiz de agregado, regra no VO > entidade > domain service, erro como código numa `Result`, `userId` do JWT.
+
+## Stack gerada
+
+Só majors com suporte, instalados como `@latest`, nunca pinados: Turborepo, **NestJS (ESM, `nodenext`, Vitest)**, **Next.js com Cache Components**, Prisma + PostgreSQL, Node LTS (`.nvmrc`), pacote `@<ns>/shared` em ESM + Vitest.
+
+Seguro por padrão no que o bootstrap gera:
+
+- `JwtGuard` como `APP_GUARD` — toda rota fechada salvo `@Public()`; `JWT_SECRET` sem valor padrão (o app não sobe sem ele).
+- `@nestjs/throttler` com limite global, `helmet`, CORS restrito a `FRONTEND_URL`, `ValidationPipe` com `whitelist` + `forbidNonWhitelisted`, `ApiExceptionFilter` logando a causa dos 500.
+- Supply chain: `.npmrc` com `min-release-age=3`, `.github/dependabot.yml` com o mesmo cooldown, `npm audit --audit-level=high` no CI.
+- Fronteiras do monólito verificadas por `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro em `modules/*/src`, módulo depende só do shared, teste fora de `src/`, rota do Next só importa a página do módulo.
 
 ## Instalação
 
@@ -31,10 +42,10 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 | `engineer` (comando) | fala com você em pt-BR, grill, spec, tickets, despacha | código |
 | `solutions-architect` | mapa de módulos/agregados, seams, fronteira de perguntas | escrever arquivo |
 | `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, design system do projeto | regra de negócio, código |
-| `full-stack-developer` | um ticket, test-first, scaffold pelas skills do curso | sair do ticket |
+| `full-stack-developer` | um ticket, test-first, scaffold pelas skills de monólito | sair do ticket |
 | `quality-engineer` | review em dois eixos + fronteiras do monólito | editar |
 | `platform-engineer` | bootstrap, git, worktrees, merge, Prisma, PR | código de módulo, merge na main |
-| `integration-engineer` | fatos sobre sistemas externos, com fonte | afirmar de memória |
+| `integration-engineer` | fatos sobre sistemas externos, com fonte; vigilância de suporte e advisories da stack | afirmar de memória |
 
 ## Layout
 
@@ -42,5 +53,15 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 commands/engineer.md       o orquestrador
 agents/*.md                os seis especialistas
 skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
-skills/monolith/           skills do curso (Módulos 7/8)
+skills/monolith/           skills de monólito modular (config-*, module-*, backend-*, frontend-*)
+templates/shared           o pacote @<ns>/shared copiado no bootstrap
+scripts/smoke.mjs          prova: bootstrap inteiro num projeto temporário, build, testes, 401 sem token
 ```
+
+## Prova
+
+```bash
+node scripts/smoke.mjs
+```
+
+Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → backend → Prisma → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend e exige `401` em `GET /` sem token. `SMOKE_KEEP=1` preserva o projeto gerado.

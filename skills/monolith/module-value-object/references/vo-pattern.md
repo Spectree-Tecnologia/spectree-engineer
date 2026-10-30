@@ -1,4 +1,4 @@
-# VO Pattern (Genérico)
+# VO Pattern
 
 ## Paths
 

@@ -1,4 +1,4 @@
-import { PositiveInteger } from '../../src';
+import { PositiveInteger } from '../../src/index.js';
 
 describe('PositiveInteger', () => {
   test('should create with valid positive integer starting from 1', () => {
@@ -53,7 +53,7 @@ describe('PositiveInteger', () => {
   });
 
   test('should return default invalid error when unexpected error has no message', () => {
-    const isIntegerSpy = jest.spyOn(Number, 'isInteger').mockImplementation(() => {
+    const isIntegerSpy = vi.spyOn(Number, 'isInteger').mockImplementation(() => {
       throw {};
     });
 

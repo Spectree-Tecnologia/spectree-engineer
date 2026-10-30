@@ -1,4 +1,4 @@
-import { ResultError } from './result-error';
+import { ResultError } from './result-error.js';
 
 export type ResultValidationError = string | string[] | Error;
 export type ResultExceptionFactory = (error: ResultValidationError) => unknown;

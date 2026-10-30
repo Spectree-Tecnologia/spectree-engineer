@@ -1,4 +1,4 @@
-import { ShortDescription } from '../../src';
+import { ShortDescription } from '../../src/index.js';
 
 describe('ShortDescription', () => {
   test('should create valid short description with tryCreate', () => {

@@ -1,6 +1,6 @@
-import { Result } from '../base';
-import { ValidationError } from '../base/validation-error';
-import { Metadata } from '../base/metadata';
+import { Result } from '../base/index.js';
+import { ValidationError } from '../base/validation-error.js';
+import { Metadata } from '../base/metadata.js';
 
 export class NonNegative {
   constructor(

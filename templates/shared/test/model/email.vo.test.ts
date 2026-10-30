@@ -1,4 +1,4 @@
-import { Email, ValidationError } from '../../src';
+import { Email, ValidationError } from '../../src/index.js';
 
 const error = 'email.invalid';
 

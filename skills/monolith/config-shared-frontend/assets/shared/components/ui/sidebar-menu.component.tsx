@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shar
 import { usePathname } from 'next/navigation';
 import { useShell } from '@/shared/hooks/shell.hook';
 import Link from 'next/link';
-import type { ComponentType } from 'react';
+import { Suspense, type ComponentType } from 'react';
 
 type SidebarIcon = ComponentType<{ className?: string }>;
 
@@ -140,7 +140,16 @@ function MenuSections({
  * estado da aplicação e NÃO vivem aqui em shared/ — este componente é apenas a
  * apresentação. Para mudar o menu, edite as seções no layout de destino.
  */
-export function SidebarMenu({ mainItem, sections, collapsed, homeHref = '/' }: SidebarMenuProps) {
+export function SidebarMenu(props: SidebarMenuProps) {
+  // usePathname reads the request URL; with Cache Components it must render inside a Suspense boundary
+  return (
+    <Suspense fallback={null}>
+      <SidebarMenuContent {...props} />
+    </Suspense>
+  );
+}
+
+function SidebarMenuContent({ mainItem, sections, collapsed, homeHref = '/' }: SidebarMenuProps) {
   const pathname = usePathname();
   const { isMobile, isSidebarOpen } = useShell();
   const isCollapsed = collapsed ?? (!isMobile && !isSidebarOpen);

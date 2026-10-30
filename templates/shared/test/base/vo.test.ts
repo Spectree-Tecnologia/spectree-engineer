@@ -1,4 +1,4 @@
-import { ValueObject, ValueObjectConfig } from '../../src';
+import { ValueObject, ValueObjectConfig } from '../../src/index.js';
 
 interface TestConfig extends ValueObjectConfig {
   attribute?: string;

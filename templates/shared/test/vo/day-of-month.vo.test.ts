@@ -1,4 +1,4 @@
-import { DayOfMonth } from '../../src';
+import { DayOfMonth } from '../../src/index.js';
 
 describe('DayOfMonth', () => {
   test('should create with valid day of month', () => {
@@ -64,7 +64,7 @@ describe('DayOfMonth', () => {
   });
 
   test('should fallback to default error when an unknown error is thrown', () => {
-    const isIntegerSpy = jest.spyOn(Number, 'isInteger').mockImplementation(() => {
+    const isIntegerSpy = vi.spyOn(Number, 'isInteger').mockImplementation(() => {
       throw {};
     });
 

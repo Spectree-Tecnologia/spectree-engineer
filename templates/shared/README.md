@@ -1,4 +1,4 @@
-# @arquitetura/shared
+# shared
 
 Biblioteca de infraestrutura compartilhada para projetos com arquitetura orientada ao domínio. Fornece os blocos de construção do DDD — `Result`, `Entity`, `ValueObject`, `UseCase` — além de contratos de repositório, sistema de erros estruturados e uma biblioteca de Value Objects prontos para uso.
 
@@ -216,8 +216,8 @@ interface PaginatedResultDTO<T> {
 ```bash
 npm run build        # Compila para dist/
 npm run dev          # Watch mode
-npm test             # Testes com cobertura
-npm run test:watch   # Watch mode para testes
+npm test             # Testes (Vitest)
+npm run test:cov     # Testes com cobertura
 ```
 
 ## Dependências

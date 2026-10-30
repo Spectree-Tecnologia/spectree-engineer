@@ -1,30 +1,30 @@
-import { PersonName, ValidationError } from '../../src';
+import { PersonName, ValidationError } from '../../src/index.js';
 
 test('Deve lançar erro ao tentar criar nome vazio', () => {
-  expect(() => new PersonName()).toThrow('');
-  expect(() => new PersonName('')).toThrow('');
+  expect(() => new PersonName()).toThrow();
+  expect(() => new PersonName('')).toThrow();
 });
 
 test('Deve lançar vários erros ao tentar criar nome vazio', () => {
-  expect(() => new PersonName()).toThrow('');
+  expect(() => new PersonName()).toThrow();
 });
 
 test('Deve lançar erro ao tentar criar nome menor que 3 caracteres', () => {
-  expect(() => new PersonName('L Z')).toThrow('');
+  expect(() => new PersonName('L Z')).toThrow();
 });
 
 test('Deve lançar erro ao tentar criar nome maior que 120 caracteres', () => {
   const bigName =
     'Pedro de Alcântara João Carlos Leopoldo Salvador Bibiano Francisco Xavier de Paula Leocádio Miguel Gabriel Rafael Gonzaga de Bragança e Habsburgo';
-  expect(() => new PersonName(bigName)).toThrow('');
+  expect(() => new PersonName(bigName)).toThrow();
 });
 
 test('Deve lançar erro ao tentar criar nome sem sobrenome', () => {
-  expect(() => new PersonName('Guilherme')).toThrow('');
+  expect(() => new PersonName('Guilherme')).toThrow();
 });
 
 test('Deve lançar erro ao tentar criar nome com caracteres especiais', () => {
-  expect(() => new PersonName('João @OOOJoao')).toThrow('');
+  expect(() => new PersonName('João @OOOJoao')).toThrow();
 });
 
 test('Deve criar nome e dois sobrenomes', () => {

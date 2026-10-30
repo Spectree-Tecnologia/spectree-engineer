@@ -1,5 +1,5 @@
-import { Entity, EntityProps } from '../../src/base/entity';
-import { Result } from '../../src/base/result';
+import { Entity, EntityProps } from '../../src/base/entity.js';
+import { Result } from '../../src/base/result.js';
 
 export interface TestEntityProps extends EntityProps {
   number: number;

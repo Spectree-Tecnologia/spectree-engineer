@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 export class HexColor extends ValueObject<string, ValueObjectConfig> {
   private static readonly INVALID_HEX_COLOR = 'INVALID_HEX_COLOR';

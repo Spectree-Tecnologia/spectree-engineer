@@ -1,4 +1,4 @@
-import { Result, ValueObject, ValueObjectConfig } from '../base';
+import { Result, ValueObject, ValueObjectConfig } from '../base/index.js';
 
 export class HashPassword extends ValueObject<string, ValueObjectConfig> {
   private static readonly INVALID_HASH_PASSWORD = 'INVALID_HASH_PASSWORD';

@@ -1,4 +1,4 @@
-# Domain Service Pattern (Genérico)
+# Domain Service Pattern
 
 ## Escopo (fronteira)
 
