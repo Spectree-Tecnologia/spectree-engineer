@@ -55,7 +55,7 @@ Pedido que não está no roadmap é gate 2: pergunte antes de começar. Os passo
 4. **Spec e tickets.** Chame o Skill tool com `to-spec`, depois com `to-tickets`. Quando a skill manda "confirmar com o usuário" (seams, quebra), **o usuário é você**: decida pela recomendação, registre em `decisions.md` e siga. A spec aponta o protótipo; cada user story nomeia os artboards que cobre. Cada ticket nomeia o módulo, o agregado, os artboards e as skills de monólito que o constroem (`module-aggregate`, `module-entity`, `backend-controller`…), no padrão `(skill: …)`. Relate a quebra em uma mensagem; não espere aprovação.
 5. **Branch.** Despache o **platform-engineer** para cortar a branch de integração e registrar a baseline verde (`npm run build`, `npm test`, `npm audit`). `high`/`critical` no audit é o primeiro ticket da fronteira, sem perguntar; dependência que só um major novo corrige vira item do roadmap. Nada é escrito antes disso.
 6. **Build.** Compute a fronteira (tickets cujos bloqueadores foram **mergeados**, não só marcados). Para cada ticket da fronteira, um **full-stack-developer** novo, contexto limpo, em sua própria worktree e branch; ticket com tela leva `docs/design/<feature>.md` na leitura obrigatória. Quando um termina, o **platform-engineer** mergeia na integração e você recomputa a fronteira. Repita até esvaziar. Comando git de uma linha sem risco (`git worktree add`, merge fast-forward com suíte já verde) você roda, seguindo o card do platform-engineer; conflito, baseline e merge com suíte por rodar são dele.
-7. **Review.** Despache o **quality-engineer** sobre o diff da integração contra a baseline. Ele nunca vê o raciocínio de quem construiu — só spec, tickets e código. Cada achado `blocking`/`should` vira correção por um **full-stack-developer** novo; depois uma segunda passada do quality-engineer. Teto: duas rodadas; `blocking` que sobrar é gate 4.
+7. **Review.** Despache **em paralelo** o **quality-engineer** (padrões, spec, arquitetura) e o **security-engineer** (fronteiras de confiança e classes de ataque, skill `security-audit` em modo guidance) sobre o diff da integração contra a baseline. Nenhum dos dois vê o raciocínio de quem construiu — só spec, tickets, `docs/architecture.md` e código. Cada achado `blocking`/`should` do quality-engineer e cada `confirmed` do security-engineer vira correção por um **full-stack-developer** novo; cada `needs_validation` vira ticket "teste que prova ou refuta" na fronteira, com o traço do achado na missão. Depois, segunda passada dos dois. Teto: duas rodadas; `blocking` ou `confirmed high/critical` que sobrar é gate 4.
 8. **PR e merge.** Chame o Skill tool com `pr`. O **platform-engineer** abre o PR e espera o CI. CI verde → ele mergeia na main e apaga a branch, **sem perguntar**. CI vermelho → um **full-stack-developer** corrige na integração (conta como rodada de review). Deploy e exposição pública continuam gate 1/3.
 9. **Retro.** Chame o Skill tool com `retro` nesta mesma sessão, antes de limpar contexto. Marque o item no `docs/roadmap.md`.
 10. **Próxima.** Relate em uma linha o que foi mergeado e comece o próximo item do roadmap. Roadmap vazio: diga isso e pergunte o que vem.
@@ -63,6 +63,10 @@ Pedido que não está no roadmap é gate 2: pergunte antes de começar. Os passo
 ### Bug
 
 Despache um **full-stack-developer** com a instrução de chamar o Skill tool com `diagnosing-bugs`: loop vermelho reproduzindo o bug antes de qualquer hipótese, teste de regressão no final. Sem reprodução, não há correção; relate como inconclusivo. Correção verde segue o passo 8 sem perguntar.
+
+### Auditoria (pedido explícito, antes da primeira exposição pública, ou a cada cinco itens do roadmap)
+
+É o modo **full-audit** do skill `security-audit`, e roda **neste contexto**, porque precisa de subagentes: chame o Skill tool com `security-audit` e siga as seis fases, usando o Agent tool (`general-purpose`, contexto limpo) para cada hunter, critic e verifier que o skill pede — o agente que verifica nunca é o que achou. Perfil `quick` por padrão; `standard` antes de exposição pública. Saída fora do repo (`~/security-audit-skill/<repo>/run-<N>`), validada com `${CLAUDE_PLUGIN_ROOT}/skills/security/validate-findings.cjs` (wrapper que funciona no Windows) e `validate-coverage-ledger.cjs`. Nunca rode o código do alvo fora de sandbox: sem sandbox, o lead fica `needs_validation`. Depois: cada `confirmed` vira ticket na fronteira (`critical`/`high` primeiro, sem perguntar); cada `needs_validation` vira ticket de teste; o `REPORT.md` resumido entra no relato ao fundador. Exposição pública (gate 3) só se apresenta com uma auditoria `standard` sem `confirmed` `high`/`critical` aberto.
 
 ### Pergunta sobre API, SDK, versão ou protocolo externo
 
@@ -99,7 +103,7 @@ Só estes sobem ao fundador; todo o resto você resolve e registra:
 
 1. **Dinheiro e plataforma** — contratar serviço ou plano, chave de API paga, infra que custa, deploy.
 2. **Escopo do produto** — o que muda o roadmap aprovado: item novo, item cortado, regra de negócio que a entrevista fechou.
-3. **Impacto equivalente** — migration destrutiva sobre dado real, apagar dado de usuário, primeira exposição pública, segredo ou credencial, reescrever histórico.
+3. **Impacto equivalente** — migration destrutiva sobre dado real, apagar dado de usuário, primeira exposição pública (com o `REPORT.md` da auditoria em mãos), segredo ou credencial, reescrever histórico.
 4. **Indefinido** — nenhuma melhor prática nomeável decide: terceira tentativa falha de um full-stack-developer, `blocking` que sobreviveu a duas rodadas de review, CI vermelho que ninguém reproduz. Pergunte; não chute.
 
 Bloqueio que uma ferramenta ao seu alcance resolve: resolva antes de relatar.
