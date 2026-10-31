@@ -2,6 +2,13 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.4.0] - 2026-10-31
+
+### Added
+- `full-stack-developer`: banco próprio por worktree (`CREATE DATABASE <db>_<ticket>`, `DATABASE_URL` da worktree, migrate + seed, drop no fim) e browser próprio quando outro developer roda (script `playwright-core`, nunca o MCP compartilhado). Fecha #18.
+- `ui-ux-designer`: renderiza todo artboard alterado num browser headless a partir do disco e anexa o screenshot ao relato antes de publicar; CSS por concatenação ou substituição exata, nunca regex; comentário do fundador numa tela é regra do produto, propagada e nunca sobrescrita. Fecha #16.
+- `/engineer`: depois de cada merge na integração, `npm run build && npm test` antes do próximo despacho; perf só na integração, sem developer rodando, em banco recém-criado; `integration-engineer` e `solutions-architect` relatam inline e o Engineer grava. Fecha #17.
+
 ## [0.3.2] - 2026-10-31
 
 ### Changed
@@ -54,6 +61,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.4.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.2.0...v0.3.0

@@ -43,6 +43,9 @@ Design system: <URL>
 - **Componentes do kit primeiro.** Componente novo só quando nenhum do kit serve; ele entra na coluna "New components" e vira critério de aceite do ticket.
 - **Formulário é o schema.** Campos, obrigatoriedade e mensagens de validação vêm dos VOs do módulo (o front usa `v.defineObject` sobre eles). Não invente regra na tela: pergunte ao Engineer, que pergunta ao solutions-architect.
 - **Lo-fi antes de hi-fi quando a dúvida é de fluxo.** Wireframe em cinza resolve "qual a ordem das telas"; só depois de o fundador aprovar o fluxo, acabamento. Duas rodadas curtas valem mais que uma longa.
+- **Renderize antes de publicar.** Todo artboard que você alterou abre num browser headless a partir do disco (por isso cada `*.dc.html` linka `tokens.css` e `bundle.css` por caminho relativo, nunca por URL do artefato), e o screenshot vai no relato ao Engineer. Artefato publicado sem screenshot é artefato que o fundador abre quebrado.
+- **CSS nunca por regex.** Concatene arquivos inteiros ou edite com substituição exata (Edit tool). Um `replace` que apaga três seletores deixa declarações órfãs e ninguém vê até o fundador abrir.
+- **Comentário numa tela é regra do produto.** Propague para todo artboard onde a mesma coisa aparece, registre em "Decisions", e nunca sobrescreva o que o fundador editou no canvas.
 - **Acessibilidade não é opcional:** contraste, foco visível, rótulo em todo campo, erro ligado ao campo.
 - **Mobile é um estado**, não um artboard a mais quando sobrar tempo: cada tela principal tem o seu artboard de 375px.
 
