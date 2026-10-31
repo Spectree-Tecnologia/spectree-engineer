@@ -1187,6 +1187,12 @@ async function patchTurboJson(rootDir) {
   turbo.tasks = turbo.tasks ?? {};
   turbo.tasks.build = turbo.tasks.build ?? {};
   turbo.tasks.build.outputs = ensureArrayValue(turbo.tasks.build.outputs, 'dist/**');
+  // turbo's strict env hides these from the task, and the backend's prebuild (prisma generate) loads prisma.config.ts,
+  // which resolves the URL at load. passThroughEnv: visible to the task, not part of the cache hash.
+  turbo.tasks.build.passThroughEnv = ensureArrayValue(
+    ensureArrayValue(turbo.tasks.build.passThroughEnv, 'DATABASE_URL'),
+    'MIGRATION_DATABASE_URL',
+  );
 
   turbo.tasks.test = {
     ...(turbo.tasks.test ?? {}),
