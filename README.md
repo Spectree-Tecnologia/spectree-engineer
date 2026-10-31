@@ -85,6 +85,6 @@ Roda como você, na sua credencial do Claude Code — por isso não está no CI:
 
 ## Versão
 
-A versão vive em `.claude-plugin/plugin.json` e segue SemVer (regra no topo do [CHANGELOG.md](CHANGELOG.md)). Para lançar: mova `[Unreleased]` para a versão nova com a data, suba `version`, rode `claude plugin validate . --strict` e `node scripts/smoke.mjs`, faça o commit e a tag `v<versão>` no mesmo commit, e dê push de ambos. Quem instalou atualiza com `claude plugin update spectree-engineer`.
+A versão vive em `.claude-plugin/plugin.json` e segue SemVer (regra no topo do [CHANGELOG.md](CHANGELOG.md)). **Todo merge na main é uma versão**, porque `claude plugin update` compara versão, não commit: o PR sobe `version` (`PATCH` para correção, `MINOR` para comportamento novo) e escreve a seção `## [x.y.z] - <data>` no CHANGELOG; depois do merge, a tag `v<versão>` vai no merge commit (`git tag v<versão> <merge> && git push origin v<versão>`). Antes de subir `MINOR` que toca skills, templates ou scripts, rode `claude plugin validate . --strict` e `node scripts/smoke.mjs`. Quem instalou atualiza com `claude plugin update spectree-engineer`.
 
 Melhorias que o `/engineer` descobre nos projetos (retro) chegam aqui como [issues](https://github.com/Spectree-Tecnologia/spectree-engineer/issues).
