@@ -402,6 +402,7 @@ async function main() {
     'apps/backend/src/shared/types/authenticated-request.type.ts',
     'apps/backend/src/shared/types/index.ts',
     'apps/backend/src/shared/shared.module.ts',
+    'apps/backend/src/cli/run-cli.ts',
   ]
 
   for (const asset of backendSharedAssets) {

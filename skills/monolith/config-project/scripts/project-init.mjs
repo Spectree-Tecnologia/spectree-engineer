@@ -987,10 +987,24 @@ services:
     working_dir: /app/${backendPath}
     command: ['npx', 'prisma', 'migrate', 'deploy']
     environment:
-      DATABASE_URL: &database-url postgresql://\${POSTGRES_USER:-app}:\${POSTGRES_PASSWORD}@postgres:5432/\${POSTGRES_DB:-app}?schema=public
+      MIGRATION_DATABASE_URL: &owner-url postgresql://\${POSTGRES_USER:-app}:\${POSTGRES_PASSWORD}@postgres:5432/\${POSTGRES_DB:-app}?schema=public
     depends_on:
       postgres:
         condition: service_healthy
+    restart: 'no'
+
+  # one-shot, after migrate: the runtime role (owns nothing) gets its grants on the new tables
+  roles:
+    build: *backend-build
+    image: ${project}-backend
+    working_dir: /app/${backendPath}
+    command: ['node', 'db/roles.mjs']
+    environment:
+      MIGRATION_DATABASE_URL: *owner-url
+      APP_DB_PASSWORD: \${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: 'no'
 
   backend:
@@ -1000,14 +1014,14 @@ services:
     environment:
       NODE_ENV: production
       ${backendPortEnvVar}: ${backendPort}
-      DATABASE_URL: *database-url
+      DATABASE_URL: postgresql://app_runtime:\${APP_DB_PASSWORD}@postgres:5432/\${POSTGRES_DB:-app}?schema=public
       JWT_SECRET: \${JWT_SECRET:?set JWT_SECRET in .env}
       FRONTEND_URL: \${FRONTEND_URL:-http://localhost:${frontendPort}}
       LOG_LEVEL: \${LOG_LEVEL:-info}
     ports:
       - '\${BACKEND_PORT:-${backendPort}}:${backendPort}'
     depends_on:
-      migrate:
+      roles:
         condition: service_completed_successfully
 
   frontend:
@@ -1032,6 +1046,8 @@ volumes:
 POSTGRES_USER=app
 POSTGRES_PASSWORD=
 POSTGRES_DB=app
+# password of app_runtime, the role the app connects as (it owns nothing): openssl rand -hex 16
+APP_DB_PASSWORD=
 # at least 32 characters: openssl rand -hex 32
 JWT_SECRET=
 # the URLs the browser uses: the frontend (CORS origin for the backend) and the backend

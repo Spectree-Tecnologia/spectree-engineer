@@ -15,6 +15,8 @@ const DEFAULT_DB = {
   password: 'docker',
   database: 'docker',
   schema: 'public',
+  // the app connects as this role; it owns nothing (architecture rule 12). Migrations and seed use the owner.
+  appUser: 'app_runtime',
 };
 let createSkillRunLogger = null;
 let createSkillRunOps = null;
@@ -326,14 +328,19 @@ async function resolveDatabaseConfig(backendDir) {
   const envExampleVars = await readEnvFile(envExamplePath);
   const source = envVars || envExampleVars || {};
 
-  const resolved = source.DATABASE_URL
-    ? parseDatabaseUrl(source.DATABASE_URL)
-    : { ...DEFAULT_DB };
-  const databaseUrl = source.DATABASE_URL || buildDatabaseUrl(resolved);
+  // MIGRATION_DATABASE_URL is the owner; DATABASE_URL is the runtime role. A project from before the split has only
+  // DATABASE_URL, and that one is the owner.
+  const ownerUrl = source.MIGRATION_DATABASE_URL || source.DATABASE_URL;
+  const resolved = ownerUrl ? parseDatabaseUrl(ownerUrl) : { ...DEFAULT_DB };
+  const databaseUrl = ownerUrl || buildDatabaseUrl(resolved);
+  const appPassword = source.APP_DB_PASSWORD || resolved.password;
+  const appDatabaseUrl = buildDatabaseUrl({ ...resolved, user: DEFAULT_DB.appUser, password: appPassword });
 
   return {
     ...resolved,
     databaseUrl,
+    appDatabaseUrl,
+    appPassword,
     envPath,
     envExamplePath,
   };
@@ -413,7 +420,8 @@ export default defineConfig({
     seed: 'npx tsx prisma/seed/main.ts',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    // migrate and seed run as the owner; the app (DATABASE_URL) is a role that owns nothing
+    url: process.env.MIGRATION_DATABASE_URL ?? env('DATABASE_URL'),
   },
 });`;
 }
@@ -441,7 +449,7 @@ type SeedTask = (prisma: PrismaClient) => Promise<void>;
 const seedTasks: SeedTask[] = [];
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL ?? '',
+  connectionString: process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL ?? '',
 });
 
 const prisma = new PrismaClient({
@@ -513,6 +521,16 @@ export class PrismaService
   async onModuleInit() {
     // $connect is lazy with the pg adapter; a real query fails fast when the database is not there
     await this.client.$queryRaw\`SELECT 1\`;
+    // the runtime role owns nothing (architecture rule 12): as the owner, a bug or an injection could ALTER, DROP or
+    // DISABLE TRIGGER. Production refuses; development warns, so a fresh checkout still boots before db:roles.
+    const [{ owned }] = await this.client.$queryRaw<[{ owned: number }]>\`
+      SELECT count(*)::int AS owned FROM pg_tables WHERE schemaname = current_schema() AND tableowner = current_user
+    \`;
+    if (owned > 0) {
+      const message = \`DATABASE_URL connects as the owner of \${owned} table(s); the app must use the runtime role (npm run db:roles, then DATABASE_URL with app_runtime)\`;
+      if (process.env.NODE_ENV === 'production') throw new Error(message);
+      console.warn(message);
+    }
   }
 
   async onModuleDestroy() {
@@ -574,6 +592,66 @@ export async function expectQueryBudget<T>(
   expect(queries.length, \`query budget is \${max}, got \${queries.length}:\\n\${emitted}\`).toBeLessThanOrEqual(max);
   return result;
 }`;
+}
+
+function renderRolesSql() {
+  return `-- The app connects as app_runtime, a role that owns nothing: it reads and writes rows, never ALTER, DROP or
+-- DISABLE TRIGGER (architecture rule 12). Migrations and seed run as the owner (MIGRATION_DATABASE_URL).
+-- Idempotent. Run after every migrate: npm run db:roles (CI and the release do it for you).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_runtime') THEN
+    CREATE ROLE app_runtime LOGIN PASSWORD '__APP_DB_PASSWORD__';
+  ELSE
+    ALTER ROLE app_runtime WITH LOGIN PASSWORD '__APP_DB_PASSWORD__';
+  END IF;
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO app_runtime', current_database());
+  -- migration history is the owner's business
+  IF to_regclass('public._prisma_migrations') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public._prisma_migrations FROM app_runtime';
+  END IF;
+END $$;
+GRANT USAGE ON SCHEMA public TO app_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_runtime;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_runtime;
+
+-- Append-only tables: the app inserts and reads; history is never rewritten. One list, kept here, one line each:
+-- REVOKE UPDATE, DELETE ON TABLE "AuditEvent" FROM app_runtime;
+`;
+}
+
+function renderRolesMjs() {
+  return `#!/usr/bin/env node
+// Applies db/roles.sql as the owner (MIGRATION_DATABASE_URL): creates or updates the runtime role app_runtime with
+// APP_DB_PASSWORD and grants it rows, never ownership. Idempotent; run after every migrate (npm run db:roles).
+import 'dotenv/config';
+import fs from 'node:fs';
+import pg from 'pg';
+
+const ownerUrl = process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!ownerUrl) {
+  console.error('db:roles needs MIGRATION_DATABASE_URL (the owner of the schema)');
+  process.exit(2);
+}
+const password = process.env.APP_DB_PASSWORD ?? decodeURIComponent(new URL(ownerUrl).password);
+if (!password) {
+  console.error('db:roles needs APP_DB_PASSWORD (the runtime role password)');
+  process.exit(2);
+}
+const sql = fs
+  .readFileSync(new URL('./roles.sql', import.meta.url), 'utf8')
+  .replaceAll('__APP_DB_PASSWORD__', password.replaceAll("'", "''"));
+
+const client = new pg.Client({ connectionString: ownerUrl });
+await client.connect();
+try {
+  await client.query(sql);
+  console.log('db:roles: app_runtime is up to date');
+} finally {
+  await client.end();
+}
+`;
 }
 
 function renderDbModule() {
@@ -668,6 +746,7 @@ async function ensureBackendPackageJson(backendDir, args, ctx, sharedPackageName
   upsertValue(scripts, 'prisma:migrate:dev', 'npx prisma migrate dev');
   upsertValue(scripts, 'prisma:migrate:deploy', 'npx prisma migrate deploy');
   upsertValue(scripts, 'prisma:seed', 'npx prisma db seed');
+  upsertValue(scripts, 'db:roles', 'node db/roles.mjs');
   upsertValue(scripts, 'prisma:studio', 'npx prisma studio');
   if ('prisma:cid' in scripts) {
     delete scripts['prisma:cid'];
@@ -722,7 +801,9 @@ async function ensureEnvFiles(dbConfig, ctx) {
     const existing = (await readEnvFile(envFilePath)) || {};
     const nextValues = {
       ...existing,
-      DATABASE_URL: dbConfig.databaseUrl,
+      MIGRATION_DATABASE_URL: dbConfig.databaseUrl,
+      DATABASE_URL: dbConfig.appDatabaseUrl,
+      APP_DB_PASSWORD: dbConfig.appPassword,
     };
     for (const legacy of ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME']) {
       delete nextValues[legacy];
@@ -798,6 +879,13 @@ async function main() {
     await writeFileIfChanged(path.join(dbDir, 'db.module.ts'), renderDbModule(), ctx);
     await ensureDir(path.join(backendDir, 'test'), ctx);
     await writeFileIfChanged(path.join(backendDir, 'test', 'query-budget.ts'), renderQueryBudget(), ctx);
+    // runtime role: roles.sql is written once (the project keeps its append-only list there); roles.mjs is ours
+    const dbScriptsDir = path.join(backendDir, 'db');
+    await ensureDir(dbScriptsDir, ctx);
+    if (!fs.existsSync(path.join(dbScriptsDir, 'roles.sql'))) {
+      await writeFileIfChanged(path.join(dbScriptsDir, 'roles.sql'), renderRolesSql(), ctx);
+    }
+    await writeFileIfChanged(path.join(dbScriptsDir, 'roles.mjs'), renderRolesMjs(), ctx);
 
     const seedMainPath = path.join(prismaSeedDir, 'main.ts');
     if (!fs.existsSync(seedMainPath)) {
