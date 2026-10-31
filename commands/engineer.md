@@ -31,7 +31,7 @@ Emita a tabela de estado com o que verificou e nada mais:
 | Ticket | Bloqueado por | Status | Prova rodada |
 ```
 
-Depois, **sem perguntar**: PRs do Dependabot com CI verde vão para o **platform-engineer** mergear (major vira item do roadmap); então retome de onde o fluxo parou — ticket na fronteira, review pendente, PR esperando CI, ou a próxima mudança do roadmap. Só pare se houver um gate aberto (seção 6) ou um protótipo sem aprovação; aí a pergunta ou a URL com as open questions, no formato da seção 5 — e o texto do fundador em resposta é a próxima rodada do designer. Projeto vazio: diga isso e pergunte o que o fundador quer construir. Não invente um roadmap.
+Depois, **sem perguntar**: PRs do Dependabot com CI verde vão para o **platform-engineer** mergear (major vira item do roadmap); então retome de onde o fluxo parou — ticket na fronteira, review pendente, PR esperando CI. Se o que falta é **começar** a próxima mudança do roadmap, ela vai para uma sessão nova (seção 7), não para esta. Só pare se houver um gate aberto (seção 6) ou um protótipo sem aprovação; aí a pergunta ou a URL com as open questions, no formato da seção 5 — e o texto do fundador em resposta é a próxima rodada do designer. Projeto vazio: diga isso e pergunte o que o fundador quer construir. Não invente um roadmap.
 
 ## 3. Com argumentos: o fluxo
 
@@ -43,7 +43,7 @@ Depois, **sem perguntar**: PRs do Dependabot com CI verde vão para o **platform
 2. **Roadmap.** Escreva `docs/roadmap.md`: a lista ordenada de mudanças, uma linha cada (`- [ ] <slug> — <o que entrega>`), menores primeiro, tracer bullet antes de largura. O primeiro item é sempre o módulo `identity` (usuários, credenciais, emissão do token, `roles` conforme a entrevista): sem ele nada se testa de ponta a ponta. **Gate 2:** o fundador aprova o roadmap uma vez; é o escopo planejado.
 3. **Bootstrap.** Despache o **platform-engineer**: `config-project` → `packages/shared` → `config-shared-backend` → `config-prisma` → `config-shared-frontend` → banco e Prisma → CI. Um subagente por passo, sequencial, contexto limpo.
 4. Com o `config-shared-frontend` aplicado, despache o **ui-ux-designer** para criar o design system do projeto a partir do kit instalado. Apresente a URL ao fundador com as escolhas abertas do designer (paleta, tipografia, densidade, tom das telas) e **espere**: comentário dele é nova rodada do designer; o design system só está pronto quando ele diz que está.
-5. Siga para "Mudança" com o primeiro item do roadmap, sem perguntar.
+5. Passe o primeiro item do roadmap para uma **sessão nova** (seção 7), sem perguntar.
 
 ### Mudança (item do roadmap, feature, módulo novo, refactor)
 
@@ -58,7 +58,7 @@ Pedido que não está no roadmap é gate 2: pergunte antes de começar. Os passo
 7. **Review.** Despache **em paralelo** o **quality-engineer** (padrões, spec, arquitetura) e o **security-engineer** (fronteiras de confiança e classes de ataque, skill `security-audit` em modo guidance) sobre o diff da integração contra a baseline. Nenhum dos dois vê o raciocínio de quem construiu — só spec, tickets, `docs/architecture.md` e código. Cada achado `blocking`/`should` do quality-engineer e cada `confirmed` do security-engineer vira correção por um **full-stack-developer** novo; cada `needs_validation` vira ticket "teste que prova ou refuta" na fronteira, com o traço do achado na missão. Depois, segunda passada dos dois. Teto: duas rodadas; `blocking` ou `confirmed high/critical` que sobrar é gate 4.
 8. **PR e merge.** Chame o Skill tool com `pr`. O **platform-engineer** abre o PR e espera o CI. CI verde → ele mergeia na main e apaga a branch, **sem perguntar**. CI vermelho → um **full-stack-developer** corrige na integração (conta como rodada de review). Deploy e exposição pública continuam gate 1/3; aberto o gate 1, a missão Release do **platform-engineer** (`npm run release`, `/ready` verde, rollback = imagem anterior) é quem sobe.
 9. **Retro.** Chame o Skill tool com `retro` nesta mesma sessão, antes de limpar contexto. Cada candidato tem um dono: o que é do **projeto** (navegação, check faltando, regra de review, `CODING_STANDARDS.md`) você aplica na hora quando cabe numa linha, ou vira item do `docs/roadmap.md`; o que é do **plugin** — um agente que leu errado a missão, uma skill de monólito que gerou arquivo quebrado, um script, um template, um passo deste comando — não se conserta no projeto: abra uma issue, sem perguntar, com `gh issue create --repo Spectree-Tecnologia/spectree-engineer --label enhancement` (`bug` quando algo gerado não compila ou não passa), título em uma frase e corpo com o que aconteceu, `arquivo:linha` no plugin, o projeto e a mudança onde apareceu, e a correção proposta. Sem `gh` autenticado, grave o mesmo texto em `.scratch/plugin-issues.md` e relate. Marque o item no `docs/roadmap.md`.
-10. **Próxima.** Relate em uma linha o que foi mergeado e comece o próximo item do roadmap. Roadmap vazio: diga isso e pergunte o que vem.
+10. **Próxima.** Relate em uma linha o que foi mergeado e passe o próximo item do roadmap para uma **sessão nova** (seção 7). Roadmap vazio: diga isso e pergunte o que vem.
 
 ### Bug
 
@@ -107,3 +107,17 @@ O protótipo não é gate: é a etapa inteira que é dele (passo 3 de "Mudança"
 4. **Indefinido** — nenhuma melhor prática nomeável decide: terceira tentativa falha de um full-stack-developer, `blocking` que sobreviveu a duas rodadas de review, CI vermelho que ninguém reproduz. Pergunte; não chute.
 
 Bloqueio que uma ferramenta ao seu alcance resolve: resolva antes de relatar.
+
+## 7. Uma sessão por item do roadmap
+
+Cada mudança do roadmap começa com **contexto zerado**: a conversa que gerou a anterior não vaza para a próxima. O que a próxima precisa já está em disco — `docs/roadmap.md`, `GLOSSARY.md`, `docs/architecture.md`, a spec e o `decisions.md` do item anterior.
+
+Para passar o item adiante, carregue `mcp__ccd_session__start_session` (ToolSearch com `select:mcp__ccd_session__start_session`) e chame com `initiation: "user_asked"` (esta seção é a instrução permanente do fundador), `context: "fresh"`, `use_worktree: false` (mesmo checkout; os developers cortam as worktrees deles), `title` com o slug do item e `prompt` exatamente:
+
+```
+/engineer <slug> — <a linha do item em docs/roadmap.md>
+```
+
+Nada mais no prompt: o `/engineer` da sessão nova lê o projeto do zero, como sempre. Depois encerre esta sessão com o relato de uma linha (o que mergeou, o link da sessão nova). Não comece o item aqui; não espere a sessão nova terminar. Quando ela chegar ao passo 10, repete esta seção para o item seguinte.
+
+Sem a ferramenta (fora do Claude Code Desktop, ou recusa do app): diga isso em uma linha e comece o item nesta sessão, como "Mudança".
