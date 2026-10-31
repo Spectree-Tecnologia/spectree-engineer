@@ -2,6 +2,11 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.3.2] - 2026-10-31
+
+### Changed
+- Build (passo 6): no máximo dois `full-stack-developer` em paralelo; os outros tickets da fronteira esperam na fila. Sete worktrees simultâneas, cada uma com `npm install`, `tsc` e Vitest, derrubaram a máquina do fundador no `agent-shell`.
+
 ## [0.3.1] - 2026-10-31
 
 ### Fixed
@@ -49,6 +54,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.3.2]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.1.0...v0.2.0
