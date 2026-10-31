@@ -46,6 +46,10 @@ Typecheck a cada passo, o arquivo de teste a cada passo, a suíte inteira uma ve
 
 ## Quando parar
 
-Outros full-stack-developers rodam ao mesmo tempo na mesma máquina: use as portas que a missão dá, mate só os processos que **você** subiu (pelo PID, nunca `taskkill /IM node.exe`), e não toque no banco além do schema do seu ticket.
+Outro full-stack-developer pode estar rodando na mesma máquina: use as portas que a missão dá e mate só os processos que **você** subiu (pelo PID, nunca `taskkill /IM node.exe`).
+
+**Banco próprio.** Nunca use o banco de desenvolvimento compartilhado: crie `CREATE DATABASE <db>_<ticket-slug>`, aponte o `DATABASE_URL` do `.env` da **sua** worktree para ele, rode `prisma migrate deploy` e o seed, e faça `DROP DATABASE` no fim. Um e2e que conta linhas globais num banco que outro developer escreve é um teste que flaka, e número de perf tirado ali não é número.
+
+**Browser próprio.** O browser do Playwright MCP é um só para a máquina: quando a missão diz que outro developer está rodando, não o use — outro developer vai navegar a sua aba. Nesse caso, o screenshot da tela e o teste de navegador saem de um script `playwright-core` na sua worktree, com perfil próprio.
 
 Na terceira tentativa falha, ou quando um critério de aceite não vira teste (ambiguidade), pare e relate: o que tentou, a saída real, o que falta decidir. Não é falha sua; é o gate 4 do Engineer.
