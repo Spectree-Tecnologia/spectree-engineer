@@ -73,7 +73,7 @@ evals/                     um caso por diretório (prompt.md + graders/), fixtur
 node scripts/smoke.mjs
 ```
 
-Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → backend → Prisma → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend e exige `401` em `GET /` sem token. `SMOKE_KEEP=1` preserva o projeto gerado.
+Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → Prisma → backend → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend e exige `401` em `GET /` sem token. `SMOKE_KEEP=1` preserva o projeto gerado.
 
 ```bash
 node scripts/evals.mjs

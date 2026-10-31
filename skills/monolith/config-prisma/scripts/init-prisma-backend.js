@@ -609,7 +609,7 @@ function renderDockerCompose(dbConfig, rootDir) {
   // one container per project: a generic name collides with the next project on the same machine
   return `services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: ${path.basename(rootDir)}-postgres
     restart: unless-stopped
     environment:
@@ -619,7 +619,7 @@ function renderDockerCompose(dbConfig, rootDir) {
     ports:
       - '${dbConfig.port}:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${dbConfig.user}']
       interval: 10s
@@ -662,6 +662,8 @@ async function ensureBackendPackageJson(backendDir, args, ctx, sharedPackageName
   upsertValue(scripts, 'db:start', 'docker compose up -d postgres');
   upsertValue(scripts, 'db:stop', 'docker compose down');
   upsertValue(scripts, 'db:logs', 'docker compose logs -f postgres');
+  // a fresh clone or CI runs `npm ci && npm run build`: without the client generated first, nest build fails
+  upsertValue(scripts, 'prebuild', 'npx prisma generate');
   upsertValue(scripts, 'prisma:generate', 'npx prisma generate');
   upsertValue(scripts, 'prisma:migrate:dev', 'npx prisma migrate dev');
   upsertValue(scripts, 'prisma:migrate:deploy', 'npx prisma migrate deploy');

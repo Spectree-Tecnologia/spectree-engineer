@@ -408,3 +408,21 @@ describe('Entity', () => {
     });
   });
 });
+
+describe('Entity.cloneWith with Date props', () => {
+  it('copies a Date override as a value instead of merging it into {}', () => {
+    const entity = TestEntity.create({
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      number: 1,
+      obj: { nested: true },
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+    });
+    const updatedAt = new Date('2025-06-30T12:00:00.000Z');
+
+    const cloned = entity.cloneWith({ updatedAt }).instance;
+
+    expect(cloned.toJSON().updatedAt).toBeInstanceOf(Date);
+    expect((cloned.toJSON().updatedAt as Date).toISOString()).toBe(updatedAt.toISOString());
+  });
+});

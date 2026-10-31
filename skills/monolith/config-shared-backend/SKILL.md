@@ -28,7 +28,7 @@ Identificadores, arquivos e classes em inglês. Imports relativos com sufixo `.j
 
 ## Uso
 
-Da raiz do monorepo, depois de `config-project` e do `packages/shared` instalado. O backend só compila depois de `config-prisma`: `shared.module.ts` importa `DbModule` e `/ready` usa o `PrismaService` que ela gera.
+Da raiz do monorepo, depois de `config-project` e do `packages/shared` instalado. Roda **depois** de `config-prisma`: `shared.module.ts` importa `DbModule` e `health.controller.ts` importa `PrismaService`, que só existem depois dele; na ordem inversa o passo nunca termina com build verde.
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js

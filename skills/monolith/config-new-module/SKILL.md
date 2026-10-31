@@ -68,6 +68,12 @@ Sobrescrever diretório existente:
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name> --force
 ```
 
+Módulo sem tela (só backend: nada de módulo frontend, rota, entrada no menu, controller de exemplo nem e2e dele):
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-new-module/scripts/create-module.mjs <module-name> --backend-only
+```
+
 ## Output Contract
 
 O script deve gerar exatamente:

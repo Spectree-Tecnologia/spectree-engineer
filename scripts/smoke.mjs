@@ -93,8 +93,8 @@ await step('shared-package', () => {
 });
 run('npm-install-shared', 'npm install --no-audit --no-fund');
 
-run('config-shared-backend', node('config-shared-backend/scripts/apply.js'));
 run('config-prisma', node('config-prisma/scripts/init-prisma-backend.js', '--apply --install'));
+run('config-shared-backend', node('config-shared-backend/scripts/apply.js'));
 run('prisma-generate', 'npm --workspace apps/backend run prisma:generate');
 run('config-shared-frontend', node('config-shared-frontend/scripts/apply.mjs'));
 run('create-module', node('config-new-module/scripts/create-module.mjs', 'probe'));
