@@ -4,6 +4,10 @@
 // every response must be 2xx. Exit 1 with one line per route over budget. CI runs it after `npm test`.
 //   PERF_URL=http://host:port  measure a server that is already up; otherwise the script starts
 //   apps/backend/dist/main.js (needs `npm run build`, a reachable DATABASE_URL and apps/backend/.env).
+// Routes are `{ path, method?, body?, headers?, auth?, p95Ms }`. Authenticated happy paths need real claims:
+// `"setup": "scripts/perf.setup.mjs"` names a module whose default export runs once the server is up —
+// `async ({ env, baseUrl, signJwt }) => ({ claims?: { sub, sid, ... }, headers?: { ... } })` — seeding what it
+// needs and returning the claims the token must carry (or complete headers). A 404/401 under perf is never a budget.
 // ponytail: fetch + workers instead of autocannon; good enough for a budget, swap when you need histograms
 import { spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
@@ -16,7 +20,8 @@ const backendDir = path.join(root, config.backendPath ?? 'apps/backend');
 const env = { ...parseEnv(path.join(backendDir, '.env')), ...process.env };
 const port = env.PORT ?? '4000';
 const baseUrl = (process.env.PERF_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
-const token = signJwt(env.JWT_SECRET);
+let token = signJwt(env.JWT_SECRET);
+let authHeaders = null;
 
 function parseEnv(file) {
   if (!fs.existsSync(file)) return {};
@@ -33,7 +38,7 @@ function parseEnv(file) {
 }
 
 // HS256 by hand: the same token passport-jwt verifies, without importing the backend from a root script
-function signJwt(secret) {
+function signJwt(secret, claims = {}) {
   if (!secret) return null;
   const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
   const now = Math.floor(Date.now() / 1000);
@@ -41,6 +46,7 @@ function signJwt(secret) {
     sub: '00000000-0000-4000-8000-000000000000',
     name: 'perf',
     email: 'perf@localhost',
+    ...claims,
     iat: now,
     exp: now + 3600,
   })}`;
@@ -60,8 +66,13 @@ async function waitFor(url, ms = 60_000) {
 
 async function measure(route) {
   const url = `${baseUrl}${route.path}`;
-  const headers = route.auth ? { authorization: `Bearer ${token}` } : {};
-  if (route.auth && !token) throw new Error(`${route.path} needs a token, but JWT_SECRET is not set`);
+  if (route.auth && !token && !authHeaders) throw new Error(`${route.path} needs a token, but JWT_SECRET is not set`);
+  const headers = { ...(route.auth ? (authHeaders ?? { authorization: `Bearer ${token}` }) : {}), ...(route.headers ?? {}) };
+  const init = { method: route.method ?? 'GET', headers };
+  if (route.body !== undefined) {
+    init.body = JSON.stringify(route.body);
+    headers['content-type'] ??= 'application/json';
+  }
   const latencies = [];
   const statuses = {};
   const stop = Date.now() + (config.durationSeconds ?? 10) * 1000;
@@ -69,7 +80,7 @@ async function measure(route) {
     Array.from({ length: config.connections ?? 20 }, async () => {
       while (Date.now() < stop) {
         const t0 = performance.now();
-        const res = await fetch(url, { headers }).catch(() => ({ status: 0, arrayBuffer: async () => null }));
+        const res = await fetch(url, init).catch(() => ({ status: 0, arrayBuffer: async () => null }));
         await res.arrayBuffer();
         latencies.push(performance.now() - t0);
         statuses[res.status] = (statuses[res.status] ?? 0) + 1;
@@ -106,6 +117,12 @@ if (!process.env.PERF_URL) {
 let failed = false;
 try {
   await waitFor(`${baseUrl}${config.routes[0]?.path ?? '/'}`);
+  if (config.setup) {
+    const { default: setup } = await import(new URL(config.setup, `file://${root}/`).href);
+    const result = (await setup({ env, baseUrl, signJwt: (claims) => signJwt(env.JWT_SECRET, claims) })) ?? {};
+    if (result.claims) token = signJwt(env.JWT_SECRET, result.claims);
+    if (result.headers) authHeaders = result.headers;
+  }
   const rows = [];
   for (const route of config.routes) rows.push(await measure(route));
   const ms = (n) => `${n.toFixed(1)}ms`;

@@ -311,6 +311,43 @@ function patchAppE2eSpec() {
   }
 }
 
+// ─── e2e vitest config: one dev database, so e2e files run one at a time (idempotent) ──
+
+function patchE2eVitestConfig() {
+  const backendDir = path.join(ROOT, 'apps/backend')
+  const candidates = []
+  for (const dir of [backendDir, path.join(backendDir, 'test')]) {
+    if (!fs.existsSync(dir)) continue
+    for (const name of fs.readdirSync(dir)) {
+      if (!/^vitest.*\.(mts|cts|ts|mjs|cjs|js)$/.test(name)) continue
+      const content = fs.readFileSync(path.join(dir, name), 'utf8')
+      if (/e2e/.test(name) || /include:[^\]]*e2e/.test(content)) candidates.push(path.join(dir, name))
+    }
+  }
+  if (candidates.length === 0) {
+    log('WARNING: no e2e vitest config found under apps/backend; nothing to serialize')
+    return
+  }
+  for (const file of candidates) {
+    const rel = path.relative(ROOT, file)
+    const content = fs.readFileSync(file, 'utf8')
+    if (content.includes('fileParallelism')) {
+      log(`No changes: ${rel} already runs files sequentially`)
+      continue
+    }
+    const patched = content.replace(
+      /test:\s*\{/,
+      (m) => `${m}\n    // one dev database: e2e files in parallel interfere (row counts, query budgets); keep them sequential\n    fileParallelism: false,`,
+    )
+    if (patched === content) {
+      log(`WARNING: no test: {} block in ${rel}; not patched`)
+      continue
+    }
+    fs.writeFileSync(file, patched, 'utf8')
+    log(`Patched: ${rel} (fileParallelism: false)`)
+  }
+}
+
 function buildSharedPackage() {
   const pkgPath = path.join(ROOT, 'packages/shared/package.json')
   if (!fs.existsSync(pkgPath)) {
@@ -365,6 +402,7 @@ async function main() {
     'apps/backend/src/shared/types/authenticated-request.type.ts',
     'apps/backend/src/shared/types/index.ts',
     'apps/backend/src/shared/shared.module.ts',
+    'apps/backend/src/cli/run-cli.ts',
   ]
 
   for (const asset of backendSharedAssets) {
@@ -375,6 +413,7 @@ async function main() {
   patchAppModule()
   patchMainTs()
   patchAppE2eSpec()
+  patchE2eVitestConfig()
 
   log('Done.')
 }

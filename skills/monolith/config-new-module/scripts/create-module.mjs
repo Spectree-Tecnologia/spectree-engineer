@@ -11,7 +11,7 @@ let activeRunOps = null;
 
 function usage() {
   console.log(`Usage:
-  node create-module.mjs <module-name> [--scope @namespace] [--force]
+  node create-module.mjs <module-name> [--scope @namespace] [--force] [--backend-only]
 
 Examples:
   node create-module.mjs billing
@@ -23,6 +23,7 @@ function parseArgs(argv) {
   let moduleName = '';
   let scope = '';
   let force = false;
+  let backendOnly = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -34,6 +35,12 @@ function parseArgs(argv) {
 
     if (arg === '--force') {
       force = true;
+      continue;
+    }
+
+    // a module without screens: no frontend module, no route, no nav entry, no example controller/e2e
+    if (arg === '--backend-only') {
+      backendOnly = true;
       continue;
     }
 
@@ -57,7 +64,7 @@ function parseArgs(argv) {
     moduleName = arg;
   }
 
-  return { moduleName, scope, force };
+  return { moduleName, scope, force, backendOnly };
 }
 
 function validateModuleName(name) {
@@ -459,7 +466,7 @@ async function main() {
       logger,
       dryRun: false,
     });
-    const { moduleName, scope: scopeArg, force } = parseArgs(process.argv.slice(2));
+    const { moduleName, scope: scopeArg, force, backendOnly } = parseArgs(process.argv.slice(2));
 
     if (!moduleName) {
       usage();
@@ -676,7 +683,16 @@ export class ${backendPrismaClassName} {
   }
 }
 `;
-    const backendModuleTs = `import { Module } from '@nestjs/common';
+    const backendModuleTs = backendOnly
+      ? `import { Module } from '@nestjs/common';
+import { DbModule } from '../../db/db.module.js';
+
+@Module({
+  imports: [DbModule],
+})
+export class ${backendModuleClassName} {}
+`
+      : `import { Module } from '@nestjs/common';
 import { DbModule } from '../../db/db.module.js';
 import { ${backendControllerClassName} } from './${moduleName}.controller.js';
 import { ${backendPrismaClassName} } from './${moduleName}.prisma.js';
@@ -819,20 +835,24 @@ describe('${moduleName} (e2e)', () => {
     logger.step(`Estrutura base criada em ${targetDir}.`);
     logger.step(`Dependência compartilhada configurada: ${sharedDependency}.`);
 
-    await writeFile(backendControllerPath, backendControllerTs);
-    logger.step(`criou arquivo: ${backendControllerPath}`);
-    await writeFile(backendPrismaPath, backendPrismaTs);
-    logger.step(`criou arquivo: ${backendPrismaPath}`);
+    if (!backendOnly) {
+      await writeFile(backendControllerPath, backendControllerTs);
+      logger.step(`criou arquivo: ${backendControllerPath}`);
+      await writeFile(backendPrismaPath, backendPrismaTs);
+      logger.step(`criou arquivo: ${backendPrismaPath}`);
+    }
     await writeFile(backendModulePath, backendModuleTs);
     logger.step(`criou arquivo: ${backendModulePath}`);
     await writeFile(backendModuleIndexPath, backendModuleIndexTs);
     logger.step(`criou arquivo: ${backendModuleIndexPath}`);
     await writeFile(backendPrismaModelPath, backendPrismaModel);
     logger.step(`criou arquivo: ${backendPrismaModelPath}`);
-    await writeFile(backendE2eSpecPath, backendE2eSpecTs);
-    logger.step(`criou arquivo: ${backendE2eSpecPath}`);
+    if (!backendOnly) {
+      await writeFile(backendE2eSpecPath, backendE2eSpecTs);
+      logger.step(`criou arquivo: ${backendE2eSpecPath}`);
+    }
     // the list route enters the latency budget the day it is born; a route outside perf.config.json is a review finding
-    if (await pathExists(perfConfigPath)) {
+    if (!backendOnly && (await pathExists(perfConfigPath))) {
       const perfConfig = await readJson(perfConfigPath);
       perfConfig.routes = perfConfig.routes ?? [];
       if (!perfConfig.routes.some((route) => route.path === `/${moduleName}`)) {
@@ -849,6 +869,9 @@ describe('${moduleName} (e2e)', () => {
     });
     logger.step(`Estrutura backend criada em ${backendModuleDir}.`);
 
+    if (backendOnly) {
+      logger.step('--backend-only: frontend, rota e menu não gerados.');
+    } else {
     await writeFile(frontendDashboardComponentPath, frontendDashboardComponentTsx);
     logger.step(`criou arquivo: ${frontendDashboardComponentPath}`);
     await writeFile(frontendDataIndexPath, `// Frontend-only API clients, schemas, hooks and browser state for ${moduleName}.\nexport {};\n`);
@@ -865,6 +888,7 @@ describe('${moduleName} (e2e)', () => {
       logger,
     });
     logger.step(`Estrutura frontend criada em ${frontendModuleDir}.`);
+    }
 
     await ensurePackageDependency({
       packageJsonPath: backendPackageJsonPath,
@@ -873,26 +897,33 @@ describe('${moduleName} (e2e)', () => {
       logger,
       label: 'Backend package',
     });
-    await ensurePackageDependency({
-      packageJsonPath: frontendPackageJsonPath,
-      dependencyName: packageName,
-      dependencyVersion: '*',
-      logger,
-      label: 'Frontend package',
-    });
+    if (!backendOnly) {
+      await ensurePackageDependency({
+        packageJsonPath: frontendPackageJsonPath,
+        dependencyName: packageName,
+        dependencyVersion: '*',
+        logger,
+        label: 'Frontend package',
+      });
+    }
     // new workspace + new deps: without this the lockfile is stale and `npm ci` fails
     await activeRunOps.runCommand('npm', ['install', '--no-audit', '--no-fund'], rootDir);
 
     console.log(`Created domain module at: ${targetDir}`);
     console.log(`Package name: ${packageName}`);
     console.log(`Backend module scaffolded at: ${path.join(backendAppPath, 'src', 'modules', moduleName)}`);
-    console.log(
-      `Frontend module scaffolded at: ${path.join(frontendAppPath, ...frontendModulesBaseSegments, moduleName)}`,
-    );
-    console.log(
-      `Frontend route scaffolded at: ${path.join(frontendAppPath, ...frontendAppBaseSegments, hasFrontendPrivateGroup ? '(private)' : '', moduleName)}`,
-    );
-    console.log(`Backend/frontend dependencies updated with: ${packageName}@*`);
+    if (backendOnly) {
+      console.log('Backend-only module: no frontend module, route or navigation entry.');
+      console.log(`Backend dependency updated with: ${packageName}@*`);
+    } else {
+      console.log(
+        `Frontend module scaffolded at: ${path.join(frontendAppPath, ...frontendModulesBaseSegments, moduleName)}`,
+      );
+      console.log(
+        `Frontend route scaffolded at: ${path.join(frontendAppPath, ...frontendAppBaseSegments, hasFrontendPrivateGroup ? '(private)' : '', moduleName)}`,
+      );
+      console.log(`Backend/frontend dependencies updated with: ${packageName}@*`);
+    }
     await logger.success();
   } catch (error) {
     await logger.failure(error);

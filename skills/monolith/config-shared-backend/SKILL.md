@@ -28,7 +28,7 @@ Identificadores, arquivos e classes em inglês. Imports relativos com sufixo `.j
 
 ## Uso
 
-Da raiz do monorepo, depois de `config-project` e do `packages/shared` instalado. O backend só compila depois de `config-prisma`: `shared.module.ts` importa `DbModule` e `/ready` usa o `PrismaService` que ela gera.
+Da raiz do monorepo, depois de `config-project` e do `packages/shared` instalado. Roda **depois** de `config-prisma`: `shared.module.ts` importa `DbModule` e `health.controller.ts` importa `PrismaService`, que só existem depois dele; na ordem inversa o passo nunca termina com build verde.
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js
@@ -61,6 +61,33 @@ apps/backend/src/shared/
 ```
 
 `ApiErrorResponse.message` é sempre `string[]`, mesmo com um erro só.
+
+## CLI de operação
+
+Comando de operador (onboarding de tenant, rename, backfill) não sobe o `AppModule` — ele traria guard, listeners e senders que recusam boot sem credencial real — e não roda por `tsx`, que não emite metadata de decorator e quebra a DI do Nest. O padrão é `src/cli/run-cli.ts` (`runCli`): contexto Nest só com os módulos que o comando usa, `.env` validado pelo mesmo `envSchema` mas restrito às chaves que ele lê, exit code 0/1/2. Compila junto com o app e roda do `dist`:
+
+```ts
+// apps/backend/src/cli/onboard.ts
+import { DbModule } from '../db/db.module.js';
+import { PrismaService } from '../db/prisma.service.js';
+import { runCli } from './run-cli.js';
+
+await runCli({
+  name: 'onboard',
+  modules: [DbModule],
+  env: ['DATABASE_URL'],
+  run: async (context, [name]) => {
+    if (!name) throw new Error('usage: onboard <name>');
+    await context.get(PrismaService).client.$queryRaw`SELECT 1`;
+  },
+});
+```
+
+```bash
+npm run build && node apps/backend/dist/cli/onboard.js <name>
+```
+
+O e2e do comando faz `spawnSync('node', ['dist/cli/onboard.js', ...])` com `NODE_ENV=production` e confere o exit code.
 
 ## Guardrails
 
