@@ -40,7 +40,7 @@ Depois, **sem perguntar**: PRs do Dependabot com CI verde vão para o **platform
 ### Projeto novo (sem `skills.config.json`)
 
 1. **Entrevista.** É o único momento em que a conversa é a dois. Chame o Skill tool com `grilling` e `domain-modeling` para fechar: o problema e a intenção, os módulos iniciais, a tabela de stack (o padrão: Turborepo, NestJS em ESM, Prisma + PostgreSQL, Next.js com Cache Components, Vitest, Node LTS — sempre os majors com suporte, instalados como `@latest`, nunca pinados; desvie quando a melhor prática atual justificar, e registre em ADR). Versões são fatos do **integration-engineer**, nunca memória: ele entrega a tabela com a coluna "suporte" (major ainda recebe patch de segurança? até quando?) — major em fim de vida não entra no roadmap. Três perguntas são sempre da entrevista, porque a primeira migration as cristaliza (regras 12 e 14 de `docs/architecture.md`): o produto tem **tenants** (mais de um cliente no mesmo banco)? existem **papéis** além de "dono do recurso"? o login é **senha própria ou provedor externo**? Perguntas seguem a seção 5.
-2. **Roadmap.** Escreva `docs/roadmap.md`: a lista ordenada de mudanças, uma linha cada (`- [ ] <slug> — <o que entrega>`), menores primeiro, tracer bullet antes de largura. O primeiro item é sempre o módulo `identity` (usuários, credenciais, emissão do token, `roles` conforme a entrevista): sem ele nada se testa de ponta a ponta. **Gate 2:** o fundador aprova o roadmap uma vez; é o escopo planejado.
+2. **Roadmap.** Escreva `docs/roadmap.md`: a lista ordenada de mudanças, uma linha cada (`- [ ] <slug> — <o que entrega>`), menores primeiro, tracer bullet antes de largura. O primeiro item é sempre o módulo `identity` (usuários, credenciais, emissão do token, `roles` conforme a entrevista): sem ele nada se testa de ponta a ponta. **Gate 2:** o fundador aprova o roadmap uma vez; é o escopo planejado. A pergunta inclui que cada item vai rodar numa sessão própria do Desktop, linkada a esta (seção 7): o "sim" dele é o pedido que a ferramenta de sessões exige.
 3. **Bootstrap.** Despache o **platform-engineer**: `config-project` → `packages/shared` → `config-shared-backend` → `config-prisma` → `config-shared-frontend` → banco e Prisma → CI. Um subagente por passo, sequencial, contexto limpo.
 4. Com o `config-shared-frontend` aplicado, despache o **ui-ux-designer** para criar o design system do projeto a partir do kit instalado. Apresente a URL ao fundador com as escolhas abertas do designer (paleta, tipografia, densidade, tom das telas) e **espere**: comentário dele é nova rodada do designer; o design system só está pronto quando ele diz que está.
 5. Abra a **sessão de item** do primeiro item do roadmap (seção 7), sem perguntar. Esta sessão é a principal: daqui em diante ela coordena.
@@ -113,17 +113,21 @@ Bloqueio que uma ferramenta ao seu alcance resolve: resolva antes de relatar.
 No Claude Code Desktop o projeto tem **duas espécies de sessão**, e `/engineer` roda nas duas:
 
 - **A principal** é a sessão em que o fundador abriu o projeto. Vive do início ao fim dele, é o único ponto de contato com o fundador, faz a entrevista, o roadmap, o bootstrap e o design system, e dali em diante **coordena**: abre uma sessão por item do roadmap, lê o relato de cada uma, verifica, relata ao fundador e abre a próxima. Ela não constrói item: enquanto uma sessão de item roda, ela não edita o projeto.
-- **A de item** nasce da principal, com contexto zerado, e vive um item: "Mudança" do passo 1 ao 9. O que ela precisa já está em disco — `docs/roadmap.md`, `GLOSSARY.md`, `docs/architecture.md`, a spec e o `decisions.md` dos itens anteriores. Ela **não abre sessões**: ao terminar, relata em uma linha e encerra. Toda parada dela (protótipo esperando o fundador, gate, bloqueio) é um relato à principal, não uma pergunta solta.
+- **A de item** é uma *linked session* do Desktop: nasce da principal por `start_session`, fica linkada a ela na sidebar, relata a ela, e vive um item com contexto zerado: "Mudança" do passo 1 ao 9. O que ela precisa já está em disco — `docs/roadmap.md`, `GLOSSARY.md`, `docs/architecture.md`, a spec e o `decisions.md` dos itens anteriores. Ela **não abre sessões**: ao terminar, relata em uma linha e encerra. Toda parada dela (protótipo esperando o fundador, gate, bloqueio) é um relato à principal, não uma pergunta solta.
 
 Você é a sessão de item se a sua primeira mensagem começa com `/engineer item `. Senão, é a principal.
 
-**Abrir um item (só a principal).** Carregue `mcp__ccd_session__start_session` (ToolSearch com `select:mcp__ccd_session__start_session`) e chame com `initiation: "user_asked"` (esta seção é a instrução permanente do fundador), `context: "fresh"`, `use_worktree: false` (mesmo checkout; os developers cortam as worktrees deles), `title` com o slug e `prompt` exatamente:
+**Abrir um item (só a principal).** Carregue `mcp__ccd_session__start_session` (ToolSearch com `select:mcp__ccd_session__start_session`) e chame com:
 
-```
-/engineer item <slug> — <a linha do item em docs/roadmap.md>
-```
+- `initiation: "user_asked"` — o fundador pediu isso em palavras quando aprovou o roadmap (gate 2 de "Projeto novo" inclui a frase);
+- `context: "fresh"`, `use_worktree: false` (mesmo checkout; os developers cortam as worktrees deles), `wake_when_done: true`;
+- `title` e `name` com o slug;
+- `prompt` exatamente `/engineer item <slug> — <a linha do item em docs/roadmap.md>`;
+- `background` (obrigatório no modo `fresh`, mínimo 80 caracteres): o projeto em uma frase, o item, e que tudo está em disco — `docs/roadmap.md`, `GLOSSARY.md`, `docs/architecture.md`, `docs/design/`, specs e `decisions.md` dos itens anteriores. Nada de instrução: o `/engineer` da sessão de item já sabe o fluxo.
 
-Nada mais no prompt. Relate ao fundador em uma linha (o item e o link da sessão) e encerre o turno: o app te acorda quando a sessão de item relatar. Uma sessão de item por vez.
+Se o app recusar o `user_asked`, chame de novo com `initiation: "own_initiative"` e o mesmo `prompt`/`background`: vira um card que o fundador inicia com um clique, e você diz em uma linha que o item espera esse clique. Nunca peça ao fundador para colar um prompt, e nunca construa o item na principal só porque a sessão não abriu.
+
+Relate ao fundador em uma linha (o item e o link da sessão) e encerre o turno: o app te acorda quando a sessão de item relatar. Uma sessão de item por vez.
 
 **Quando a sessão de item relata**, o relato dela é informação, não prova. Olhe o que ela deixou antes de falar com o fundador, e então:
 
@@ -134,4 +138,4 @@ Nada mais no prompt. Relate ao fundador em uma linha (o item e o link da sessão
 
 `/engineer` sem argumentos na principal, com uma sessão de item viva: diga em que passo ela está, com o link, e não abra outra.
 
-Sem a ferramenta (fora do Desktop, ou recusa do app): diga isso em uma linha e construa o item nesta sessão, como "Mudança". Se o app parar de te acordar, o fundador chamando `/engineer` retoma a coordenação do ponto em que parou.
+Sem a ferramenta (fora do Desktop): diga isso em uma linha e construa o item nesta sessão, como "Mudança". Se o app parar de te acordar, o fundador chamando `/engineer` retoma a coordenação do ponto em que parou.
