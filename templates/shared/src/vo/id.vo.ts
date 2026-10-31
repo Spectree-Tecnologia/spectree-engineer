@@ -21,8 +21,8 @@ export class Id extends ValueObject<string, ValueObjectConfig> {
 
   public static tryCreate(this: typeof Id, value?: string | undefined, config?: ValueObjectConfig): Result<Id> {
     try {
-      const hasValue = value !== undefined && value !== null && value !== '';
-      const idValue = hasValue ? value!.trim().toLowerCase() : uuidv4();
+      // no value = a new id; an empty string is a value, and an invalid one (an empty session id must fail, not mint an id)
+      const idValue = value === undefined || value === null ? uuidv4() : value.trim().toLowerCase();
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(idValue)) {
         throw new Error(this.INVALID_ID);

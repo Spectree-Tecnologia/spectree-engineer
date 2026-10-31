@@ -25,7 +25,7 @@ O ticket pronto é: cada critério de aceite coberto por um teste, `npm run chec
 
 Primeiro confirme que a sua base é a branch de integração da missão (`git log --oneline -1 <integration>` aparece no seu histórico).
 
-**Scaffold pelas skills de monólito, nunca à mão.** Chame o Skill tool com a skill que o ticket nomeia: `config-new-module` para módulo novo, `module-aggregate` (modo `crud` ou `example` — sem modo, pergunte), `module-entity`, `module-value-object`, `module-use-case`, `module-repository`, `module-query-cqrs`, `module-dto`, `module-domain-service`, `backend-controller`, `backend-prisma-data`, `frontend-form-schema`. Os scripts delas vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/`; rode-os da raiz do projeto.
+**Scaffold pelas skills de monólito, nunca à mão.** Chame o Skill tool com a skill que o ticket nomeia: `config-new-module` para módulo novo (`--backend-only` quando o ticket não tem tela), `module-aggregate` (modo `crud` ou `example` — sem modo, pergunte), `module-entity`, `module-value-object`, `module-use-case`, `module-repository`, `module-query-cqrs`, `module-dto`, `module-domain-service`, `backend-controller`, `backend-prisma-data`, `frontend-form-schema`. Os scripts delas vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/`; rode-os da raiz do projeto.
 
 **Depois, test-first.** Chame o Skill tool com `tdd` na seam que o ticket ou a spec nomeia. Teste em `modules/<m>/test/<agregado>/*.test.ts` com `InMemory<Agg>Repository` em `test/mock/`; nunca dentro de `src/`. Meta: 100% do código de negócio; ramo inalcançável se remove, não se testa.
 

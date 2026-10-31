@@ -835,13 +835,16 @@ async function writeEnvFiles({
   // the example documents the key; the real .env gets a secret of its own, generated once and never rewritten
   const backendEnvPath = path.join(backendDir, '.env');
   const backendEnv = (await pathExists(backendEnvPath)) ? await fs.readFile(backendEnvPath, 'utf8') : '';
-  const backendExampleEntries = { ...backendEntries, JWT_SECRET: '"YOUR_SECRET_HERE"' };
+  const backendExampleEntries = { ...backendEntries, JWT_SECRET: '"change-me-change-me-change-me-change-me"' };
   const backendEnvEntries = /^\s*JWT_SECRET\s*=/m.test(backendEnv)
     ? backendEntries
     : { ...backendEntries, JWT_SECRET: randomBytes(32).toString('hex') };
 
   const changedFiles = [];
 
+  for (const dir of [webDir, backendDir]) {
+    if (await keepEnvExampleTracked(dir)) changedFiles.push(path.relative(rootDir, path.join(dir, '.gitignore')));
+  }
   if (await upsertEnvFile(path.join(webDir, '.env.example'), frontendEntries)) {
     changedFiles.push(path.join(frontendPath, '.env.example'));
   }
@@ -856,6 +859,16 @@ async function writeEnvFiles({
   }
 
   return changedFiles;
+}
+
+// create-next-app's .gitignore has `.env*`, which also hides .env.example: the one env file that must be committed
+async function keepEnvExampleTracked(dir) {
+  const file = path.join(dir, '.gitignore');
+  if (!(await pathExists(file))) return false;
+  const content = await fs.readFile(file, 'utf8');
+  if (!/^\.env\*?\s*$/m.test(content) || /^!\.env\.example\s*$/m.test(content)) return false;
+  await fs.writeFile(file, `${content.replace(/\s*$/, '')}\n!.env.example\n`);
+  return true;
 }
 
 // everything a release on one Docker host needs; created once, then the project owns them
@@ -890,8 +903,8 @@ FROM base AS builder
 COPY --from=pruner /app/out/json/ .
 RUN npm ci
 COPY --from=pruner /app/out/full/ .
-# prisma.config.ts resolves DATABASE_URL at load; generate never connects, so any well-formed URL will do here
-RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npm run prisma:generate --workspace ${backendPath} && npx turbo run build
+# the backend's prebuild runs prisma generate; prisma.config.ts resolves DATABASE_URL at load and generate never connects, so any well-formed URL will do
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npx turbo run build
 # ponytail: devDependencies stay so \`prisma migrate deploy\` runs from this image (service migrate); split a migrate image when size matters
 
 FROM base AS runner
@@ -950,14 +963,15 @@ backups
 # Variables come from ./.env (copy .env.example). \`npm run release\` builds, migrates and starts.
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: \${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: \${POSTGRES_DB:-app}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # postgres 18+ keeps its data one level up; the old /data path makes the image refuse to start
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $\${POSTGRES_USER}']
       interval: 10s
@@ -1729,9 +1743,10 @@ async function main() {
     console.log('TurboRepo initialization completed (idempotent mode).');
     logger.step('Inicialização do TurboRepo concluída em modo idempotente.');
 
-    console.log('Formatting project with Prettier...');
-    await runCommand('npm', ['run', 'format'], rootDir);
-    logger.step('Projeto formatado com Prettier (npm run format).');
+    // only what the bootstrap owns: docs/ belongs to the project (a re-run must not rewrite its markdown)
+    console.log('Formatting generated files with Prettier...');
+    await runCommand('npx', ['prettier', '--write', '--log-level', 'warn', '**/*.{ts,tsx,md}', '!docs/**'], rootDir);
+    logger.step('Arquivos gerados formatados com Prettier (docs/ fora).');
 
     await logger.success();
   } catch (error) {
