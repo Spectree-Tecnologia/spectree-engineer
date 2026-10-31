@@ -43,4 +43,10 @@ describe('Id', () => {
   test('should throw when required id is invalid', () => {
     expect(() => Id.required('invalid-id')).toThrow();
   });
+
+  test('should fail on an empty string instead of minting a new id', () => {
+    const result = Id.tryCreate('');
+
+    expect(result.isFailure).toBe(true);
+  });
 });

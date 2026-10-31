@@ -114,7 +114,8 @@ export abstract class Entity<Type, Props extends EntityProps> {
     }
 
     for (const key of Object.keys(source)) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      // only plain objects merge; a Date (or any class instance) is a value and is copied as is
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) && Object.getPrototypeOf(source[key]) === Object.prototype) {
         if (!target[key]) target[key] = {};
         this.deepMerge(target[key], source[key]);
       } else {

@@ -26,6 +26,7 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 6. Rodar ciclo completo de banco (desenvolvimento local):
    - `npx prisma migrate reset`
    - `npx prisma migrate dev`
+   - `npm run db:roles` (cria/atualiza `app_runtime`; repetir depois de toda migration)
    - `npx prisma generate`
    - `npx prisma db seed`
 
@@ -35,7 +36,8 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 - Scripts npm de banco/Prisma (`db:start`, `db:stop`, `db:logs`, `prisma:generate`, `prisma:migrate:*`, `prisma:seed`, `prisma:studio`).
 - Script de desenvolvimento na raiz preparado para subir o banco automaticamente antes do Turbo (`npm run dev` -> `db:start` + `turbo run dev`).
 - Remoção de script legado `prisma:cid` quando presente.
-- `apps/backend/prisma.config.ts` com `seed: 'npx tsx prisma/seed/main.ts'`.
+- Dois papéis de banco: `MIGRATION_DATABASE_URL` (owner: migrate, seed, `db:roles`) e `DATABASE_URL` (`app_runtime`, que não é dono de nada — lê e escreve linhas, nunca `ALTER`/`DROP`/`DISABLE TRIGGER`). `apps/backend/db/roles.sql` (idempotente, escrito uma vez; a lista de tabelas append-only vive nele) + `db/roles.mjs` (`npm run db:roles`, roda como owner com `APP_DB_PASSWORD`). O `PrismaService` recusa subir em produção se o papel conectado for dono de tabela.
+- `apps/backend/prisma.config.ts` com `seed: 'npx tsx prisma/seed/main.ts'` e `url` = `MIGRATION_DATABASE_URL` (fallback `DATABASE_URL`).
 - `apps/backend/prisma/schema.prisma` com `generator client { provider = "prisma-client-js" }` no padrão atual.
 - `apps/backend/prisma/seed/main.ts` inicial (sem implementação de módulos) usando `PrismaClient` de `@prisma/client` com `PrismaPg`.
 - Autocorreção apenas para templates legados de seed (`generated/client`, `generated/prisma`, `cid`) sem sobrescrever seeds modernos já estruturados com tasks de módulo.

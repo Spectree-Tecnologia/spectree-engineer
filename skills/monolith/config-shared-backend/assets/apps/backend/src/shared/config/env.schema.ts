@@ -4,6 +4,9 @@ import { z } from 'zod';
 export const envSchema = z.object({
   {{BACKEND_PORT_ENV_VAR}}: z.coerce.number().int().positive().default({{BACKEND_PORT}}),
   DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'must be a postgresql:// URL'),
+  // owner of the schema: migrate, seed and db:roles use it; the app never does
+  MIGRATION_DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'must be a postgresql:// URL').optional(),
+  APP_DB_PASSWORD: z.string().optional(),
   JWT_SECRET: z.string().min(32, 'must have at least 32 characters'),
   FRONTEND_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),

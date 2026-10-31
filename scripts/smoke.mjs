@@ -93,8 +93,8 @@ await step('shared-package', () => {
 });
 run('npm-install-shared', 'npm install --no-audit --no-fund');
 
-run('config-shared-backend', node('config-shared-backend/scripts/apply.js'));
 run('config-prisma', node('config-prisma/scripts/init-prisma-backend.js', '--apply --install'));
+run('config-shared-backend', node('config-shared-backend/scripts/apply.js'));
 run('prisma-generate', 'npm --workspace apps/backend run prisma:generate');
 run('config-shared-frontend', node('config-shared-frontend/scripts/apply.mjs'));
 run('create-module', node('config-new-module/scripts/create-module.mjs', 'probe'));
@@ -142,6 +142,8 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   run('db-up', `${dbCompose} up -d --wait postgres`, { cwd: backendDir });
   // the e2e needs tables: db push creates the bootstrap model without the interactive migrate dev
   run('db-push', 'npx prisma db push', { cwd: backendDir });
+  // runtime role: from here the app connects as app_runtime (DATABASE_URL); db push and db execute stay on the owner
+  run('db-roles', 'npm --workspace apps/backend run db:roles');
   // generated e2e as is: GET / is 401, GET /probe is 401 without token and within the query budget with one
   run('test-e2e', 'npm --workspace apps/backend run test:e2e');
 
@@ -223,6 +225,7 @@ export class ProbeController {
   await step('release-env', () => {
     const env = [
       'POSTGRES_PASSWORD=smoke',
+      'APP_DB_PASSWORD=smoke-app',
       `JWT_SECRET=${randomBytes(32).toString('hex')}`,
       `BACKEND_PORT=${apiPort}`,
       `FRONTEND_PORT=${webPort}`,

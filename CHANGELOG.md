@@ -2,6 +2,25 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.5.0] - 2026-10-31
+
+Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
+
+### Added
+- Dois papéis de banco no projeto gerado: `MIGRATION_DATABASE_URL` (owner: migrate, seed, `db:roles`) e `DATABASE_URL` como `app_runtime`, que não é dono de nada. `apps/backend/db/roles.sql` (idempotente, com a lista de tabelas append-only) + `db/roles.mjs` (`npm run db:roles`), serviço `roles` no `docker-compose.prod.yml`, `APP_DB_PASSWORD` no `.env`, e o `PrismaService` recusa subir em produção conectado como owner. Regra 12 do `ARCHITECTURE.md` ampliada. (#11)
+- `perf.mjs`: hook `setup` em `perf.config.json` (semeia e devolve `claims` ou `headers` reais), rotas com `method`/`body`/`headers`; qualquer não-2xx continua falhando. (#5)
+- `config-shared-backend`: `src/cli/run-cli.ts` — contexto Nest só com os módulos do comando, `.env` validado pelo `envSchema` restrito às chaves lidas, exit 0/1/2; roda do `dist`, nunca por `tsx`. Seção "CLI de operação" no SKILL. (#8)
+- `config-new-module --backend-only`: sem módulo frontend, rota, menu, controller de exemplo e e2e. (#7)
+- `config-shared-backend` deixa o vitest do e2e com `fileParallelism: false`; `platform-engineer` prepara a worktree inteira (install, banco próprio, generate, migrate deploy, `db:roles`, seed, build) e dropa o banco ao remover. (#4)
+
+### Changed
+- Bootstrap: `config-prisma` antes de `config-shared-backend`, porque `shared.module.ts` e `health.controller.ts` importam o que só o Prisma cria. (#1)
+- `/engineer`: verificação por exit code, nunca por `grep` antes de `&&`; missão de correção lista toda expectativa de teste alterada; `blocking` introduzido pela própria correção ganha um ciclo extra antes do gate 4. (#6, #12)
+
+### Fixed
+- Gerado: `postgres:18-alpine` com volume em `/var/lib/postgresql`; `prebuild: prisma generate` no backend (Dockerfile só roda `turbo run build`); `!.env.example` no `.gitignore` do create-next-app; `JWT_SECRET` do `.env.example` com 32+ caracteres; o `config-project` formata só o que gerou (`docs/` fora). (#2)
+- `templates/shared`: `Entity.cloneWith` copia `Date` (e qualquer instância de classe) por valor em vez de fundir em `{}`; `Id.tryCreate('')` falha em vez de gerar um id novo; `typescript` e `@types/node` como devDependencies. Com testes. (#3)
+
 ## [0.4.0] - 2026-10-31
 
 ### Added
@@ -61,6 +80,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.5.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.0...v0.3.1
