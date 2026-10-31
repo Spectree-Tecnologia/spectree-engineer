@@ -2,7 +2,7 @@
 
 Plugin Claude Code da Spectree Tecnologia: um orquestrador em pt-BR (`/engineer`) com sub-agentes especialistas, para **monólitos modulares seguros e escaláveis na stack atual**.
 
-- **Processo:** as skills de engenharia de [Matt Pocock](https://github.com/mattpocock/skills) — entrevista → roadmap → **design** → spec → tickets → TDD → code review → PR → **merge automático com CI verde** → próxima spec. A tela é prototipada no artefato Design antes da spec, não vista semanas depois do código. Depois da entrevista o squad anda sozinho; só sobem a você dinheiro/plataforma, mudança de escopo, impacto irreversível e o que nenhuma melhor prática decide.
+- **Processo:** as skills de engenharia de [Matt Pocock](https://github.com/mattpocock/skills) — entrevista → roadmap → **design** → spec → tickets → TDD → code review → PR → **merge automático com CI verde** → próxima spec. A tela é prototipada no artefato Design antes da spec, **em rodadas com você até aprovar**, não vista semanas depois do código. Fora da entrevista e do protótipo, o squad anda sozinho; só sobem a você dinheiro/plataforma, mudança de escopo, impacto irreversível e o que nenhuma melhor prática decide.
 - **Arquitetura:** as skills de monólito modular da Spectree — `config-*`, `module-*`, `backend-*`, `frontend-*` — e as regras de DDD tático que elas encodam: módulos puros em `modules/<m>/src/<agregado>/{dto,model,provider,use-case}`, um repositório por raiz de agregado, regra no VO > entidade > domain service, erro como código numa `Result`, `userId` do JWT. O documento canônico é [ARCHITECTURE.md](ARCHITECTURE.md), copiado para `docs/architecture.md` de todo projeto gerado e leitura obrigatória de toda missão.
 
 ## Stack gerada
@@ -44,7 +44,7 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 |---|---|---|
 | `engineer` (comando) | fala com você em pt-BR, grill, spec, tickets, despacha | código |
 | `solutions-architect` | mapa de módulos/agregados, seams, fronteira de perguntas | escrever arquivo |
-| `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, design system do projeto | regra de negócio, código |
+| `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, em rodadas com o fundador até a aprovação; design system do projeto | regra de negócio, código |
 | `full-stack-developer` | um ticket, test-first, scaffold pelas skills de monólito | sair do ticket |
 | `quality-engineer` | review em dois eixos + fronteiras do monólito | editar |
 | `security-engineer` | review como atacante com o `security-audit` da Cloudflare (guidance); achados só com fronteira violada e impacto | editar, rodar o alvo |
