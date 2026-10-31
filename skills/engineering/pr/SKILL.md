@@ -9,6 +9,12 @@ metadata:
     url: "https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md"
 ---
 
+## Title
+
+The PR title is a [Conventional Commit](https://www.conventionalcommits.org/) subject, because the squash merge turns it into the commit on `main`: `<type>(<scope>): <what it delivers>` — `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`, `perf`; scope is the module or area (`feat(account): open account with initial balance`); lowercase, imperative, no trailing period, `!` before the colon when it breaks consumers. One PR, one type: if it needs two, it is two PRs.
+
+## Body
+
 Use this template for writing the PR body:
 
 ```markdown
