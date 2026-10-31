@@ -11,7 +11,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 
 ### Changed
 - Prototipação interativa: o design system e o protótipo de cada mudança com tela são definidos em rodadas com o fundador, e o fluxo espera a aprovação explícita dele (`Approved by founder on <data>` no handoff) antes da spec. Depois disso, autonomia total até o merge e o próximo item.
-- Uma sessão por item do roadmap (`commands/engineer.md` §7): ao terminar um item, o Engineer abre uma sessão nova no Claude Code Desktop (`start_session`, contexto zerado) com `/engineer <slug>` e encerra a atual; fora do Desktop, continua na mesma sessão.
+- Sessão principal e uma sessão por item (`commands/engineer.md` §7): no Claude Code Desktop, a sessão em que o fundador abriu o projeto vive até o fim dele e coordena; cada item do roadmap roda numa sessão de item linkada a ela (`start_session`, contexto zerado, `/engineer item <slug>`), que relata e encerra; a principal verifica, fala com o fundador, encaminha as respostas dele (protótipo, gates) e abre o próximo. Fora do Desktop, tudo na mesma sessão.
 
 ### Fixed
 - O modelo bootstrap do Prisma usava `cuid()`, mas o `Id` do shared só aceita UUID: primeira entidade hidratada quebraria. Agora `uuid()` com `@db.Uuid` e `@db.Timestamptz`.
