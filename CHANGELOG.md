@@ -2,6 +2,15 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.6.0] - 2026-10-31
+
+### Added
+- Conventional Commits em todo o squad: branch de integração `<tipo>/<feature-slug>` e branch de ticket `<tipo>/<feature-slug>-<ticket-slug>` (`platform-engineer`, passo 5 do Engineer); commit do `full-stack-developer` como `<tipo>(<módulo>): …`; a skill `pr` ganha a seção **Title** (`<tipo>(<escopo>): …`, um tipo por PR), e o squash merge leva esse título para a main.
+- CI do projeto gerado: job `pr-title` que falha se o título do PR não casar com `^(feat|fix|chore|docs|refactor|test|build|ci|perf|style)(\([a-z0-9-]+\))?!?: .+`. O `dependabot.yml` gerado já abre PRs com `chore(deps)` e `chore(ci)`.
+
+### Removed
+- `skills/monolith/utils/update-git-repo.js`: script interativo (readline) que ninguém referenciava; a convenção que ele encodava agora vive nos cards.
+
 ## [0.5.0] - 2026-10-31
 
 Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
@@ -80,6 +89,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.6.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.1...v0.3.2
