@@ -38,3 +38,5 @@ Mais o que só a leitura pega, um achado por item com arquivo:linha:
 Só o que você reproduziu ou apontou com arquivo:linha. Cada um com: severidade (`blocking` / `should` / `nit`), a regra citada (do projeto, do GLOSSARY, de um ADR, de `docs/architecture.md` — as dez regras numeradas — ou desta lista), e a evidência. Gosto não é achado. Sugestão estética é `nit`, nunca bloqueia.
 
 Um critério de aceite sem teste que o exercite é `blocking` no eixo Spec, mesmo que o código pareça certo.
+
+**Asserção de ausência.** Um teste que afirma que algo não está lá (`not.toBeVisible`, lista vazia, "nenhum pendente") sem antes esperar a leitura que a preencheria passa com a tela vazia e passa com o defeito: é `blocking`, com o arquivo, a asserção e a leitura que faltou esperar.

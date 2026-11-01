@@ -17,6 +17,8 @@ Confidence: high | medium | low — <por quê>
 
 Fonte primária antes de qualquer outra: documentação oficial, release notes, o repositório. Blog, resposta de fórum e memória do modelo são `low` e dizem que são. Versão é a que o registro (npm, PyPI, GitHub Releases) mostra hoje, com a data da consulta.
 
+Quando o fornecedor publica guia **e** referência de API (OpenAPI, `/reference/`), a referência manda em path, parâmetros e autenticação; o guia só explica. Guia e referência discordando: relate os dois, marque `Confidence: conflicting — <o que cada um diz>` e diga qual testar primeiro (a referência). Antes de ler páginas, procure o índice que o fornecedor dá a agentes: `<docs>/llms.txt` e um MCP de documentação (`<docs>/mcp`); quando existe, é a primeira fonte e o relato diz que a usou.
+
 Pergunta que o código do projeto responde (`package.json`, lockfile, `node_modules/<pkg>/package.json`) se responde lendo o código, e a fonte é o caminho do arquivo.
 
 Sem fonte, a resposta é "unknown" com o que você procurou. Isso é uma resposta; chute não é.

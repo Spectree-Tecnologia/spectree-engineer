@@ -1084,6 +1084,8 @@ async function patchRootPackageJson(rootDir, scope) {
   pkg.scripts.test = 'node scripts/check-boundaries.mjs && turbo run test';
   // capacity is a test: p95 per route against perf.config.json, after npm test in CI (architecture rule 11)
   pkg.scripts.perf = 'node scripts/perf.mjs';
+  // one worktree per ticket from one command: branch, env, ports, own database, install, generate, migrate, roles, seed, build
+  pkg.scripts.worktree = 'node scripts/worktree.mjs';
   pkg.scripts.format = pkg.scripts.format ?? 'prettier --write "**/*.{ts,tsx,md}"';
   // the release: build both images, run `prisma migrate deploy` (service migrate), start, wait for healthy
   pkg.scripts.release = pkg.scripts.release ?? 'docker compose -f docker-compose.prod.yml up -d --build --wait';
@@ -1107,6 +1109,12 @@ async function patchRootPackageJson(rootDir, scope) {
     ensureNewline: false,
     markRiskOnOverwrite: false,
     note: 'p95 budget per route, run by npm run perf',
+  });
+  const worktreeScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'worktree.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'worktree.mjs'), await fs.readFile(worktreeScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'worktree per ticket, run by npm run worktree -- up|down',
   });
   // the squad runs unattended after the interview: without this allowlist every npm/git/gh/docker call stops for a prompt.
   // Written once; the project widens or narrows it. Destructive git stays denied.
