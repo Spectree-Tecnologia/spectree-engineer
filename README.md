@@ -38,6 +38,12 @@ claude plugin install spectree-engineer@spectree-engineer
 
 Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (tracker, labels, layout de domínio) antes de qualquer outra coisa.
 
+### O painel do Engineer
+
+O plugin traz um módulo de hooks do Claude Code, `hooks/engineer-desk/`: um painel lateral que acompanha a orquestração. No centro flutua o mascote da Spectree dentro do seu anel; enquanto um subagente roda, o desenho do especialista toma o lugar dele (o último despachado na frente); sozinho com um plano em andamento, é o próprio Engineer que aparece; plano concluído, o mascote sorri; um subagente que falhou ou foi interrompido o deixa em alerta. Abaixo, a barra de progresso do plano e um card por subagente com o mascote pequeno (a expressão do papel enquanto roda, sorrindo ao concluir, alerta se falhou), papel, modelo, tokens, duração, status e passos. No terminal, o plano também fica acima do prompt.
+
+Abre sozinho uma vez por sessão no app desktop e no VS Code, numa pasta com `skills.config.json` ou `docs/roadmap.md`, ou no primeiro despacho de um especialista. `/engineer-desk` reabre. Só observa: não alcança rede e nunca recusa um despacho, uma chamada de ferramenta ou um turno. Function hooks são uma API em early access do Claude Code. Os desenhos são a arte do fundador (PNGs de 2048 px) vetorizada em polígonos, porque o app descarta `<image>` dentro de um `Svg`; para trocar um, troque o PNG e rode `node scripts/trace-art.cjs <pasta dos PNGs> <pasta com imagetracerjs instalado>`, que regrava `mascot-art.ts`.
+
 ## O squad
 
 | Agente | Faz | Não faz |
@@ -58,12 +64,15 @@ ARCHITECTURE.md            as catorze regras do monólito modular Spectree (vira
 CHANGELOG.md               o que mudou por versão
 commands/engineer.md       o orquestrador
 agents/*.md                os sete especialistas
+hooks/engineer-desk/       o painel do Engineer (módulo de hooks do Claude Code); hooks/hooks.json o nomeia
+tests/                     os testes do painel: guarda estrutural (node --test) e kit do Claude Code (claude plugin test)
 skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
 skills/monolith/           skills de monólito modular (config-*, module-*, backend-*, frontend-*)
 skills/security/           security-audit da Cloudflare (MIT, vendorizada): review por mudança e auditoria completa
 templates/shared           o pacote @<ns>/shared copiado no bootstrap
 scripts/smoke.mjs          prova: bootstrap inteiro num projeto temporário, build, testes, 401 sem token
 scripts/evals.mjs          prova: o julgamento dos agentes, com `claude plugin eval` sobre evals/
+scripts/desk-test.mjs      prova: o painel, com `claude plugin test` numa cópia sem os testes Vitest do template
 evals/                     um caso por diretório (prompt.md + graders/), fixtures sintéticos em evals/fixtures/
 ```
 
@@ -80,6 +89,16 @@ node scripts/evals.mjs
 ```
 
 Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` bloqueia um `UpdateAccount` que zera o saldo num PATCH parcial (com `arquivo:linha`) e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; e `/engineer` faz exatamente uma pergunta (gate 2) a um pedido fora do roadmap.
+
+```bash
+node --test tests/engineer-desk.test.mjs
+```
+
+```bash
+node scripts/desk-test.mjs
+```
+
+O primeiro guarda a estrutura do painel (módulo nomeado, estado sob o nome do plugin, um desenho por card de `agents/`, arte vetorizada dentro dos limites do engine, nada de rede, sem colidir com `/engineer`). O segundo roda `tests/engineer-desk.test.tsx` com `claude plugin test` a partir de uma cópia só com manifesto, `hooks/` e `tests/`, porque o comando varre todo `*.test.ts` da pasta e os testes Vitest de `templates/shared` não carregam nele.
 
 Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 2,50 por passada completa (seis casos, uma run cada): uns 5 minutos com `-j 3`, uns 12 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso 1 contra uma cópia do plugin com o card do `quality-engineer` sem a lista de regras e exige que ele **falhe**.
 

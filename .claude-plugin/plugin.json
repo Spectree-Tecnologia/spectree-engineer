@@ -1,6 +1,6 @@
 {
   "name": "spectree-engineer",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Orquestrador em pt-BR com sub-agentes especialistas para monólitos modulares spec-driven: as skills de engenharia de Matt Pocock como processo, as skills de monólito modular da Spectree como padrão de arquitetura.",
   "author": {
     "name": "Spectree Tecnologia"
@@ -8,6 +8,7 @@
   "homepage": "https://github.com/Spectree-Tecnologia/spectree-engineer",
   "repository": "https://github.com/Spectree-Tecnologia/spectree-engineer",
   "license": "MIT",
+  "types": "./hooks/engineer-desk/state.d.ts",
   "keywords": [
     "orchestrator",
     "multi-agent",
