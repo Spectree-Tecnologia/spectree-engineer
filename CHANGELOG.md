@@ -2,6 +2,13 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.7.0] - 2026-10-31
+
+### Added
+- O painel do Engineer: `hooks/engineer-desk/` + `hooks/hooks.json`, o módulo de hooks do Claude Code replicado do painel do Invoker (spectree-invoker). Mascote da Spectree no centro, no seu anel, flutuando como no clipe do fundador; o especialista em execução no lugar dele (sete desenhos, um por card de `agents/`); o próprio Engineer quando só o loop principal trabalha num plano; feliz com o plano concluído; alerta depois de uma falha. Barra de progresso do plano (ferramenta `mcp__spectree-engineer__plan`, instrução injetada só no loop principal; `TaskCreate`/`TaskUpdate`/`TodoWrite` também alimentam), um card por subagente com expressão, papel, modelo, esforço, tokens, duração e passos, seções recolhíveis, `/engineer-desk`, status line, e o plano acima do prompt no terminal. Abre sozinho no desktop e no VS Code em pasta com `skills.config.json` ou `docs/roadmap.md`. `plugin.json` aponta o contrato de estado (`types`).
+- A arte do fundador (13 PNGs de 2048 px com alpha) vetorizada em polígonos em `hooks/engineer-desk/mascot-art.ts`, porque o app descarta `<image>` num `Svg`; paleta nova (preto fosco, brilho azul frio).
+- `tests/engineer-desk.test.mjs` (guarda estrutural, `node --test`) e `tests/engineer-desk.test.tsx` (nove casos no kit do Claude Code); `scripts/desk-test.mjs` roda o segundo a partir de uma cópia sem os testes Vitest do template.
+
 ## [0.6.0] - 2026-10-31
 
 ### Added
@@ -89,6 +96,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.7.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.3.2...v0.4.0
