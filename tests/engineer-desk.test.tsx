@@ -47,8 +47,12 @@ async function spawn($: any, agentId: string, subagentType: string, description:
 
 function engine(on: any, agentId: string, model = 'model') {
   const clock = mock.clock(on, { now: 1_000_000 })
-  // Each spawn answers the agent id its tool_use_id names (`tu-<id>`), the first one by default.
-  on('agent.spawn', (_: unknown, e: any) => ({ model, agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
+  // Each spawn answers the agent id its tool_use_id names (`tu-<id>`), the first one by default,
+  // on the model the call named, else the engine's: Haiku for the harness's web-fetch, the test's otherwise.
+  on('agent.spawn', (_: unknown, e: any) => ({
+    model: e.model ?? (e.subagentType === 'web-fetch' ? 'claude-haiku-5-5' : model),
+    agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId,
+  }))
   // A TaskCreate answers the id of the task it made, numbered from 1.
   let created = 0
   on('tool.call', (_: unknown, e: any) => ({ result: e.tool === 'TaskCreate' ? { task: { id: String(++created), subject: e.subject } } : {} }))
@@ -214,6 +218,21 @@ test('a long session stays in budget: each step writes its own subagent, the pan
   await ui.press({ key: 'finished-whole' })
   expect(await ui.find({ type: 'Text', text: /^module 11$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 10$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test("no subagent runs under Sonnet: Haiku named or defaulted is raised, a role's own model is left alone", async ($, on) => {
+  engine(on, 'w1')
+  // The harness's web-fetch picks Haiku on its own; a call may also name it.
+  await spawn($, 'w1', 'web-fetch', 'Read Asaas visao-geral page')
+  await ($ as any).agent.spawn({ tool_use_id: 'tu-h1', prompt: 'x', description: 'named haiku', subagentType: 'general-purpose', provider: ENGINE, parentModel: 'model', model: 'haiku', background: false, fork: false })
+  await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'ticket')
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^web-fetch · sonnet$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^general-purpose · sonnet$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^spectree-engineer:full-stack-developer · model$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Haiku/ })).toBeUndefined()
   await ui.unmount()
 })
 
