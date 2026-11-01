@@ -18,47 +18,47 @@ function ringMarkup(): string {
 }
 
 // The panel's centre: the mascot, the Engineer at work, or the specialist
-// that took its place, floating in a cold glow as in the Founder's clip:
+// that took its place, floating over a faint aura as in the Founder's clip:
 // a six-second drift up and down, a slight roll of the body and a sway of
-// the ring. Always a frame; the markup depends only on the drawing shown,
-// so a redraw for a timer sends the same source and the motion runs on.
+// the ring. The traced drawing carries its own highlights, so nothing is
+// blurred or glowed over it. Always a frame; the markup depends only on the
+// drawing shown, so a redraw for a timer sends the same source and the motion runs on.
 export function heroMarkup(art: Art): string {
   const drawing = MASCOT_ART[art].replace('<svg ', '<svg x="20" y="10" width="220" height="220" ')
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 240" width="260" height="240">` +
     `<style>.fl{animation:fl 6s ease-in-out infinite;transform-origin:130px 120px}@keyframes fl{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-3px) rotate(-0.7deg)}50%{transform:translateY(0)}75%{transform:translateY(3px) rotate(0.7deg)}}` +
-    `.gl{animation:gl 6s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.2}50%{opacity:.45}}` +
     `.rg{animation:rg 6s ease-in-out infinite}@keyframes rg{0%,100%{transform:rotate(-2.3deg) translateY(1px)}50%{transform:rotate(2.3deg) translateY(-1px)}}` +
-    `@media (prefers-reduced-motion: reduce){.fl,.gl,.rg{animation:none}}</style>` +
+    `@media (prefers-reduced-motion: reduce){.fl,.rg{animation:none}}</style>` +
     `<defs><radialGradient id="aura" cx="50%" cy="48%" r="50%"><stop offset="0" stop-color="${PALETTE.spirit}" stop-opacity="0.2"/>` +
     `<stop offset="1" stop-color="${PALETTE.spirit}" stop-opacity="0"/></radialGradient>` +
-    `<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/></filter>` +
-    `<filter id="soften"><feGaussianBlur stdDeviation="0.4"/></filter></defs>` +
+    `<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/></filter></defs>` +
     `<circle cx="130" cy="120" r="112" fill="url(#aura)"/>` +
     (RINGED.includes(art) ? ringMarkup() : '') +
-    `<g class="fl"><g id="hero" filter="url(#soften)">${drawing}</g>` +
-    `<use href="#hero" class="gl" filter="url(#glow)" style="mix-blend-mode:screen"/></g>` +
+    `<g class="fl">${drawing}</g>` +
     `</svg>`
   )
 }
 
-// A card's avatar: one of the mascot's moods. While the subagent runs it
-// wears its role's and glows softly; once it ends it smiles when done and
-// looks alert when it failed or was stopped, still.
+// A card's avatar: the visor and eyes of one of the mascot's moods, cut in a
+// circle with a thin rim. While the subagent runs it wears its role's and the
+// rim pulses; once it ends it smiles when done and looks alert when it failed
+// or was stopped, still.
 export function mascotAvatar(status: AgentStatus, face: Face = 'focused'): string {
   const isRunning = status === 'running'
   const shown: Face = isRunning ? face : status === 'completed' ? 'happy' : 'alert'
   const drawing = MASCOT_ART[`face_${shown}`].replace('<svg ', '<svg x="0" y="0" width="48" height="48" ')
+  const rim = isRunning ? PALETTE.spirit : status === 'completed' ? '#7fd39a' : '#e0a06a'
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">` +
     (isRunning
-      ? `<style>.gl{animation:gl 1.6s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.25}50%{opacity:.6}}` +
-        `@media (prefers-reduced-motion: reduce){.gl{animation:none}}</style>`
+      ? `<style>.rim{animation:rim 1.6s ease-in-out infinite}@keyframes rim{0%,100%{opacity:.45}50%{opacity:1}}` +
+        `@media (prefers-reduced-motion: reduce){.rim{animation:none}}</style>`
       : '') +
-    `<defs><filter id="m-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.4"/></filter>` +
-    `<filter id="m-soft"><feGaussianBlur stdDeviation="0.25"/></filter></defs>` +
-    `<g id="face" filter="url(#m-soft)">${drawing}</g>` +
-    `<use href="#face"${isRunning ? ' class="gl"' : ' opacity="0.35"'} filter="url(#m-glow)" style="mix-blend-mode:screen"/>` +
+    `<defs><clipPath id="round"><circle cx="24" cy="24" r="22"/></clipPath></defs>` +
+    `<circle cx="24" cy="24" r="22" fill="${PALETTE.surface}"/>` +
+    `<g clip-path="url(#round)">${drawing}</g>` +
+    `<circle class="rim" cx="24" cy="24" r="22.5" fill="none" stroke="${rim}" stroke-width="1.5" opacity="${isRunning ? 1 : 0.7}"/>` +
     `</svg>`
   )
 }

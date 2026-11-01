@@ -92,18 +92,19 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Engineer em repouso/ })).toBeDefined()
     if (surface !== 'terminal') {
-      // The card's avatar is the mascot's smiling mood once done, and still: no frame.
+      // The card's avatar is the mascot's smiling visor once done, round, and still: no frame.
       const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
       const avatar = svgs.find(one => one?.props?.alt === 'Quality Engineer')
       const source = String(avatar?.props?.source ?? '')
       expect(source).toContain('viewBox="0 0 48 48"')
       expect(source).toContain(happyFace)
+      expect(source).toContain('<clipPath id="round">')
       expect(source).not.toContain('@keyframes')
       expect(avatar?.props?.isInteractive).toBe(false)
       expect(source).not.toContain('<image')
       // Idle with no plan, the centre is the mascot itself, inside its ring.
       const hero = String(svgs.find(one => one?.props?.alt === 'Engineer em repouso')?.props?.source ?? '')
-      expect(hero).toContain('viewBox="0 0 227 227"')
+      expect(hero).toContain('viewBox="0 0 341 341"')
       expect(hero).toContain('<ellipse')
       expect(hero.length).toBeLessThanOrEqual(131072)
     }
@@ -123,7 +124,10 @@ test("the specialist at work takes the mascot's place, the last one dispatched i
   expect(platform).toContain('@keyframes fl')
   expect(platform).toContain('#8fc3ff')
   expect(platform).not.toContain('<ellipse')
-  expect(platform).toContain('.fl,.gl,.rg{animation:none}')
+  expect(platform).toContain('.fl,.rg{animation:none}')
+  // Nothing blurred or glowed over the drawing: it is shown as traced.
+  expect(platform).not.toContain('feGaussianBlur stdDeviation="0')
+  expect(platform).not.toContain('<use href="#hero"')
   // The desktop app strips an <image> from an Svg: every picture in it is traced polygons.
   expect(platform).not.toContain('<image')
   expect(platform.length).toBeLessThanOrEqual(131072)

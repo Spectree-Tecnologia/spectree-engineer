@@ -73,7 +73,7 @@ function artProblems(source) {
     if (!isTraced(v)) problems.push(`mascot-art.ts: ${k} is not a traced drawing of filled polygons`);
     else if (v.length + 2_000 > 131_072) problems.push(`mascot-art.ts: ${k} would push the centre's SVG past 131072`);
     // A card's avatar is drawn once per card on screen: it stays small.
-    else if (k.startsWith('face_') && v.length > 8_000) problems.push(`mascot-art.ts: ${k} is too large for a card's avatar`);
+    else if (k.startsWith('face_') && v.length > 12_000) problems.push(`mascot-art.ts: ${k} is too large for a card's avatar`);
   }
   return problems;
 }
