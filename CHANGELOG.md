@@ -2,6 +2,11 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.7.1] - 2026-10-31
+
+### Fixed
+- Painel: o centro e os avatares saíam borrados e sem definição. O brilho desfocado sobreposto ao desenho (`<use>` com blur) e o filtro de suavização foram removidos; o traçado passou de 227 para 341 px com 20 cores e piso de alpha 200 (o halo translúcido não vira polígono); o avatar do card é o visor com os olhos recortado num círculo com aro (azul rodando, verde concluído, âmbar falhou), não o corpo inteiro em 40 px. `scripts/trace-art.cjs` ganha o recorte das faces.
+
 ## [0.7.0] - 2026-10-31
 
 ### Added
@@ -96,6 +101,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.7.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.4.0...v0.5.0
