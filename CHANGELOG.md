@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.10.0] - 2026-11-01
+
+Retro do item `approval` (SYND): #26 #27 #28 #29 #30.
+
+### Added
+- `scripts/worktree.mjs` no projeto gerado (`npm run worktree -- up <slug> <offset> [--branch] [--from]` / `down <slug>`): branch, `.env` copiados, portas e URLs movidas pelo offset, banco `<db>_<slug>` criado a partir da URL do owner, `npm install`, `prisma generate`, `migrate deploy` (ou `db push` sem migrations), `db:roles`, seed e `npm run build -- --force`; para no primeiro exit code diferente de zero e imprime portas e `PLAYWRIGHT_BASE_URL` sem nenhuma URL com senha. `down` dropa o banco e remove a worktree. O `platform-engineer` passa a chamá-lo; o smoke prova `up` e `down`. (#28)
+- CI gerado: job `playwright` em estado zerado quando o projeto tem `playwright.config.*` (Postgres novo, migrate, roles, seed, backend com limites de teste elevados e `tee backend.log`, frontend buildado contra ele, `PLAYWRIGHT_BASE_URL`/`BACKEND_LOG`); helper de login lê a credencial de teste de rota só de teste ou do log. `quality-engineer`: asserção de ausência sem esperar a leitura que a preencheria é `blocking`. (#29)
+- `integration-engineer`: referência de API (OpenAPI, `/reference/`) manda sobre guia em path, parâmetros e auth; discordância vira `Confidence: conflicting` com os dois lados; `llms.txt` e MCP de docs do fornecedor são a primeira fonte quando existem. (#30)
+
+### Fixed
+- `platform-engineer` e `full-stack-developer`: valor de `.env` nunca vai para a saída (leitura por nome ou com o valor cortado, edição com `sed -i` sem ecoar, relato `KEY db=<nome>`). (#26)
+- `full-stack-developer`: nada fica rodando ao relatar (processos parados pelo PID e listados), sem loop esperando arquivo, sem heredoc para interpretador (Edit tool); o contrato de despacho põe "nada fica rodando" em todo guard-rail. A worktree chega pronta pelo script, e o developer não dropa nem remove nada. (#27)
+
 ## [0.9.0] - 2026-11-01
 
 ### Added
@@ -111,6 +124,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.10.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.7.0...v0.7.1
