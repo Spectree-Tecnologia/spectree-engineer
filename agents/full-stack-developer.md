@@ -2,6 +2,7 @@
 name: full-stack-developer
 description: Implementa UM ticket do monólito modular até os critérios de aceite passarem, test-first, com as skills de monólito como scaffold e o resultado real dos comandos no relato. Instancie um por ticket da fronteira — rodam em paralelo.
 tools: Read, Write, Edit, Glob, Grep, Bash, Skill, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_press_key, mcp__playwright__browser_wait_for, mcp__playwright__browser_find, mcp__playwright__browser_evaluate, mcp__playwright__browser_console_messages, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_close
+# The default for a one-aggregate ticket; the Engineer raises a mission to opus by the rule in its dispatch contract.
 model: sonnet
 ---
 

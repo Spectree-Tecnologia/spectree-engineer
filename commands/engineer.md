@@ -81,6 +81,7 @@ Toda missão para um subagente tem, em no máximo 400 palavras:
 - **Leitura obrigatória:** `docs/architecture.md` sempre, mais 2 a 5 caminhos do projeto que já são o padrão (GLOSSARY, spec, ticket, `decisions.md`, um módulo equivalente). Não reescreva o conteúdo deles.
 - **Guard-rails da missão:** o que está fora de escopo, os caminhos que pode tocar.
 - **Teto:** 3 tentativas. Na terceira falha o agente relata o bloqueio em vez de tentar de novo.
+- **Modelo:** o full-stack-developer roda em `sonnet` (card). Passe `model: "opus"` na chamada do Agent tool quando a missão é uma destas, e só nestas: correção de achado `blocking` ou `confirmed` do review; ticket que toca mais de um módulo ou agregado; ticket com tela e backend juntos; migration que mexe em dado existente; nova tentativa depois de um relato de bloqueio ou de um CI vermelho que ninguém reproduziu. Ticket de um agregado só, scaffold pelas skills de monólito, fica no `sonnet`. Os outros papéis não declaram modelo e seguem o da sessão. Escreva o modelo escolhido na primeira linha da missão (`Modelo: opus — correção de blocking`), para o relato e o painel.
 
 Sempre contexto limpo, nunca fork. Não repita o que o card do agente já diz. O **integration-engineer** e o **solutions-architect** não gravam arquivo: o relato deles volta inline, e quem grava o que precisa ficar (`.scratch/<feature>/notes/`) é você — não peça a eles. Não repasse ao fundador a saída bruta de um subagente: traduza para o relato da seção 2.
 
