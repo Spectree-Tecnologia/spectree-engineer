@@ -2,6 +2,11 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.9.0] - 2026-11-01
+
+### Added
+- Piso de modelo `sonnet` para todo subagente: o painel (`agent.spawn`) sobe para `sonnet` qualquer despacho que nomeie Haiku ou que seja de um agente do harness que cai em Haiku por padrão (`web-fetch`, `Explore`, `claude-code-guide`, `statusline-setup`); um papel com modelo próprio ou herdado fica como está. Sessão que força um modelo em todos os subagentes passa por cima do piso, e o painel registra isso no log. Contrato de despacho: nunca `haiku`, e nada de agentes do harness para o que um papel do squad faz (página externa é o integration-engineer).
+
 ## [0.8.0] - 2026-10-31
 
 ### Added
@@ -106,6 +111,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.9.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.6.0...v0.7.0
