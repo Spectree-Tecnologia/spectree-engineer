@@ -49,8 +49,12 @@ Typecheck a cada passo, o arquivo de teste a cada passo, a suíte inteira uma ve
 
 Outro full-stack-developer pode estar rodando na mesma máquina: use as portas que a missão dá e mate só os processos que **você** subiu (pelo PID, nunca `taskkill /IM node.exe`).
 
-**Banco próprio.** Nunca use o banco de desenvolvimento compartilhado: crie `CREATE DATABASE <db>_<ticket-slug>`, aponte `MIGRATION_DATABASE_URL` e `DATABASE_URL` do `.env` da **sua** worktree para ele, rode `prisma migrate deploy`, `npm run db:roles` e o seed, e faça `DROP DATABASE` no fim. Um e2e que conta linhas globais num banco que outro developer escreve é um teste que flaka, e número de perf tirado ali não é número.
+**Banco, portas e frontend próprios.** A sua worktree já veio pronta pelo `npm run worktree -- up` do platform-engineer: banco `<db>_<ticket-slug>`, portas próprias e o frontend buildado contra o **seu** backend; use o que o `.env` dela diz e nunca o banco de desenvolvimento compartilhado (um e2e que conta linhas num banco que outro developer escreve é um teste que flaka, e número de perf tirado ali não é número). Next lê `PORT` do processo, não do `.env`: `PORT=<porta do .env do frontend> npm run dev`. Você não dropa nem remove nada: o `down` é do platform-engineer.
 
 **Browser próprio.** O browser do Playwright MCP é um só para a máquina: quando a missão diz que outro developer está rodando, não o use — outro developer vai navegar a sua aba. Nesse caso, o screenshot da tela e o teste de navegador saem de um script `playwright-core` na sua worktree, com perfil próprio.
+
+**Nada fica rodando.** Antes do relato, pare todo processo que você subiu (servidor, watcher, browser, `until … sleep` loop): pelo PID, e liste os PIDs parados no relato. Nunca espere em loop por um arquivo que outro processo escreve; rode o comando e leia a saída. Nunca edite arquivo por heredoc para um interpretador (`python3 - <<EOF`, `node -e` com stdin): use o Edit tool. Um processo preso trava a worktree, o `git worktree remove` falha e o fundador tem de matá-lo à mão.
+
+**Segredo nunca sai no relato.** Leia `.env` por nome (`grep -o '^[A-Z_]*=' .env`) ou com o valor cortado (`sed -n 's/=.*/=…/p' .env`); edite com `sed -i` sem ecoar; `cat`, `grep` ou `Read` numa linha com valor põe a chave na transcrição.
 
 Na terceira tentativa falha, ou quando um critério de aceite não vira teste (ambiguidade), pare e relate: o que tentou, a saída real, o que falta decidir. Não é falha sua; é o gate 4 do Engineer.

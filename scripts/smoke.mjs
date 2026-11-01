@@ -147,6 +147,22 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   // generated e2e as is: GET / is 401, GET /probe is 401 without token and within the query budget with one
   run('test-e2e', 'npm --workspace apps/backend run test:e2e');
 
+  // a ticket's worktree from one command: branch, env, ports, own database, install, generate, migrate, roles, build; then gone
+  run('git-init', 'git init -q && git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm "feat: bootstrap"');
+  run('worktree-up', 'npm run worktree -- up t1 100');
+  await step('worktree-ready', () => {
+    const tree = path.join(path.dirname(root), `${path.basename(root)}-t1`);
+    const env = (rel) => fs.readFileSync(path.join(tree, rel), 'utf8');
+    if (!new RegExp(`^PORT=${apiPort + 100}$`, 'm').test(env('apps/backend/.env'))) throw new Error('backend PORT not moved by the offset');
+    if (!env('apps/frontend/.env').includes(`localhost:${apiPort + 100}`)) throw new Error('frontend API URL not pointed at the worktree backend');
+    if (!/_t1\?/.test(env('apps/backend/.env'))) throw new Error('database URLs not pointed at <db>_t1');
+    if (!fs.existsSync(path.join(tree, 'apps', 'backend', 'dist'))) throw new Error('worktree not built');
+  });
+  run('worktree-down', 'npm run worktree -- down t1');
+  await step('worktree-gone', () => {
+    if (fs.existsSync(path.join(path.dirname(root), `${path.basename(root)}-t1`))) throw new Error('worktree folder still there');
+  });
+
   // capacity is a test (architecture rule 11): plant an N+1 in the example adapter, the budget test must fail naming it
   await step('query-budget-catches-n-plus-1', () => {
     const moduleDir = path.join(backendDir, 'src', 'modules', 'probe');
