@@ -1596,7 +1596,7 @@ async function main() {
     if (!(await pathExists(dependabotPath))) {
       await activeRunOps.writeTextFile(
         dependabotPath,
-        'version: 2\nupdates:\n  - package-ecosystem: npm\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 3\n    groups:\n      all:\n        patterns: ["*"]\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: weekly\n',
+        'version: 2\nupdates:\n  - package-ecosystem: npm\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 3\n    commit-message:\n      prefix: "chore(deps)"\n    groups:\n      all:\n        patterns: ["*"]\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: weekly\n    commit-message:\n      prefix: "chore(ci)"\n',
         { note: 'weekly dependency PRs with the same cooldown' },
       );
     }
