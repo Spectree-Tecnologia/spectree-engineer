@@ -6,8 +6,11 @@
 //   <assets dir>  holds characters/*.png and mascot/*.png as the founder's kit lays them out
 //   <deps dir>    any folder where `npm i imagetracerjs@1.2.6` ran (its node_modules is read)
 //   out           default hooks/engineer-desk/mascot-art.ts
-// Tuning by env: HERO_FACTOR=9 HERO_COLORS=14 HERO_OMIT=6 MASCOT_COLORS=24 ALPHA_FLOOR=128
-//   FACE_FACTOR=24 FACE_COLORS=12 FACE_OMIT=2; ONLY=mascot,happy limits the keys traced.
+// Tuning by env (defaults are what shipped): HERO_FACTOR=6 HERO_COLORS=20 HERO_OMIT=8
+//   MASCOT_COLORS=24 ALPHA_FLOOR=200 (a pixel under it is transparent: the soft halo never
+//   becomes a polygon); faces are the visor window FACE_X=464 FACE_Y=300 FACE_SIZE=1120 of the
+//   mascot (FACE_CROP=0 takes the whole body), FACE_FACTOR=12 FACE_COLORS=10 FACE_OMIT=6;
+//   ONLY=mascot,happy limits the keys traced.
 'use strict'
 const fs = require('fs')
 const path = require('path')
@@ -26,13 +29,18 @@ async function readPng(file) {
   const got = await new Promise((resolve, reject) => reader.parse((err, png) => (err ? reject(err) : resolve(png))))
   const width = got.getWidth(), height = got.getHeight()
   const data = new Uint8ClampedArray(width * height * 4)
-  const bpp = got.pixels.length / (width * height)
   for (let i = 0; i < width * height; i++) {
     const px = got.getPixel(i % width, Math.floor(i / width))
     data[i * 4] = px[0]; data[i * 4 + 1] = px[1]; data[i * 4 + 2] = px[2]; data[i * 4 + 3] = px.length > 3 ? px[3] : 255
   }
-  void bpp
   return { width, height, data }
+}
+
+// A square window of the source: x, y, size in source pixels.
+function crop(img, x0, y0, size) {
+  const data = new Uint8ClampedArray(size * size * 4)
+  for (let y = 0; y < size; y++) data.set(img.data.subarray(((y0 + y) * img.width + x0) * 4, ((y0 + y) * img.width + x0 + size) * 4), y * size * 4)
+  return { width: size, height: size, data }
 }
 
 // Area average by an integer factor; colour is alpha-weighted so halos do not darken.
@@ -76,23 +84,12 @@ function trace(img, { colors, pathomit, ltres = 1 }) {
   for (const m of svg.matchAll(/<path fill="rgb\((\d+),(\d+),(\d+)\)" stroke="rgb\(\d+,\d+,\d+\)" stroke-width="[\d.]+" opacity="([\d.]+)" d="([^"]+)" \/>/g)) {
     const [, r, g, b, opacity, d] = m
     if (Number(opacity) < 0.5) continue
-    // Only M, L and Z remain with qtres 0; collapse repeated points and trailing spaces.
-    // `M x y L x y ... Z`, holes as further subpaths: compacted to `Mx yLx y...Z`.
+    // Only M, L and Z remain with qtres 0. `M x y L x y ... Z`, holes as further subpaths: compacted to `Mx yLx y...Z`.
     const clean = d.replace(/\s+/g, ' ').trim().replace(/([MLZ]) /g, '$1').replace(/ ([MLZ])/g, '$1')
     if (!/^(M\d+ \d+(L\d+ \d+)*Z)+$/.test(clean)) throw new Error(`unexpected path: ${clean.slice(0, 80)}`)
     paths.push(`<path d="${clean}" fill="#${hex(r)}${hex(g)}${hex(b)}"/>`)
   }
   return `<svg viewBox="0 0 ${img.width} ${img.height}">${paths.join('')}</svg>`
-}
-
-// The glow colour: the mean of the bright, opaque pixels of the neutral mascot.
-function glowOf(img) {
-  let r = 0, g = 0, b = 0, n = 0
-  for (let i = 0; i < img.data.length; i += 4) {
-    const lum = 0.2126 * img.data[i] + 0.7152 * img.data[i + 1] + 0.0722 * img.data[i + 2]
-    if (img.data[i + 3] > 200 && lum > 170) { r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++ }
-  }
-  return n ? `#${hex(r / n)}${hex(g / n)}${hex(b / n)}` : null
 }
 
 const HERO = [
@@ -116,39 +113,40 @@ const FACES = [
   ['face_alert', 'mascot/main-alert.png'],
 ]
 
-const heroFactor = Number(process.env.HERO_FACTOR || 9), heroColors = Number(process.env.HERO_COLORS || 14), heroOmit = Number(process.env.HERO_OMIT || 6)
-const faceFactor = Number(process.env.FACE_FACTOR || 24), faceColors = Number(process.env.FACE_COLORS || 12), faceOmit = Number(process.env.FACE_OMIT || 2)
-const mascotColors = Number(process.env.MASCOT_COLORS || 24), floor = Number(process.env.ALPHA_FLOOR || 128)
+const env = (name, fallback) => Number(process.env[name] || fallback)
+const heroFactor = env('HERO_FACTOR', 6), heroColors = env('HERO_COLORS', 20), heroOmit = env('HERO_OMIT', 8)
+const faceFactor = env('FACE_FACTOR', 12), faceColors = env('FACE_COLORS', 10), faceOmit = env('FACE_OMIT', 6)
+const mascotColors = env('MASCOT_COLORS', 24), floor = env('ALPHA_FLOOR', 200)
 const only = process.env.ONLY ? process.env.ONLY.split(',') : null
-async function main() {
-const entries = []
-let glow = null
-for (const [key, file] of HERO) {
-  if (only && !only.includes(key)) continue
-  const img = await readPng(path.join(assets, file))
-  if (key === 'mascot') glow = glowOf(img)
-  const small = flattenAlpha(downsample(img, heroFactor), floor)
-  const svg = trace(small, { colors: file.startsWith('mascot/') ? mascotColors : heroColors, pathomit: heroOmit })
-  entries.push([key, svg])
-  console.error(`${key}: ${small.width}px ${svg.length} chars`)
-}
-for (const [key, file] of FACES) {
-  if (only && !only.includes(key)) continue
-  const img = await readPng(path.join(assets, file))
-  const small = flattenAlpha(downsample(img, faceFactor), floor)
-  const svg = trace(small, { colors: faceColors, pathomit: faceOmit })
-  entries.push([key, svg])
-  console.error(`${key}: ${small.width}px ${svg.length} chars`)
-}
-console.error(`glow: ${glow}`)
 
-const header =
-  "// The Engineer's mascot, its expressions and the seven specialists, from the Founder's own art\n" +
-  '// (2026-10-31, 2048px PNGs with alpha), traced into flat-colour polygons: the desktop app strips any\n' +
-  '// <image> from an Svg. Generated by the tracing script kept outside the repo; edit the PNGs, not this file.\n' +
-  '// The `face_` drawings are the four expressions drawn small, for a card\'s avatar.\n'
-const body = entries.map(([k, v]) => `  ${k}:\n    '${v}',`).join('\n')
-fs.writeFileSync(out, `${header}export const MASCOT_ART = {\n${body}\n} as const\n`)
-console.error(`wrote ${out} (${fs.statSync(out).size} bytes)`)
+async function main() {
+  const entries = []
+  for (const [key, file] of HERO) {
+    if (only && !only.includes(key)) continue
+    const img = await readPng(path.join(assets, file))
+    const small = flattenAlpha(downsample(img, heroFactor), floor)
+    const svg = trace(small, { colors: file.startsWith('mascot/') ? mascotColors : heroColors, pathomit: heroOmit })
+    entries.push([key, svg])
+    console.error(`${key}: ${small.width}px ${svg.length} chars`)
+  }
+  for (const [key, file] of FACES) {
+    if (only && !only.includes(key)) continue
+    const img = await readPng(path.join(assets, file))
+    // The visor and the eyes, not the whole body: at 40px that is the expression.
+    const windowed = process.env.FACE_CROP === '0' ? img : crop(img, env('FACE_X', 464), env('FACE_Y', 300), env('FACE_SIZE', 1120))
+    const small = flattenAlpha(downsample(windowed, faceFactor), floor)
+    const svg = trace(small, { colors: faceColors, pathomit: faceOmit })
+    entries.push([key, svg])
+    console.error(`${key}: ${small.width}px ${svg.length} chars`)
+  }
+
+  const header =
+    "// The Engineer's mascot, its moods and the seven specialists, from the Founder's own art\n" +
+    '// (2026-10-31, 2048px PNGs with alpha), traced into flat-colour polygons: the desktop app strips any\n' +
+    '// <image> from an Svg. Generated by scripts/trace-art.cjs; edit the PNGs and rerun it, never this file.\n' +
+    "// The `face_` drawings are the visor and eyes of the four moods, for a card's round avatar.\n"
+  const body = entries.map(([k, v]) => `  ${k}:\n    '${v}',`).join('\n')
+  fs.writeFileSync(out, `${header}export const MASCOT_ART = {\n${body}\n} as const\n`)
+  console.error(`wrote ${out} (${fs.statSync(out).size} bytes)`)
 }
 main().catch(err => { console.error(err); process.exit(1) })
