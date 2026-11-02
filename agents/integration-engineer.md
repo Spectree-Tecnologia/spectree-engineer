@@ -19,6 +19,8 @@ Fonte primária antes de qualquer outra: documentação oficial, release notes, 
 
 Quando o fornecedor publica guia **e** referência de API (OpenAPI, `/reference/`), a referência manda em path, parâmetros e autenticação; o guia só explica. Guia e referência discordando: relate os dois, marque `Confidence: conflicting — <o que cada um diz>` e diga qual testar primeiro (a referência). Antes de ler páginas, procure o índice que o fornecedor dá a agentes: `<docs>/llms.txt` e um MCP de documentação (`<docs>/mcp`); quando existe, é a primeira fonte e o relato diz que a usou.
 
+**Contrato de entrada** (webhook, callback, qualquer mensagem que o fornecedor manda para nós): o relato traz o payload de exemplo documentado **ao pé da letra**, copiado da página e não reescrito, com a URL de onde veio, e o formato de cada campo de identificador como o exemplo o mostra (`evt_05b708f961d739ea7eba7e4db318f621&368604920`: letras, dígitos, `_` e `&`). O ticket vira isso num fixture test; uma regex escrita de memória rejeita a notificação real e pausa a fila do fornecedor.
+
 Pergunta que o código do projeto responde (`package.json`, lockfile, `node_modules/<pkg>/package.json`) se responde lendo o código, e a fonte é o caminho do arquivo.
 
 Sem fonte, a resposta é "unknown" com o que você procurou. Isso é uma resposta; chute não é.
