@@ -2,6 +2,11 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.11.0] - 2026-11-01
+
+### Added
+- `integration-engineer`: todo contrato de entrada (webhook, callback) vem com o payload de exemplo documentado ao pé da letra, a URL e o formato de cada campo de id como o exemplo mostra; o passo 4 do Engineer põe esse payload no ticket e faz dele um critério de aceite (fixture passa pela validação). Retro do item `billing` (SYND). (#34; #33 era a regra de segredo em `.env`, já na 0.10.0)
+
 ## [0.10.0] - 2026-11-01
 
 Retro do item `approval` (SYND): #26 #27 #28 #29 #30.
@@ -124,6 +129,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.11.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.7.1...v0.8.0
