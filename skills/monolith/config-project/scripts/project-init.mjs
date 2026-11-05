@@ -1086,6 +1086,12 @@ async function patchRootPackageJson(rootDir, scope) {
   pkg.scripts.perf = 'node scripts/perf.mjs';
   // one worktree per ticket from one command: branch, env, ports, own database, install, generate, migrate, roles, seed, build
   pkg.scripts.worktree = 'node scripts/worktree.mjs';
+  // mutation testing per module (StrykerJS, Apache 2.0): the quality-engineer runs it on the modules a diff touched
+  pkg.scripts.mutation = 'node scripts/mutation.mjs';
+  pkg.devDependencies = pkg.devDependencies ?? {};
+  // "*": the lockfile pins what npm install resolved, Dependabot moves it; nothing is pinned by hand
+  pkg.devDependencies['@stryker-mutator/core'] = pkg.devDependencies['@stryker-mutator/core'] ?? '*';
+  pkg.devDependencies['@stryker-mutator/vitest-runner'] = pkg.devDependencies['@stryker-mutator/vitest-runner'] ?? '*';
   pkg.scripts.format = pkg.scripts.format ?? 'prettier --write "**/*.{ts,tsx,md}"';
   // the release: build both images, run `prisma migrate deploy` (service migrate), start, wait for healthy
   pkg.scripts.release = pkg.scripts.release ?? 'docker compose -f docker-compose.prod.yml up -d --build --wait';
@@ -1116,6 +1122,19 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'worktree per ticket, run by npm run worktree -- up|down',
   });
+  const mutationScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'mutation.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'mutation.mjs'), await fs.readFile(mutationScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'mutation testing of one module, run by npm run mutation -- <module>',
+  });
+  // Stryker's scratch and incremental report stay out of git
+  const rootGitignore = path.join(rootDir, '.gitignore');
+  if (await pathExists(rootGitignore)) {
+    const ignored = await fs.readFile(rootGitignore, 'utf8');
+    const missing = ['.stryker-tmp/', 'reports/stryker-incremental.json'].filter((line) => !ignored.split(/\r?\n/).includes(line));
+    if (missing.length > 0) await fs.writeFile(rootGitignore, `${ignored.replace(/\s*$/, '')}\n${missing.join('\n')}\n`);
+  }
   // the squad runs unattended after the interview: without this allowlist every npm/git/gh/docker call stops for a prompt.
   // Written once; the project widens or narrows it. Destructive git stays denied.
   const claudeSettingsPath = path.join(rootDir, '.claude', 'settings.json');
@@ -1565,6 +1584,19 @@ async function main() {
     const frontendPackagePath = path.join(frontendDir, 'package.json');
     const backendPackagePath = path.join(backendDir, 'package.json');
 
+    // the Nest CLI's README is its own project's (badges with a CircleCI token gitleaks flags); the backend's says what it is
+    const backendReadme = path.join(backendDir, 'README.md');
+    if ((await pathExists(backendReadme)) && (await fs.readFile(backendReadme, 'utf8')).includes('nestjs/nest')) {
+      await activeRunOps.writeTextFile(
+        backendReadme,
+        `# ${scope} backend
+
+NestJS API of the modular monolith: one Nest module per domain module under \`src/modules/\`, the shared layer under \`src/shared/\`, Prisma under \`prisma/\`. Rules in \`../../docs/architecture.md\`.
+`,
+        { note: 'the backend README, in place of the Nest CLI boilerplate' },
+      );
+    }
+
     // the contract every other skill and the Engineer read; nothing else creates these files
     await activeRunOps.writeJsonFile(
       path.join(rootDir, 'skills.config.json'),
@@ -1606,6 +1638,54 @@ async function main() {
         dependabotPath,
         'version: 2\nupdates:\n  - package-ecosystem: npm\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 3\n    commit-message:\n      prefix: "chore(deps)"\n    groups:\n      all:\n        patterns: ["*"]\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: weekly\n    commit-message:\n      prefix: "chore(ci)"\n',
         { note: 'weekly dependency PRs with the same cooldown' },
+      );
+    }
+    // the open-source scanners, as a workflow of their own so ci.yml stays the project's: gitleaks (MIT) on the git
+    // history, osv-scanner (Apache 2.0) on the lockfile, squawk (GPL 3) on the migrations a PR adds. Written once.
+    const securityPath = path.join(rootDir, '.github', 'workflows', 'security.yml');
+    if (!(await pathExists(securityPath))) {
+      await activeRunOps.writeTextFile(
+        securityPath,
+        [
+          'name: Security',
+          'on:',
+          '  push:',
+          '    branches: [main]',
+          '  pull_request:',
+          'jobs:',
+          '  secrets:',
+          '    name: gitleaks (secrets in the git history)',
+          '    runs-on: ubuntu-latest',
+          '    steps:',
+          '      - uses: actions/checkout@v5',
+          '        with:',
+          '          fetch-depth: 0',
+          '      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git --redact --no-banner /repo',
+          '  dependencies:',
+          '    name: osv-scanner (lockfile against the OSV database)',
+          '    runs-on: ubuntu-latest',
+          '    steps:',
+          '      - uses: actions/checkout@v5',
+          '      # osv-scanner.toml beside the lockfile lists the ids ignored, each with a reason',
+          '      - run: docker run --rm -v "$PWD:/repo" ghcr.io/google/osv-scanner:latest --lockfile=/repo/package-lock.json',
+          '  migrations:',
+          '    name: squawk (Postgres migrations this PR adds)',
+          "    if: github.event_name == 'pull_request'",
+          '    runs-on: ubuntu-latest',
+          '    steps:',
+          '      - uses: actions/checkout@v5',
+          '        with:',
+          '          fetch-depth: 0',
+          '      - uses: actions/setup-node@v5',
+          '        with:',
+          '          node-version-file: .nvmrc',
+          '      - run: |',
+          '          files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- apps/backend/prisma/migrations | grep \'\\.sql$\' || true)',
+          '          if [ -z "$files" ]; then echo "no new migration in this PR"; exit 0; fi',
+          '          npx --yes squawk-cli --assume-in-transaction $files',
+          '',
+        ].join('\n'),
+        { note: 'open-source scanners: gitleaks, osv-scanner, squawk' },
       );
     }
     // root typescript follows the backend scaffold: create-turbo's TS 7 breaks typescript-eslint in the frontend

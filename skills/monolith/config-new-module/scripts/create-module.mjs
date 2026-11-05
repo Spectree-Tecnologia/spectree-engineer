@@ -827,6 +827,21 @@ describe('${moduleName} (e2e)', () => {
     logger.step(`criou arquivo: ${path.join(targetDir, 'tsconfig.json')}`);
     await writeFile(path.join(targetDir, 'vitest.config.ts'), vitestConfig);
     logger.step(`criou arquivo: ${path.join(targetDir, 'vitest.config.ts')}`);
+    // mutation testing of this module alone (npm run mutation -- <module>): the thresholds inform, they do not break
+    await writeFile(
+      path.join(targetDir, 'stryker.config.json'),
+      stringifyJson({
+        testRunner: 'vitest',
+        vitest: { configFile: 'vitest.config.ts' },
+        mutate: ['src/**/*.ts', '!src/**/index.ts', '!src/**/*.d.ts'],
+        incremental: true,
+        incrementalFile: 'reports/stryker-incremental.json',
+        reporters: ['clear-text', 'progress'],
+        thresholds: { high: 80, low: 60, break: null },
+        tempDirName: '.stryker-tmp',
+      }),
+    );
+    logger.step(`criou arquivo: ${path.join(targetDir, 'stryker.config.json')}`);
     await writeFile(path.join(targetDir, 'src', 'index.ts'), indexTs);
     logger.step(`criou arquivo: ${path.join(targetDir, 'src', 'index.ts')}`);
     await writeFile(path.join(targetDir, 'test', 'index.test.ts'), indexTest);

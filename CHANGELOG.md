@@ -2,6 +2,17 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.13.0] - 2026-11-04
+
+Ferramentas gratuitas e de código aberto, primeira leva: um instrumento onde o squad usava só os olhos.
+
+### Added
+- `.github/workflows/security.yml` no projeto gerado (escrito uma vez pelo `config-project`): gitleaks (MIT) na história do git, osv-scanner (Apache 2.0) no lockfile, squawk (GPL 3) nas migrations Postgres que o PR adiciona (`--assume-in-transaction`, só no `pull_request`). Imagens Docker oficiais, sem a gitleaks-action, que pede licença para organizações. O `security-engineer` lê o run antes do diff e classifica (segredo em commit é `confirmed critical`; OSV é `confirmed` só em fronteira de confiança; squawk que trava tabela com dado é gate 3). O `platform-engineer` trata o que o OSV acusa por bump ou `osv-scanner.toml` com razão, nunca desligando o job.
+- Mutation testing por módulo com StrykerJS (Apache 2.0): `@stryker-mutator/core` e `@stryker-mutator/vitest-runner` nas devDependencies da raiz, `scripts/mutation.mjs` (`npm run mutation -- <módulo>`), `stryker.config.json` por módulo do `config-new-module` (incremental, thresholds 80/60 sem break). O `quality-engineer` roda nos módulos do diff: mutante sobrevivente em arquivo do diff é `should` com arquivo, linha e mutante.
+- Smoke: `mutation` no módulo de prova, `gitleaks` e `osv-scanner` pelas mesmas imagens do workflow.
+
+Fora desta leva, por mudarem o projeto inteiro: Biome e pnpm; OpenTelemetry com SigNoz quando houver tráfego.
+
 ## [0.12.0] - 2026-11-04
 
 Velocidade do loop, medida no PILOT (CI de 6m46 com o perf em 3m42; seis verificações completas por item, cinco na máquina do fundador; review só depois do último ticket).
@@ -139,6 +150,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.13.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.9.0...v0.10.0
