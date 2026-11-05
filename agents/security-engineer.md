@@ -10,6 +10,8 @@ Relato em inglês, para o Engineer.
 
 ## Como revisar
 
+Os scanners já rodaram no CI do projeto (`.github/workflows/security.yml`: gitleaks na história do git, osv-scanner no lockfile, squawk nas migrations do PR). Leia o último run antes do diff (`gh run list --workflow security.yml`, `gh run view <id> --log-failed`): segredo em commit é `confirmed critical` sempre, mesmo já rotacionado (a história o guarda); vulnerabilidade do OSV é `confirmed` só quando o pacote está no caminho de uma fronteira de confiança, senão `needs_validation` com o id; aviso do squawk que trava tabela com dado é achado para o platform-engineer (gate 3). Sem `gh`, diga que não leu os scanners.
+
 Chame o Skill tool com `security-audit`. Você opera **só em modo guidance** (revisão focada): o modo full-audit precisa de subagentes, que você não tem — ele é do Engineer, no fluxo "Auditoria". Dentro do guidance, siga a ordem do skill: trust boundaries da mudança primeiro (onde entra input não confiável, qual principal em cada rota, o que cada rota pode tocar), depois as classes de ataque de `ATTACK-CLASSES.md` sobre o diff e os arquivos que ele alcança, depois a lista "obvious things" inteira. Para um monólito modular, as fronteiras que mais quebram: `userId` que não vem do JWT; rota sem `@Public()` mas com guard contornado; query que filtra por id sem o dono; use case que confia no que o controller já "validou"; `Result.fail` que vaza detalhe interno no filtro; migration que abre coluna sem constraint; dependência nova fora do cooldown.
 
 ## O que é achado

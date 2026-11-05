@@ -15,6 +15,7 @@ Seguro por padrão no que o bootstrap gera:
 - `@nestjs/throttler` com limite global, `helmet`, CORS restrito a `FRONTEND_URL`, `ValidationPipe` com `whitelist` + `forbidNonWhitelisted`, `ApiExceptionFilter` logando a causa dos 500.
 - Review de segurança em toda mudança (`security-engineer`, em paralelo ao review de padrões) e auditoria completa em seis fases antes da primeira exposição pública e a cada cinco itens do roadmap — `confirmed` vira ticket, `needs_validation` vira teste.
 - Supply chain: `.npmrc` com `min-release-age=3`, `.github/dependabot.yml` com o mesmo cooldown, `npm audit --audit-level=high` no CI.
+- Scanners OSS no CI (`.github/workflows/security.yml`): gitleaks (MIT) na história do git, osv-scanner (Apache 2.0) no lockfile, squawk (GPL 3) nas migrations que o PR adiciona; o `security-engineer` lê o run antes do diff. Mutation testing por módulo com StrykerJS (Apache 2.0), `npm run mutation -- <módulo>`, que o `quality-engineer` roda nos módulos do diff.
 - Fronteiras do monólito verificadas por `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro em `modules/*/src`, módulo depende só do shared, teste fora de `src/`, rota do Next só importa a página do módulo, read é query, toda tabela com a mesma espinha (uuid, `createdAt`, `updatedAt`, `Decimal` e nunca `Float`).
 - Fundação decidida uma vez, não por agregado: módulos conversam por `DomainEvent` (`InMemoryEventBus` no shared), o token carrega `roles` e `@Roles()` fecha rotas, `identity` é o primeiro item de todo roadmap, e tenants, papéis e tipo de login são perguntas fixas da entrevista.
 - Autonomia de verdade: o bootstrap grava `.claude/settings.json` com a allowlist de `npm`, `git`, `gh`, `docker` (e nega `push --force`, `reset --hard`, `clean`); o release faz `pg_dump` antes de migrar e a primeira exposição pública exige restore provado.
@@ -82,7 +83,7 @@ evals/                     um caso por diretório (prompt.md + graders/), fixtur
 node scripts/smoke.mjs
 ```
 
-Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → Prisma → backend → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend, exige `401` em `GET /` sem token, prova o `npm run worktree -- up/down` (worktree de ticket com banco, portas e build próprios) e o `npm run perf -- --changed` (só as rotas dos módulos tocados). `SMOKE_KEEP=1` preserva o projeto gerado.
+Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → Prisma → backend → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend, exige `401` em `GET /` sem token, prova o `npm run worktree -- up/down` (worktree de ticket com banco, portas e build próprios) e o `npm run perf -- --changed` (só as rotas dos módulos tocados), e roda o mutation testing do módulo de prova e os scanners gitleaks e osv-scanner pelas mesmas imagens Docker do `security.yml`. `SMOKE_KEEP=1` preserva o projeto gerado.
 
 ```bash
 node scripts/evals.mjs
