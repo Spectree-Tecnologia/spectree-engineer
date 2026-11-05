@@ -236,6 +236,17 @@ test("no subagent runs under Sonnet: Haiku named or defaulted is raised, a role'
   await ui.unmount()
 })
 
+test('a heredoc or pipe into an interpreter is refused, a script run from a file is not', async ($, on) => {
+  engine(on, 'd1')
+  const denied = async (command: string) => String(((await $.tool.call({ tool: 'Bash', command } as any)) as any).deny ?? '')
+  for (const command of ["python - <<'EOF'\nprint(1)\nEOF", 'python3 -<<EOF\nx\nEOF', 'node - <<EOF\nx\nEOF', 'node <<EOF\nx\nEOF', 'cat patch.py | python -', 'python3 -']) {
+    expect(await denied(command)).toContain('Write tool')
+  }
+  for (const command of ['python scripts/fix.py', 'python -I scripts/fix.py', 'node scripts/worktree.mjs up t1', 'node -e "console.log(1)"', 'npm run build', 'grep -n "python -" notes.md']) {
+    expect(await denied(command)).toBe('')
+  }
+})
+
 test('the clock runs only while a subagent runs', async ($, on) => {
   const clock = engine(on, 'c1')
   let ticks = 0

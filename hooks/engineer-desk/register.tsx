@@ -187,7 +187,18 @@ export function modelFloor(subagentType: string, model: string | undefined): str
   return model
 }
 
-// The panel only watches, except for the model floor above: a failure in its
+// The Founder's second guard (2026-11-05): a heredoc or a pipe into an interpreter's stdin
+// (`python - <<EOF`, `node -`) hangs on Windows, where Git Bash resolves `python` to the Store
+// stub that waits on stdin for ever, and leaves a process nobody can kill holding a worktree.
+// The script goes to a file with the Write tool and runs from there. `node -e "..."`, `python
+// file.py` and `python -I file.py` are not stdin and pass.
+const STDIN_INTERPRETER = /\b(?:python3?|py|node)\b[^\n|;&]*?(?:\s-\s*(?:<<|$|[|;&)])|\s<<)/m
+export const stdinInterpreter = (command: string) => STDIN_INTERPRETER.test(command)
+const STDIN_DENY =
+  'A heredoc or pipe into an interpreter hangs on Windows (the python Store stub waits on stdin) and leaves a process nobody can kill. ' +
+  'Write the script to a file with the Write tool and run it from there.'
+
+// The panel only watches, except for the two guards above: a failure in its
 // bookkeeping is logged and never stops a spawn, a tool call or a turn.
 function logFailure($: EngineInterface, error: unknown) {
   $.ui.log(`engineer-desk: ${error instanceof Error ? error.message : String(error)}`)
@@ -263,6 +274,7 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
+    if (e.tool === 'Bash' && stdinInterpreter(String((e as unknown as { command?: unknown }).command ?? ''))) return { deny: STDIN_DENY }
     if (e.tool === PLAN_TOOL) {
       if (id) return { deny: 'Only the main loop keeps a plan. Carry on with your task.' }
       const input = (key: string) => (e as unknown as Record<string, unknown>)[key]
