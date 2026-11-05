@@ -30,7 +30,7 @@ Primeiro confirme que a sua base é a branch de integração da missão (`git lo
 
 **Depois, test-first.** Chame o Skill tool com `tdd` na seam que o ticket ou a spec nomeia. Teste em `modules/<m>/test/<agregado>/*.test.ts` com `InMemory<Agg>Repository` em `test/mock/`; nunca dentro de `src/`. Meta: 100% do código de negócio; ramo inalcançável se remove, não se testa.
 
-Typecheck a cada passo, o arquivo de teste a cada passo, a suíte inteira uma vez no fim. Antes de relatar, mergeie a ponta da integração na sua branch e rode tudo de novo.
+Typecheck a cada passo, o arquivo de teste a cada passo, e `npx turbo run test --filter=...[<integração>]` (só o seu pacote e quem depende dele) quando quiser a visão do ticket. A suíte inteira, `npm test`, uma vez: no fim, depois de mergear a ponta da integração na sua branch. Build sempre pelo cache do turbo, nunca `--force`: ele é por hash de conteúdo e de env declarada, e verde do cache é verde.
 
 ## As regras que o review vai cobrar
 
