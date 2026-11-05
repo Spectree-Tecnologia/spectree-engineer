@@ -1,11 +1,12 @@
 // One worktree per ticket, ready to build in: own branch, own database, own ports, the frontend
 // built against its own backend. Every step runs in order and the first non-zero exit stops it.
 //
-//   node scripts/worktree.mjs up <ticket-slug> <offset> [--branch <name>] [--from <ref>]
+//   node scripts/worktree.mjs up <ticket-slug> [offset] [--branch <name>] [--from <ref>]
 //   node scripts/worktree.mjs down <ticket-slug>
 //
 // `up` adds ../<repo>-<slug> on <branch> (default feat/<slug>) from <ref> (default the current
-// branch), copies the untracked .env files, moves every port by <offset> (frontend and backend,
+// branch), copies the untracked .env files, moves every port by the offset (given, or the first free
+// hundred among the repo's worktrees, read from their backend .env; frontend and backend,
 // FRONTEND_URL and the frontend's API URL with them), points both database URLs at <db>_<slug>,
 // creates that database from the owner URL, then installs, generates, migrates, applies the roles,
 // seeds and builds. It prints the variables a dev server or Playwright run needs, never a URL
@@ -15,9 +16,12 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
-const [command, slugArg, offsetArg, ...rest] = process.argv.slice(2);
+const [command, slugArg, ...args] = process.argv.slice(2);
+// The offset is optional: given, it is forced; absent, the first free hundred among this repo's worktrees.
+const offsetArg = args[0] && !args[0].startsWith('--') ? args.shift() : undefined;
+const rest = args;
 const usage = () => {
-  console.error('usage: node scripts/worktree.mjs up <ticket-slug> <offset> [--branch <name>] [--from <ref>]\n       node scripts/worktree.mjs down <ticket-slug>');
+  console.error('usage: node scripts/worktree.mjs up <ticket-slug> [offset] [--branch <name>] [--from <ref>]\n       node scripts/worktree.mjs down <ticket-slug>');
   process.exit(2);
 };
 if (!['up', 'down'].includes(command) || !slugArg) usage();
@@ -94,8 +98,28 @@ async function withOwner(fn) {
 
 const portOf = (env, key, fallback) => Number(env[key] ?? fallback);
 
+// The hundreds other worktrees of this repo already took, by the PORT in their backend .env.
+function nextOffset(basePort) {
+  const used = new Set();
+  for (const line of out('git worktree list --porcelain').split(/\r?\n/)) {
+    const m = line.match(/^worktree (.+)$/);
+    if (!m || path.resolve(m[1]) === path.resolve(root)) continue;
+    const envFile = path.join(m[1], backendEnv);
+    if (!fs.existsSync(envFile)) continue;
+    const port = Number(readEnv(envFile).PORT);
+    if (port > basePort) used.add(Math.round((port - basePort) / 100) * 100);
+  }
+  let offset = 100;
+  while (used.has(offset)) offset += 100;
+  return offset;
+}
+
 async function up() {
-  const offset = Number(offsetArg);
+  const be = readEnv(path.join(root, backendEnv));
+  const fe = readEnv(path.join(root, 'apps', 'frontend', '.env'));
+  const backendPort = portOf(be, 'PORT', 4000);
+  const frontendPort = portOf(fe, 'PORT', 3000);
+  const offset = offsetArg === undefined ? nextOffset(backendPort) : Number(offsetArg);
   if (!Number.isInteger(offset) || offset <= 0) usage();
   const branch = rest[rest.indexOf('--branch') + 1] && rest.includes('--branch') ? rest[rest.indexOf('--branch') + 1] : `feat/${slug}`;
   const from = rest.includes('--from') ? rest[rest.indexOf('--from') + 1] : out('git branch --show-current');
@@ -116,11 +140,8 @@ async function up() {
     }
   }
 
-  const be = readEnv(path.join(root, backendEnv));
-  const fe = readEnv(path.join(root, 'apps', 'frontend', '.env'));
-  const backendPort = portOf(be, 'PORT', 4000);
-  const frontendPort = portOf(fe, 'PORT', 3000);
   const ports = { backend: backendPort + offset, frontend: frontendPort + offset };
+  console.log(`ports: offset ${offset}${offsetArg === undefined ? ' (first free hundred among the worktrees)' : ''}`);
   const dbName = `${dbNameOf(ownerUrl())}_${dbSuffix}`;
 
   rewriteEnv(path.join(worktree, backendEnv), (key, value) => {

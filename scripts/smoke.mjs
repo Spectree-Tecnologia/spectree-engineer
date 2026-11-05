@@ -162,7 +162,8 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     fs.appendFileSync(logFile, `\n===== [osv-scanner]\n${out}`);
     if (![0, 1].includes(res.status) || !/found \d+ packages/.test(out)) throw new Error(`osv-scanner exit ${res.status}: ${out.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
   });
-  run('worktree-up', 'npm run worktree -- up t1 100');
+  // no offset given: the first worktree takes +100 by itself
+  run('worktree-up', 'npm run worktree -- up t1');
   await step('worktree-ready', () => {
     const tree = path.join(path.dirname(root), `${path.basename(root)}-t1`);
     const env = (rel) => fs.readFileSync(path.join(tree, rel), 'utf8');
