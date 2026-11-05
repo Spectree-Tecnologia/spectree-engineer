@@ -1,6 +1,6 @@
 {
   "name": "spectree-engineer",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Orquestrador em pt-BR com sub-agentes especialistas para monólitos modulares spec-driven: as skills de engenharia de Matt Pocock como processo, as skills de monólito modular da Spectree como padrão de arquitetura.",
   "author": {
     "name": "Spectree Tecnologia"
@@ -47,6 +47,7 @@
     "./skills/monolith/backend-controller",
     "./skills/monolith/backend-prisma-data",
     "./skills/monolith/frontend-form-schema",
-    "./skills/security/security-audit"
+    "./skills/security/security-audit",
+    "./skills/design/to-wireframe"
   ]
 }

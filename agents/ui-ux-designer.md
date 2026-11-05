@@ -25,6 +25,9 @@ Design system: <URL>
 | Artboard | Route | Module | Components from the kit | New components |
 |---|---|---|---|---|
 
+## Wireframes
+- <tela> — docs/design/<feature-slug>/wireframes/<tela>.txt, from <a referência do fundador>
+
 ## Decisions
 - <uma linha por decisão de UX, com o porquê>
 
@@ -39,6 +42,7 @@ Design system: <URL>
 
 ## Como desenhar
 
+- **Referência vira wireframe antes de artboard.** Sempre que a missão traz uma referência do fundador (screenshot, imagem, print de outro app, link, descrição de tela), chame o Skill tool com `to-wireframe` antes de desenhar: `format=ascii image=<caminho>` para imagem, `format=ascii brief="<a descrição>"` para texto, com `output=docs/design/<feature-slug>/wireframes/<tela>.txt`. O wireframe tipado é a planta: cada região (`nav`, `card`, `form`…) vira um componente do kit, cada tag (`[h1:]`, `[btn:]`, `[in:]`…) um elemento, e o artboard nasce dele, não da imagem. Liste os wireframes no handoff (seção "Wireframes", um por linha com a referência de origem). Referência que contradiz o design system: o design system vence, e a diferença vai para "Decisions". Uma referência que o fundador manda para "ficar parecido com isto" sem wireframe no meio vira cópia visual sem estrutura, e é isso que a regra evita.
 - **Leia antes:** `GLOSSARY.md` (os nomes das coisas na tela são os do glossário), a conversa/notas do grill que a missão aponta, a tela existente mais parecida em `apps/frontend/src/modules/*/pages/`. Tela nova que ignora a tela vizinha é a inconsistência que ninguém pede e todo mundo nota.
 - **Componentes do kit primeiro.** Componente novo só quando nenhum do kit serve; ele entra na coluna "New components" e vira critério de aceite do ticket.
 - **Formulário é o schema.** Campos, obrigatoriedade e mensagens de validação vêm dos VOs do módulo (o front usa `v.defineObject` sobre eles). Não invente regra na tela: pergunte ao Engineer, que pergunta ao solutions-architect.
