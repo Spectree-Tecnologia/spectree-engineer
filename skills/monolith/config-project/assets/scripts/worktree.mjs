@@ -149,8 +149,8 @@ async function up() {
   sh(fs.existsSync(path.join(backendDir, 'prisma', 'migrations')) ? 'npx prisma migrate deploy' : 'npx prisma db push', backendDir);
   sh('npm run db:roles', backendDir);
   if (fs.existsSync(path.join(backendDir, 'prisma', 'seed', 'main.ts'))) sh('npx prisma db seed', backendDir);
-  // --force: the turbo cache is shared between worktrees, a green build may be another tree's
-  sh('npm run build -- --force', worktree);
+  // The turbo cache is keyed by content and declared env, and each worktree has its own: never --force.
+  sh('npm run build', worktree);
 
   console.log(`
 worktree ready: ${worktree}

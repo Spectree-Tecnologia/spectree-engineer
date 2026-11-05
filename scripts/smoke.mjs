@@ -148,6 +148,8 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   run('test-e2e', 'npm --workspace apps/backend run test:e2e');
 
   // a ticket's worktree from one command: branch, env, ports, own database, install, generate, migrate, roles, build; then gone
+  // the smoke's own files stay out of the repo, or every later diff would name them
+  fs.appendFileSync(path.join(root, '.gitignore'), ['', 'smoke.log', 'seed-rows.sql', ''].join(String.fromCharCode(10)));
   run('git-init', 'git init -q && git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm "feat: bootstrap"');
   run('worktree-up', 'npm run worktree -- up t1 100');
   await step('worktree-ready', () => {
@@ -234,6 +236,20 @@ export class ProbeController {
   });
   // p95 budget per route (architecture rule 11): perf.mjs boots dist/main.js itself and fails over budget or on any non-2xx
   console.log(run('perf', 'npm run perf').trim().split(/\r?\n/).slice(-12).join('\n'));
+  // perf proportional to the diff: a change inside modules/probe measures /probe alone; no change measures nothing
+  await step('perf-changed', () => {
+    const none = run('perf-changed-none', 'npm run perf -- --changed HEAD');
+    if (!/perf: 0 of \d+ routes \(no backend change\)/.test(none)) throw new Error(`expected no route with a clean tree, got: ${none.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+    const probeFile = fs.readdirSync(path.join(root, 'modules', 'probe', 'src')).map((f) => path.join(root, 'modules', 'probe', 'src', f)).find((f) => f.endsWith('.ts') && fs.statSync(f).isFile());
+    fs.appendFileSync(probeFile, '\n// perf --changed probe\n');
+    try {
+      const some = run('perf-changed-probe', 'npm run perf -- --changed HEAD');
+      if (!/perf: 1 of \d+ routes \(modules probe\)/.test(some)) throw new Error(`expected /probe alone, got: ${some.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+      if (!/\/probe/.test(some) || !/OK/.test(some)) throw new Error('the /probe route was not measured');
+    } finally {
+      run('perf-changed-restore', 'git checkout -- modules/probe');
+    }
+  });
   run('db-down', `${dbCompose} down -v`, { cwd: backendDir });
 
   // a receita de release como o platform-engineer roda: .env da raiz, `npm run release` (builda as duas imagens,
