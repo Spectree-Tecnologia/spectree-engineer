@@ -8,8 +8,12 @@
 // `"setup": "scripts/perf.setup.mjs"` names a module whose default export runs once the server is up —
 // `async ({ env, baseUrl, signJwt }) => ({ claims?: { sub, sid, ... }, headers?: { ... } })` — seeding what it
 // needs and returning the claims the token must carry (or complete headers). A 404/401 under perf is never a budget.
+//   --changed <ref>   only the routes of the modules the diff since <ref> touches (committed and working tree);
+//                     a change outside a module and outside the frontend (shared, prisma, db, config) runs every route;
+//                     a diff with no backend change measures nothing and exits 0. A route belongs to the module of
+//                     its first path segment, or to `route.module` when the path says otherwise.
 // ponytail: fetch + workers instead of autocannon; good enough for a budget, swap when you need histograms
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +26,33 @@ const port = env.PORT ?? '4000';
 const baseUrl = (process.env.PERF_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
 let token = signJwt(env.JWT_SECRET);
 let authHeaders = null;
+
+const changedAt = process.argv.indexOf('--changed');
+const changedRef = changedAt > -1 ? process.argv[changedAt + 1] : null;
+if (changedAt > -1 && !changedRef) {
+  console.error('perf: --changed needs a git ref (origin/main, a sha)');
+  process.exit(2);
+}
+
+// The routes the diff since `ref` can slow down: by module, or all of them.
+function routesChangedSince(ref) {
+  const git = (args) => execSync(`git ${args}`, { cwd: root, encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
+  const files = new Set([...git(`diff --name-only ${ref}...HEAD`), ...git('diff --name-only HEAD')]);
+  const modules = new Set();
+  for (const file of files) {
+    const module = file.match(/^(?:modules|apps\/backend\/src\/modules)\/([^/]+)\//)?.[1] ?? file.match(/^apps\/backend\/prisma\/models\/([^/]+)\.model\.prisma$/)?.[1];
+    if (module) modules.add(module);
+    else if (/^(apps\/frontend\/|docs\/|\.github\/|.*\.md$)/.test(file)) continue;
+    else return { routes: config.routes, why: `${file} is outside any module: every route` };
+  }
+  const moduleOf = (route) => route.module ?? route.path.split('/')[1];
+  const routes = config.routes.filter((route) => modules.has(moduleOf(route)));
+  return { routes, why: modules.size === 0 ? 'no backend change' : `modules ${[...modules].join(', ')}` };
+}
+
+const selected = changedRef ? routesChangedSince(changedRef) : { routes: config.routes, why: 'every route' };
+console.log(`perf: ${selected.routes.length} of ${config.routes.length} routes (${selected.why})`);
+if (selected.routes.length === 0) process.exit(0);
 
 function parseEnv(file) {
   if (!fs.existsSync(file)) return {};
@@ -116,7 +147,7 @@ if (!process.env.PERF_URL) {
 
 let failed = false;
 try {
-  await waitFor(`${baseUrl}${config.routes[0]?.path ?? '/'}`);
+  await waitFor(`${baseUrl}${selected.routes[0]?.path ?? '/'}`);
   if (config.setup) {
     const { default: setup } = await import(new URL(config.setup, `file://${root}/`).href);
     const result = (await setup({ env, baseUrl, signJwt: (claims) => signJwt(env.JWT_SECRET, claims) })) ?? {};
@@ -124,7 +155,7 @@ try {
     if (result.headers) authHeaders = result.headers;
   }
   const rows = [];
-  for (const route of config.routes) rows.push(await measure(route));
+  for (const route of selected.routes) rows.push(await measure(route));
   const ms = (n) => `${n.toFixed(1)}ms`;
   console.table(
     rows.map((r) => ({
