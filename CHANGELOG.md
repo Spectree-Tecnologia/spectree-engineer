@@ -2,6 +2,11 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.14.0] - 2026-11-05
+
+### Added
+- Skill `to-wireframe` (de [rtadewald/skills](https://github.com/rtadewald/skills/tree/main/to-wireframe), commit 82fe5ed) vendorizada em `skills/design/`, com `disable-model-invocation` removido. Regra do `ui-ux-designer`: toda referência do fundador (imagem, print, link, descrição) vira wireframe tipado pela skill antes do artboard, gravado em `docs/design/<feature>/wireframes/` e listado no handoff; o design system vence a referência. Passo 3 do Engineer: imagem colada vai para `docs/design/<feature>/refs/` e a missão nomeia cada referência. O repositório de origem não tem arquivo de licença: a cópia está registrada em `THIRD-PARTY-LICENSES.md` com essa ressalva.
+
 ## [0.13.0] - 2026-11-04
 
 Ferramentas gratuitas e de código aberto, primeira leva: um instrumento onde o squad usava só os olhos.
@@ -150,6 +155,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.14.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.10.0...v0.11.0
