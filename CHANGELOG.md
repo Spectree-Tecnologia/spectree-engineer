@@ -2,6 +2,14 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.15.0] - 2026-11-05
+
+Retro do item `sindy-memory` (SYND): #38 #39.
+
+### Added
+- O painel recusa, antes de rodar, um comando Bash que manda heredoc ou pipe para a stdin de um interpretador (`python - <<EOF`, `python3 -`, `node -`, `node <<EOF`): no Windows o `python` do Git Bash é o stub da Store, que espera stdin para sempre e deixa processo que ninguém mata segurando a worktree. `python file.py`, `python -I file.py` e `node -e "…"` passam. Cards do developer e do platform-engineer dizem o porquê e o caminho (script em arquivo pelo Write tool). (#38)
+- `worktree.mjs up <slug>` aloca o offset de portas sozinho: a primeira centena livre entre as worktrees do repositório, lida do `PORT` do `.env` de cada uma; `<offset>` passa a ser opcional e só força. A missão do developer deixa de carregar portas: elas estão no `.env` da worktree desde a 0.10.0. (#39)
+
 ## [0.14.0] - 2026-11-05
 
 ### Added
@@ -155,6 +163,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.15.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.11.0...v0.12.0
