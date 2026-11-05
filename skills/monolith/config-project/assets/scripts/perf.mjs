@@ -8,12 +8,18 @@
 // `"setup": "scripts/perf.setup.mjs"` names a module whose default export runs once the server is up —
 // `async ({ env, baseUrl, signJwt }) => ({ claims?: { sub, sid, ... }, headers?: { ... } })` — seeding what it
 // needs and returning the claims the token must carry (or complete headers). A 404/401 under perf is never a budget.
-//   --changed <ref>   only the routes of the modules the diff since <ref> touches (committed and working tree);
-//                     a change outside a module and outside the frontend (shared, prisma, db, config) runs every route;
-//                     a diff with no backend change measures nothing and exits 0. A route belongs to the module of
-//                     its first path segment, or to `route.module` when the path says otherwise.
+//   --changed <ref>   only the routes the diff since <ref> can slow down (committed, working tree and untracked files).
+//                     A file under modules/<m>/ or apps/backend/src/modules/<m>/ selects the routes that list <m>. Any
+//                     other file of apps/backend runs every route (main.ts, db/, shared/, prisma/, nest-cli.json,
+//                     tsconfig*, package.json...), except apps/backend/test/ and apps/backend/src/cli/, which no route
+//                     runs. packages/shared, perf.config.json, scripts/perf.mjs, the root package files and turbo.json
+//                     also run every route. A file a route uploads (route.multipart.file) selects that route before the
+//                     test/ rule. A diff that selects nothing starts no server and exits 0, saying why. A route lists the
+//                     modules whose code its request runs in `route.modules` (or one in `route.module`); without either,
+//                     the module is its first path segment. The ref is user input: git runs without a shell, the ref is
+//                     verified as a commit first, and a bad one is one line and exit 1.
 // ponytail: fetch + workers instead of autocannon; good enough for a budget, swap when you need histograms
-import { execSync, spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,24 +40,55 @@ if (changedAt > -1 && !changedRef) {
   process.exit(2);
 }
 
-// The routes the diff since `ref` can slow down: by module, or all of them.
-function routesChangedSince(ref) {
-  const git = (args) => execSync(`git ${args}`, { cwd: root, encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
-  const files = new Set([...git(`diff --name-only ${ref}...HEAD`), ...git('diff --name-only HEAD')]);
-  const modules = new Set();
-  for (const file of files) {
-    const module = file.match(/^(?:modules|apps\/backend\/src\/modules)\/([^/]+)\//)?.[1] ?? file.match(/^apps\/backend\/prisma\/models\/([^/]+)\.model\.prisma$/)?.[1];
-    if (module) modules.add(module);
-    else if (/^(apps\/frontend\/|docs\/|\.github\/|.*\.md$)/.test(file)) continue;
-    else return { routes: config.routes, why: `${file} is outside any module: every route` };
+// execFile, never a shell: the ref is user input. A git failure is one line and exit 1.
+function git(args, failure) {
+  try {
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).split(/\r?\n/).filter(Boolean);
+  } catch (error) {
+    const reason = String(error.stderr || error.message).trim().split(/\r?\n/)[0];
+    console.error(`perf: ${failure ?? `git ${args.join(' ')} failed${reason ? `: ${reason}` : ''}`}`);
+    process.exit(1);
   }
-  const moduleOf = (route) => route.module ?? route.path.split('/')[1];
-  const routes = config.routes.filter((route) => modules.has(moduleOf(route)));
-  return { routes, why: modules.size === 0 ? 'no backend change' : `modules ${[...modules].join(', ')}` };
+}
+
+const modulesOf = (route) => route.modules ?? (route.module ? [route.module] : [route.path.split('/')[1]]);
+
+function routesChangedSince(ref) {
+  const [sha] = git(['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`], `--changed ${JSON.stringify(ref)} is not a commit`);
+  const files = new Set([
+    ...git(['diff', '--name-only', '--end-of-options', `${sha}...HEAD`]),
+    ...git(['diff', '--name-only', '--end-of-options', 'HEAD']),
+    ...git(['ls-files', '--others', '--exclude-standard']),
+  ]);
+  const runsAll = /^(packages\/shared\/|apps\/backend\/|perf\.config\.json$|scripts\/perf\.mjs$|package\.json$|package-lock\.json$|turbo\.json$)/;
+  const modules = new Set();
+  const noRoute = new Set();
+  const byFixture = new Map(); // a file a route uploads selects that route, even under apps/backend/test/
+  for (const file of files) {
+    const uploaders = config.routes.filter((r) => r.multipart?.file === file);
+    if (uploaders.length > 0) {
+      for (const r of uploaders) byFixture.set(r, `fixture ${file}`);
+      continue;
+    }
+    const module = file.match(/^(?:modules|apps\/backend\/src\/modules)\/([^/]+)\//)?.[1];
+    if (module) modules.add(module);
+    else if (file.startsWith('apps/backend/src/cli/')) noRoute.add('CLI');
+    else if (file.startsWith('apps/backend/test/')) noRoute.add('backend tests');
+    else if (runsAll.test(file)) return { routes: config.routes, why: `${file} is outside any module: every route` };
+  }
+  const routes = config.routes.filter((route) => byFixture.has(route) || modulesOf(route).some((m) => modules.has(m)));
+  const fixtures = [...new Set(byFixture.values())];
+  if (modules.size > 0 || fixtures.length > 0) {
+    const parts = [...(modules.size > 0 ? [`modules ${[...modules].join(', ')}`] : []), ...fixtures];
+    return { routes, why: `${parts.join('; ')}${routes.length === 0 ? ': no route lists them' : ''}` };
+  }
+  if (noRoute.size > 0) return { routes, why: `0 routes: only ${[...noRoute].join(' and ')} changed` };
+  return { routes, why: 'no backend change found' };
 }
 
 const selected = changedRef ? routesChangedSince(changedRef) : { routes: config.routes, why: 'every route' };
-console.log(`perf: ${selected.routes.length} of ${config.routes.length} routes (${selected.why})`);
+console.log(`perf: ${selected.routes.length} of ${config.routes.length} routes selected (${selected.why})`);
+if (changedRef) for (const r of selected.routes) console.log(`  ${r.method ?? 'GET'} ${r.path}`);
 if (selected.routes.length === 0) process.exit(0);
 
 function parseEnv(file) {
