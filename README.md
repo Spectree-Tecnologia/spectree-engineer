@@ -51,7 +51,7 @@ Abre sozinho uma vez por sessão no app desktop e no VS Code, numa pasta com `sk
 |---|---|---|
 | `engineer` (comando) | fala com você em pt-BR, grill, spec, tickets, despacha | código |
 | `solutions-architect` | mapa de módulos/agregados, seams, fronteira de perguntas | escrever arquivo |
-| `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, em rodadas com o fundador até a aprovação; design system do projeto | regra de negócio, código |
+| `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, em rodadas com o fundador até a aprovação; design system do projeto; toda referência do fundador passa pelo `to-wireframe` antes do artboard | regra de negócio, código |
 | `full-stack-developer` | um ticket, test-first, scaffold pelas skills de monólito; Sonnet por padrão, Opus quando o Engineer classifica a missão como complexa (correção de review, mais de um módulo, tela + backend, migration com dado, nova tentativa) | sair do ticket |
 | `quality-engineer` | review em dois eixos + fronteiras do monólito | editar |
 | `security-engineer` | review como atacante com o `security-audit` da Cloudflare (guidance); achados só com fronteira violada e impacto | editar, rodar o alvo |
@@ -70,6 +70,7 @@ tests/                     os testes do painel: guarda estrutural (node --test) 
 skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
 skills/monolith/           skills de monólito modular (config-*, module-*, backend-*, frontend-*)
 skills/security/           security-audit da Cloudflare (MIT, vendorizada): review por mudança e auditoria completa
+skills/design/             to-wireframe de rtadewald (vendorizada, ver THIRD-PARTY-LICENSES.md): referência → wireframe tipado
 templates/shared           o pacote @<ns>/shared copiado no bootstrap
 scripts/smoke.mjs          prova: bootstrap inteiro num projeto temporário, build, testes, 401 sem token
 scripts/evals.mjs          prova: o julgamento dos agentes, com `claude plugin eval` sobre evals/
