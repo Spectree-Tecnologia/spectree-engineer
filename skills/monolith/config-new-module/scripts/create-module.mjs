@@ -871,7 +871,8 @@ describe('${moduleName} (e2e)', () => {
       const perfConfig = await readJson(perfConfigPath);
       perfConfig.routes = perfConfig.routes ?? [];
       if (!perfConfig.routes.some((route) => route.path === `/${moduleName}`)) {
-        perfConfig.routes.push({ path: `/${moduleName}`, auth: true, p95Ms: 200 });
+        // `modules`: every module whose code the request runs; a composition route lists all of them, or perf --changed skips it
+        perfConfig.routes.push({ path: `/${moduleName}`, modules: [moduleName], auth: true, p95Ms: 200 });
         await writeFile(perfConfigPath, stringifyJson(perfConfig));
         logger.step(`rota /${moduleName} adicionada ao orçamento de p95: ${perfConfigPath}`);
       }

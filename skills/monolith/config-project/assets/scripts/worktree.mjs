@@ -5,24 +5,29 @@
 //   node scripts/worktree.mjs down <ticket-slug>
 //
 // `up` adds ../<repo>-<slug> on <branch> (default feat/<slug>) from <ref> (default the current
-// branch), copies the untracked .env files, moves every port by the offset (given, or the first free
-// hundred among the repo's worktrees, read from their backend .env; frontend and backend,
+// branch), copies the untracked .env files, moves every port by the offset (given, or the first
+// free hundred among the repo's worktrees, read from their backend .env; frontend and backend,
 // FRONTEND_URL and the frontend's API URL with them), points both database URLs at <db>_<slug>,
 // creates that database from the owner URL, then installs, generates, migrates, applies the roles,
 // seeds and builds. It prints the variables a dev server or Playwright run needs, never a URL
 // with a password. `down` drops the database and removes the worktree; the branch stays.
+//
+// The database is only ever one `up` created: `up` refuses a <db>_<slug> that already exists, and
+// `down` drops it only while ../<repo>-<slug> is a registered git worktree. A database without its
+// worktree is reported and kept; dropping it is a decision for whoever knows where it came from.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const [command, slugArg, ...args] = process.argv.slice(2);
-// The offset is optional: given, it is forced; absent, the first free hundred among this repo's worktrees.
-const offsetArg = args[0] && !args[0].startsWith('--') ? args.shift() : undefined;
-const rest = args;
 const usage = () => {
   console.error('usage: node scripts/worktree.mjs up <ticket-slug> [offset] [--branch <name>] [--from <ref>]\n       node scripts/worktree.mjs down <ticket-slug>');
   process.exit(2);
+};
+const fail = (message) => {
+  console.error(`worktree ${command}: ${message}`);
+  process.exit(1);
 };
 if (!['up', 'down'].includes(command) || !slugArg) usage();
 // The slug names a branch, a folder and a database: letters, digits and dashes only.
@@ -36,15 +41,21 @@ const worktree = path.join(path.dirname(root), `${repo}-${slug}`);
 const ENV_FILES = ['.env', path.join('apps', 'backend', '.env'), path.join('apps', 'frontend', '.env')];
 const backendEnv = path.join('apps', 'backend', '.env');
 
-function sh(cmd, cwd = root, env = {}) {
-  console.log(`\n$ ${cmd}   (${path.relative(path.dirname(root), cwd) || '.'})`);
-  const res = spawnSync(cmd, { cwd, shell: true, stdio: 'inherit', env: { ...process.env, ...env } });
-  if ((res.status ?? 1) !== 0) {
-    console.error(`\nworktree ${command}: "${cmd}" exited ${res.status}; stopping here.`);
-    process.exit(res.status ?? 1);
-  }
+// Children never inherit a database URL from the caller's shell: each tree reads its own .env.
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !['DATABASE_URL', 'MIGRATION_DATABASE_URL'].includes(key.toUpperCase())),
+);
+
+// A string runs through the shell (npm and npx are .cmd shims on Windows) and is always a constant
+// of this file; anything carrying user input (git) is an argument array, with no shell in between.
+function sh(cmd, cwd = root) {
+  const [file, argv, shell] = Array.isArray(cmd) ? [cmd[0], cmd.slice(1), false] : [cmd, [], true];
+  const shown = Array.isArray(cmd) ? cmd.join(' ') : cmd;
+  console.log(`\n$ ${shown}   (${path.relative(path.dirname(root), cwd) || '.'})`);
+  const res = spawnSync(file, argv, { cwd, shell, stdio: 'inherit', env: childEnv });
+  if ((res.status ?? 1) !== 0) fail(`"${shown}" exited ${res.status}; stopping here.`);
 }
-const out = (cmd, cwd = root) => spawnSync(cmd, { cwd, shell: true, encoding: 'utf8' }).stdout.trim();
+const git = (argv, cwd = root) => spawnSync('git', argv, { cwd, encoding: 'utf8', env: childEnv });
 
 function readEnv(file) {
   const entries = {};
@@ -70,18 +81,22 @@ function rewriteEnv(file, fn) {
 function ownerUrl() {
   const env = readEnv(path.join(root, backendEnv));
   const raw = env.MIGRATION_DATABASE_URL ?? env.DATABASE_URL;
-  if (!raw) {
-    console.error(`worktree: no MIGRATION_DATABASE_URL or DATABASE_URL in ${backendEnv}`);
-    process.exit(1);
-  }
+  if (!raw) fail(`no MIGRATION_DATABASE_URL or DATABASE_URL in ${backendEnv}`);
   return new URL(raw);
 }
-const dbNameOf = (url) => url.pathname.replace(/^\//, '');
 const withDb = (value, name) => {
   const url = new URL(value.replace(/^"(.*)"$/, '$1'));
   url.pathname = `/${name}`;
   return url.toString();
 };
+
+// Postgres truncates identifiers past 63 bytes, so two long slugs could land on one database.
+const PG_MAX_IDENTIFIER = 63;
+const baseDb = decodeURIComponent(ownerUrl().pathname.replace(/^\//, ''));
+const dbName = `${baseDb}_${dbSuffix}`;
+if (Buffer.byteLength(dbName) > PG_MAX_IDENTIFIER) {
+  fail(`slug "${slug}" is too long: database "${dbName}" would pass Postgres's ${PG_MAX_IDENTIFIER}-byte limit; use at most ${PG_MAX_IDENTIFIER - Buffer.byteLength(baseDb) - 1} characters`);
+}
 
 // pg is the backend's own dependency (db/roles.mjs uses it); resolved from the main checkout.
 async function withOwner(fn) {
@@ -95,16 +110,25 @@ async function withOwner(fn) {
     await client.end();
   }
 }
+const databaseExists = async (client) => (await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName])).rowCount > 0;
 
-const portOf = (env, key, fallback) => Number(env[key] ?? fallback);
+const samePath = (a, b) => {
+  const norm = (p) => path.resolve(p).replace(/[\\/]+$/, '');
+  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+};
+function registeredWorktrees() {
+  const res = git(['worktree', 'list', '--porcelain']);
+  if (res.status !== 0) fail(`git worktree list exited ${res.status}`);
+  return res.stdout.split(/\r?\n/).filter((line) => line.startsWith('worktree ')).map((line) => line.slice('worktree '.length));
+}
+const isRegisteredWorktree = () => registeredWorktrees().some((dir) => samePath(dir, worktree));
 
 // The hundreds other worktrees of this repo already took, by the PORT in their backend .env.
 function nextOffset(basePort) {
   const used = new Set();
-  for (const line of out('git worktree list --porcelain').split(/\r?\n/)) {
-    const m = line.match(/^worktree (.+)$/);
-    if (!m || path.resolve(m[1]) === path.resolve(root)) continue;
-    const envFile = path.join(m[1], backendEnv);
+  for (const dir of registeredWorktrees()) {
+    if (samePath(dir, root)) continue;
+    const envFile = path.join(dir, backendEnv);
     if (!fs.existsSync(envFile)) continue;
     const port = Number(readEnv(envFile).PORT);
     if (port > basePort) used.add(Math.round((port - basePort) / 100) * 100);
@@ -114,22 +138,50 @@ function nextOffset(basePort) {
   return offset;
 }
 
+// `--name value`, where the value is required; any other argument is a mistake, never ignored.
+function parseFlags(argv, names) {
+  const flags = {};
+  for (let i = 0; i < argv.length; i += 2) {
+    const [name, value] = [argv[i], argv[i + 1]];
+    if (!names.includes(name)) fail(`unknown argument "${name}"`);
+    if (value === undefined || value === '' || value.startsWith('--')) fail(`${name} needs a value`);
+    flags[name] = value;
+  }
+  return flags;
+}
+function assertBranchName(flag, value) {
+  if (git(['check-ref-format', '--branch', value]).status !== 0) fail(`${flag} "${value}" is not a valid branch or ref name`);
+}
+
+const portOf = (env, key, fallback) => Number(env[key] ?? fallback);
+
 async function up() {
+  // The offset is optional: given, it is forced; absent, the first free hundred among this repo's worktrees.
+  const offsetArg = args[0] !== undefined && !args[0].startsWith('--') ? args[0] : undefined;
+  const rest = offsetArg === undefined ? args : args.slice(1);
   const be = readEnv(path.join(root, backendEnv));
   const fe = readEnv(path.join(root, 'apps', 'frontend', '.env'));
   const backendPort = portOf(be, 'PORT', 4000);
   const frontendPort = portOf(fe, 'PORT', 3000);
   const offset = offsetArg === undefined ? nextOffset(backendPort) : Number(offsetArg);
   if (!Number.isInteger(offset) || offset <= 0) usage();
-  const branch = rest[rest.indexOf('--branch') + 1] && rest.includes('--branch') ? rest[rest.indexOf('--branch') + 1] : `feat/${slug}`;
-  const from = rest.includes('--from') ? rest[rest.indexOf('--from') + 1] : out('git branch --show-current');
-  if (fs.existsSync(worktree)) {
-    console.error(`worktree: ${worktree} already exists; run "down ${slug}" first`);
-    process.exit(1);
+  const flags = parseFlags(rest, ['--branch', '--from']);
+  const branch = flags['--branch'] ?? `feat/${slug}`;
+  assertBranchName('--branch', branch);
+  let from = flags['--from'];
+  if (from === undefined) {
+    from = git(['branch', '--show-current']).stdout.trim();
+    if (!from) fail('HEAD is detached: pass --from <ref> to say where the branch starts');
+  }
+  // --from is any commit (a branch, a tag, a sha); only the new branch's name must pass check-ref-format
+  if (git(['rev-parse', '--verify', '--quiet', '--end-of-options', `${from}^{commit}`]).status !== 0) fail(`--from "${from}" is not a commit`);
+  if (fs.existsSync(worktree)) fail(`${worktree} already exists; run "down ${slug}" first`);
+  if (await withOwner(databaseExists)) {
+    fail(`database ${dbName} already exists but ${worktree} does not; it was not created by "up ${slug}" here, so it is not reused. Drop it by hand if it is a leftover, or pick another slug`);
   }
 
-  const exists = out(`git branch --list "${branch}"`) !== '';
-  sh(exists ? `git worktree add "${worktree}" "${branch}"` : `git worktree add "${worktree}" -b "${branch}" "${from}"`);
+  const exists = git(['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]).status === 0;
+  sh(exists ? ['git', 'worktree', 'add', worktree, branch] : ['git', 'worktree', 'add', worktree, '-b', branch, from]);
 
   // The untracked env files do not travel with the worktree.
   for (const rel of ENV_FILES) {
@@ -142,7 +194,6 @@ async function up() {
 
   const ports = { backend: backendPort + offset, frontend: frontendPort + offset };
   console.log(`ports: offset ${offset}${offsetArg === undefined ? ' (first free hundred among the worktrees)' : ''}`);
-  const dbName = `${dbNameOf(ownerUrl())}_${dbSuffix}`;
 
   rewriteEnv(path.join(worktree, backendEnv), (key, value) => {
     if (key === 'PORT') return String(ports.backend);
@@ -159,16 +210,15 @@ async function up() {
   });
 
   await withOwner(async (client) => {
-    const found = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
-    if (found.rowCount === 0) await client.query(`CREATE DATABASE "${dbName}"`);
-    console.log(`\ndatabase ${dbName}: ${found.rowCount === 0 ? 'created' : 'already there'}`);
+    await client.query(`CREATE DATABASE ${client.escapeIdentifier(dbName)}`);
+    console.log(`\ndatabase ${dbName}: created`);
   });
 
   const backendDir = path.join(worktree, 'apps', 'backend');
   sh('npm install --no-audit --no-fund', worktree);
   sh('npx prisma generate', backendDir);
   sh(fs.existsSync(path.join(backendDir, 'prisma', 'migrations')) ? 'npx prisma migrate deploy' : 'npx prisma db push', backendDir);
-  sh('npm run db:roles', backendDir);
+  sh('npm -w apps/backend run db:roles', worktree);
   if (fs.existsSync(path.join(backendDir, 'prisma', 'seed', 'main.ts'))) sh('npx prisma db seed', backendDir);
   // The turbo cache is keyed by content and declared env, and each worktree has its own: never --force.
   sh('npm run build', worktree);
@@ -180,30 +230,37 @@ worktree ready: ${worktree}
   backend    http://localhost:${ports.backend}
   frontend   http://localhost:${ports.frontend}
 
-Next reads PORT from the process, not from .env: start the dev servers with it set.
-  PORT=${ports.frontend} npm run dev              (in ${worktree})
+Start the dev servers from ${worktree}, one terminal each (same in bash and PowerShell; turbo's strict env
+would drop a PORT set in front of \`npm run dev\`):
+  npm -w apps/backend run start:dev                  (port ${ports.backend}, read from apps/backend/.env)
+  npm -w apps/frontend run dev -- -p ${ports.frontend}        (Next reads its port from the process, not .env)
 For a Playwright run against this tree:
   PLAYWRIGHT_BASE_URL=http://localhost:${ports.frontend}
-Done with it: node scripts/worktree.mjs down ${slug}`);
+Done with it: npm run worktree -- down ${slug}`);
 }
 
 async function down() {
-  const dbName = `${dbNameOf(ownerUrl())}_${dbSuffix}`;
+  if (args.length > 0) usage();
+  const registered = isRegisteredWorktree();
   await withOwner(async (client) => {
-    await client.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
+    if (!(await databaseExists(client))) {
+      console.log(`database ${dbName}: not there`);
+      return;
+    }
+    if (!registered) {
+      fail(`database ${dbName} exists but ${worktree} is not a git worktree; nothing proves "up ${slug}" created it, so it is kept. Drop it by hand if it is yours`);
+    }
+    await client.query(`DROP DATABASE ${client.escapeIdentifier(dbName)} WITH (FORCE)`);
     console.log(`database ${dbName}: dropped`);
   });
   if (fs.existsSync(worktree)) {
-    sh(`git worktree remove --force "${worktree}"`);
+    sh(['git', 'worktree', 'remove', '--force', worktree]);
     // On Windows git leaves the empty folder tree of node_modules behind, and exits 0.
     if (fs.existsSync(worktree)) fs.rmSync(worktree, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   } else {
     console.log(`worktree ${worktree}: already gone`);
   }
-  sh('git worktree prune');
+  sh(['git', 'worktree', 'prune']);
 }
 
-(command === 'up' ? up() : down()).catch((error) => {
-  console.error(`worktree ${command}: ${error.message}`);
-  process.exit(1);
-});
+(command === 'up' ? up() : down()).catch((error) => fail(error.message));
