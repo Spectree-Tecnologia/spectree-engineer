@@ -114,6 +114,8 @@ await step('check-boundaries-catches-a-leak', () => {
 // sem migration: o `npm test` do Nest é só unitário (e2e fica em test:e2e, que exige Postgres e não roda aqui)
 run('build', 'npm run build');
 run('test', 'npm test');
+// mutation testing of the probe module: Stryker runs its Vitest suite against each mutant and reports a score
+console.log(run('mutation', 'npm run mutation -- probe').trim().split(/\r?\n/).slice(-6).join('\n'));
 
 // prova do schema do .env: um JWT_SECRET curto derruba o processo antes de qualquer conexão, nomeando a variável
 await step('backend-refuses-bad-env', () => {
@@ -151,6 +153,15 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   // the smoke's own files stay out of the repo, or every later diff would name them
   fs.appendFileSync(path.join(root, '.gitignore'), ['', 'smoke.log', 'seed-rows.sql', ''].join(String.fromCharCode(10)));
   run('git-init', 'git init -q && git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm "feat: bootstrap"');
+  // the scanners the generated security.yml runs, by the same docker images: a fresh scaffold has no secret in its
+  // history (exit 0), and the lockfile scan reads the packages (0 or 1: a known vulnerability in today's latest is not ours)
+  run('gitleaks', `docker run --rm -v "${root}:/repo" ghcr.io/gitleaks/gitleaks:latest git --redact --no-banner /repo`);
+  await step('osv-scanner', () => {
+    const res = spawnSync(`docker run --rm -v "${root}:/repo" ghcr.io/google/osv-scanner:latest --lockfile=/repo/package-lock.json`, { cwd: root, shell: true, encoding: 'utf8' });
+    const out = `${res.stdout ?? ''}${res.stderr ?? ''}`;
+    fs.appendFileSync(logFile, `\n===== [osv-scanner]\n${out}`);
+    if (![0, 1].includes(res.status) || !/found \d+ packages/.test(out)) throw new Error(`osv-scanner exit ${res.status}: ${out.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+  });
   run('worktree-up', 'npm run worktree -- up t1 100');
   await step('worktree-ready', () => {
     const tree = path.join(path.dirname(root), `${path.basename(root)}-t1`);
