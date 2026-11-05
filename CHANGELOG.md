@@ -2,6 +2,16 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.12.0] - 2026-11-04
+
+Velocidade do loop, medida no SYND (CI de 6m46 com o perf em 3m42; seis verificações completas por item, cinco na máquina do fundador; review só depois do último ticket).
+
+### Changed
+- **Cache do turbo, nunca `--force`.** O cache é por hash de conteúdo e de env declarada (modo strict do `turbo.json` gerado) e cada worktree tem o seu: `worktree.mjs`, `platform-engineer` e `full-stack-developer` deixam de rebuildar tudo a cada merge e a cada worktree.
+- **Só o afetado no loop interno.** Entre tickets o platform-engineer prova com `npm run build && npx turbo run test --filter=...[<sha antes do merge>]`; o developer usa o mesmo filtro contra a integração enquanto itera; a suíte inteira (`npm test`) roda uma vez por item, na ponta do último ticket (passo 6 do Engineer).
+- **Perf proporcional ao diff.** `perf.mjs --changed <ref>`: só as rotas dos módulos que o diff toca (módulo por primeiro segmento do path, ou `route.module`); mudança em shared, prisma, db ou config roda todas; sem mudança de backend não sobe servidor e sai 0. CI: `--changed origin/main` no `pull_request`, inteiro no push da main. Passo 7: `--changed <sha da baseline>`. O smoke prova os dois casos.
+- **Review sobreposta ao build.** Mergeado um ticket, quality-engineer e security-engineer revisam o diff dele em paralelo com o próximo developer; correções entram na fila da fronteira antes do próximo ticket novo; a review do item (passo 7) cobre só o que mudou desde a última review de ticket, mais a coerência do conjunto.
+
 ## [0.11.0] - 2026-11-01
 
 ### Added
@@ -129,6 +139,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.12.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.8.0...v0.9.0
