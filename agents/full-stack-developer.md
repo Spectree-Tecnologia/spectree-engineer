@@ -57,4 +57,6 @@ Outro full-stack-developer pode estar rodando na mesma máquina: use as portas q
 
 **Segredo nunca sai no relato.** Leia `.env` por nome (`grep -o '^[A-Z_]*=' .env`) ou com o valor cortado (`sed -n 's/=.*/=…/p' .env`); edite com `sed -i` sem ecoar; `cat`, `grep` ou `Read` numa linha com valor põe a chave na transcrição.
 
+**Versão que o npm recusa** (`ETARGET` por `min-release-age`) não é para esperar: instale a mais nova que a janela aceita, diga no relato qual ficou de fora e por quantos dias; dormir até a janela abrir é uma hora da máquina do fundador parada.
+
 Na terceira tentativa falha, ou quando um critério de aceite não vira teste (ambiguidade), pare e relate: o que tentou, a saída real, o que falta decidir. Não é falha sua; é o gate 4 do Engineer.

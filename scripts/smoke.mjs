@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skills = path.join(plugin, 'skills', 'monolith');
@@ -33,6 +34,22 @@ const webPort = await freePort();
 const dbCompose = `docker compose -p ${path.basename(root).toLowerCase()}-db`;
 
 console.log(`project: ${root}`);
+
+// A step that must fail: exit code not 0 and the output naming why; the smoke goes on.
+function refuse(name, command, pattern, { cwd = root } = {}) {
+  const t0 = Date.now();
+  const res = spawnSync(command, { cwd, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, CI: '1', FORCE_COLOR: '0' } });
+  const out = `${res.stdout ?? ''}${res.stderr ?? ''}`;
+  fs.appendFileSync(logFile, `\n===== [${name}] ${command}\n${out}`);
+  const ok = (res.status ?? 0) !== 0 && pattern.test(out);
+  console.log(`[STEP] ${name} → ${ok ? 'refused as expected' : `NOT refused (exit ${res.status})`} (${Math.round((Date.now() - t0) / 1000)}s)`);
+  if (!ok) {
+    console.log(out.trimEnd().split(/\r?\n/).slice(-12).join('\n'));
+    console.log(`\nfull log: ${path.join(root, 'smoke.log')}`);
+    process.exit(1);
+  }
+  return out;
+}
 
 function run(name, command, { cwd = root } = {}) {
   const t0 = Date.now();
@@ -155,9 +172,14 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   run('git-init', 'git init -q && git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm "feat: bootstrap"');
   // the scanners the generated security.yml runs, by the same docker images: a fresh scaffold has no secret in its
   // history (exit 0), and the lockfile scan reads the packages (0 or 1: a known vulnerability in today's latest is not ours)
-  run('gitleaks', `docker run --rm -v "${root}:/repo" ghcr.io/gitleaks/gitleaks:latest git --redact --no-banner /repo`);
+  // the same pinned image as the generated security.yml; a scan of 0 commits is the Windows false pass, not a clean repo
+  const scanned = run('gitleaks', `docker run --rm -v "${root}:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact --no-banner /repo`);
+  await step('gitleaks-scanned-history', () => {
+    const commits = Number(scanned.match(/(\d+) commits? scanned/)?.[1] ?? 0);
+    if (commits < 1) throw new Error(`gitleaks scanned ${commits} commits: the mount is empty (Windows false pass)`);
+  });
   await step('osv-scanner', () => {
-    const res = spawnSync(`docker run --rm -v "${root}:/repo" ghcr.io/google/osv-scanner:latest --lockfile=/repo/package-lock.json`, { cwd: root, shell: true, encoding: 'utf8' });
+    const res = spawnSync(`docker run --rm -v "${root}:/repo" ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0 --lockfile=/repo/package-lock.json`, { cwd: root, shell: true, encoding: 'utf8' });
     const out = `${res.stdout ?? ''}${res.stderr ?? ''}`;
     fs.appendFileSync(logFile, `\n===== [osv-scanner]\n${out}`);
     if (![0, 1].includes(res.status) || !/found \d+ packages/.test(out)) throw new Error(`osv-scanner exit ${res.status}: ${out.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
@@ -175,6 +197,27 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   run('worktree-down', 'npm run worktree -- down t1');
   await step('worktree-gone', () => {
     if (fs.existsSync(path.join(path.dirname(root), `${path.basename(root)}-t1`))) throw new Error('worktree folder still there');
+  });
+  // the refusals: a database nobody's `up` created is never reused nor dropped; a long slug, a bad ref and a bare flag stop before anything
+  await step('worktree-refusals', async () => {
+    const { Client } = createRequire(path.join(backendDir, 'package.json'))('pg');
+    const owner = fs.readFileSync(path.join(backendDir, '.env'), 'utf8').match(/^MIGRATION_DATABASE_URL\s*=\s*"?([^"\r\n]+)"?/m)[1];
+    const dbName = `${new URL(owner).pathname.slice(1)}_t2`;
+    const sql = async (text) => { const c = new Client({ connectionString: owner }); await c.connect(); try { await c.query(text); } finally { await c.end(); } };
+    await sql(`CREATE DATABASE "${dbName}"`);
+    try {
+      refuse('worktree-up-existing-db', 'npm run worktree -- up t2', /already exists but .* does not/);
+      refuse('worktree-down-unregistered', 'npm run worktree -- down t2', /is not a git worktree; .* kept/);
+      const c = new Client({ connectionString: owner }); await c.connect();
+      const kept = (await c.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName])).rowCount === 1;
+      await c.end();
+      if (!kept) throw new Error(`${dbName} was dropped by a down that owned no worktree`);
+    } finally {
+      await sql(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
+    }
+    refuse('worktree-up-long-slug', `npm run worktree -- up ${'a'.repeat(70)}`, /too long/);
+    refuse('worktree-up-bad-from', 'npm run worktree -- up t3 --from nope', /is not a commit/);
+    refuse('worktree-up-bare-flag', 'npm run worktree -- up t3 --branch', /needs a value/);
   });
 
   // capacity is a test (architecture rule 11): plant an N+1 in the example adapter, the budget test must fail naming it
@@ -251,12 +294,30 @@ export class ProbeController {
   // perf proportional to the diff: a change inside modules/probe measures /probe alone; no change measures nothing
   await step('perf-changed', () => {
     const none = run('perf-changed-none', 'npm run perf -- --changed HEAD');
-    if (!/perf: 0 of \d+ routes \(no backend change\)/.test(none)) throw new Error(`expected no route with a clean tree, got: ${none.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+    if (!/perf: 0 of \d+ routes selected \(no backend change found\)/.test(none)) throw new Error(`expected no route with a clean tree, got: ${none.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+    // the ref is user input: a shell in it never runs, an option-shaped ref never reaches git
+    refuse('perf-changed-injection', 'npm run perf -- --changed "HEAD & echo modules/x/y"', /is not a commit/);
+    refuse('perf-changed-option-ref', 'npm run perf -- --changed --output=x', /is not a commit/);
+    // a backend file outside any module runs every route; a backend test file alone runs none
+    fs.appendFileSync(path.join(backendDir, 'src', 'main.ts'), '\n// perf --changed main\n');
+    try {
+      const all = run('perf-changed-main', 'npm run perf -- --changed HEAD');
+      if (!/perf: (\d+) of \1 routes selected \(apps\/backend\/src\/main\.ts is outside any module: every route\)/.test(all)) throw new Error(`expected every route for main.ts, got: ${all.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+    } finally {
+      run('perf-changed-restore-main', 'git checkout -- apps/backend/src/main.ts');
+    }
+    fs.writeFileSync(path.join(backendDir, 'test', 'perf-probe.txt'), 'only a test file\n');
+    try {
+      const tests = run('perf-changed-tests', 'npm run perf -- --changed HEAD');
+      if (!/perf: 0 of \d+ routes selected \(0 routes: only backend tests changed\)/.test(tests)) throw new Error(`expected no route for a test file, got: ${tests.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+    } finally {
+      fs.rmSync(path.join(backendDir, 'test', 'perf-probe.txt'), { force: true });
+    }
     const probeFile = fs.readdirSync(path.join(root, 'modules', 'probe', 'src')).map((f) => path.join(root, 'modules', 'probe', 'src', f)).find((f) => f.endsWith('.ts') && fs.statSync(f).isFile());
     fs.appendFileSync(probeFile, '\n// perf --changed probe\n');
     try {
       const some = run('perf-changed-probe', 'npm run perf -- --changed HEAD');
-      if (!/perf: 1 of \d+ routes \(modules probe\)/.test(some)) throw new Error(`expected /probe alone, got: ${some.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+      if (!/perf: 1 of \d+ routes selected \(modules probe\)/.test(some)) throw new Error(`expected /probe alone, got: ${some.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
       if (!/\/probe/.test(some) || !/OK/.test(some)) throw new Error('the /probe route was not measured');
     } finally {
       run('perf-changed-restore', 'git checkout -- modules/probe');
