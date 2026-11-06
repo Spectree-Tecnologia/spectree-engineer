@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.16.0] - 2026-11-06
+
+Retro dos itens `ci-hardening`, `deps-upgrade` e `tx-rollback` (PILOT): #42 #43 #44 #45 #46 #47. Os scripts endurecidos que o PILOT revisou (pilot-agent-system#9) voltam ao template.
+
+### Fixed
+- `worktree.mjs`: `up` recusa um `<db>_<slug>` que já existe e `down` só dropa quando `../<repo>-<slug>` é worktree registrada (banco órfão é relatado e mantido); filhos não herdam `DATABASE_URL`/`MIGRATION_DATABASE_URL` do shell; slug limitado aos 63 bytes do Postgres; `--branch` validado por `git check-ref-format`, `--from` por `rev-parse --verify`, flag sem valor recusada, HEAD detached recusado; git por array de argumentos sem shell e identificador SQL por `escapeIdentifier`; `db:roles` via `npm -w apps/backend`; a dica de dev server é `npm -w apps/backend run start:dev` e `npm -w apps/frontend run dev -- -p <porta>` (o `turbo run dev` em modo strict descarta `PORT`). O offset automático da 0.15.0 fica. Smoke prova as cinco recusas. (#42)
+- `perf.mjs --changed`: git por `execFileSync` com `--end-of-options` e o ref verificado como commit (injeção de shell e ref em forma de opção viram uma linha e exit 1); qualquer arquivo de `apps/backend` fora de `src/modules/<m>/`, `test/` e `src/cli/` roda todas as rotas (`main.ts`, `db/`, `shared/`, `prisma/`, configs); `test/` e `src/cli/` sozinhos rodam nenhuma, dizendo isso; fixture que uma rota envia (`route.multipart.file`) seleciona a rota; `route.modules: [...]` para rota de composição, que o `config-new-module` já escreve. Smoke prova injeção, `main.ts` e arquivo de teste. (#43)
+- `security.yml` gerado: `permissions: contents: read`, `persist-credentials: false`, `github.base_ref` só via `env:`, imagens pinadas por tag e digest (gitleaks v8.30.1, osv-scanner v2.7.0) e `squawk-cli@2.70.0`; o bump é do platform-engineer na vigilância de stack. Card: fingerprint do gitleaks só de commit na main (squash descarta os da branch), `gitleaks:allow` inline e `.gitleaks.toml` estreito, prova da branch squashada, prova local no Windows com `$(pwd -W)` e `--no-local`; job Playwright só eleva limites que a suíte não afirma, `forbidOnly` no CI, `tee frontend.log`, `retention-days` nos logs. Smoke recusa um scan de 0 commits. (#44)
+- Passo 7 do Engineer: perf num banco descartável por `createdb` + env exportado + `migrate deploy` + `db:roles` + seed + `dropdb`; nunca `prisma migrate reset`, que o Prisma recusa a um agente sem consentimento do fundador. (#47)
+
+### Added
+- Ticket de major de dependência: versão exata dentro da janela do `min-release-age` (o integration-engineer traz data de publicação e marca `within window`/`too new`; o developer nunca espera a janela) e critério "todo consumidor resolve o major novo: `npm ls <pkg> --all` com uma versão só"; o quality-engineer prova com o traço de resolução de cada plugin. (#45 #46)
+
 ## [0.15.0] - 2026-11-05
 
 Retro do item `pilot-memory` (PILOT): #38 #39.
@@ -163,6 +176,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.16.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.12.0...v0.13.0

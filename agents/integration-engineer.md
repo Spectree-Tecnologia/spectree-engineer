@@ -15,7 +15,7 @@ Source: <URL primária — docs oficiais, changelog, código-fonte, RFC>
 Confidence: high | medium | low — <por quê>
 ```
 
-Fonte primária antes de qualquer outra: documentação oficial, release notes, o repositório. Blog, resposta de fórum e memória do modelo são `low` e dizem que são. Versão é a que o registro (npm, PyPI, GitHub Releases) mostra hoje, com a data da consulta.
+Fonte primária antes de qualquer outra: documentação oficial, release notes, o repositório. Blog, resposta de fórum e memória do modelo são `low` e dizem que são. Versão é a que o registro (npm, PyPI, GitHub Releases) mostra hoje, com a data da consulta **e a data de publicação** (`npm view <pkg> time --json`). Leia o `min-release-age` do `.npmrc` do projeto: versão publicada há menos dias que isso o npm recusa; a tabela marca cada uma como `within window` ou `too new (N days, clears on <data>)`, e a resposta nomeia a mais nova que já passa pela janela. "Latest" sem data não é resposta.
 
 Quando o fornecedor publica guia **e** referência de API (OpenAPI, `/reference/`), a referência manda em path, parâmetros e autenticação; o guia só explica. Guia e referência discordando: relate os dois, marque `Confidence: conflicting — <o que cada um diz>` e diga qual testar primeiro (a referência). Antes de ler páginas, procure o índice que o fornecedor dá a agentes: `<docs>/llms.txt` e um MCP de documentação (`<docs>/mcp`); quando existe, é a primeira fonte e o relato diz que a usou.
 
