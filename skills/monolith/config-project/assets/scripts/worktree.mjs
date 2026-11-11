@@ -1,4 +1,4 @@
-// One worktree per ticket, ready to build in: own branch, own database, own ports, the frontend
+// One isolated worktree, ready to build in: own branch, own database, own ports, the frontend
 // built against its own backend. Every step runs in order and the first non-zero exit stops it.
 //
 //   node scripts/worktree.mjs up <ticket-slug> [offset] [--branch <name>] [--from <ref>]
@@ -133,9 +133,55 @@ function nextOffset(basePort) {
     const port = Number(readEnv(envFile).PORT);
     if (port > basePort) used.add(Math.round((port - basePort) / 100) * 100);
   }
+  return used;
+}
+
+// Two `up` at the same moment would both read the same free hundred, and the two trees would fight for one port.
+// The offset is reserved by a folder in the git common dir (mkdir is atomic), named after the offset and holding
+// the slug. `down` frees it; a reservation whose worktree never appeared is reclaimed after half an hour.
+function reservationsDir() {
+  const common = git(['rev-parse', '--git-common-dir']);
+  if (common.status !== 0) fail(`git rev-parse --git-common-dir exited ${common.status}`);
+  return path.join(path.resolve(root, common.stdout.trim()), 'spectree-worktree-offsets');
+}
+function reserveOffset(basePort, forced) {
+  const dir = reservationsDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const registered = registeredWorktrees();
+  for (const name of fs.readdirSync(dir)) {
+    const slugFile = path.join(dir, name, 'slug');
+    const owner = fs.existsSync(slugFile) ? fs.readFileSync(slugFile, 'utf8').trim() : '';
+    const alive = owner && registered.some((tree) => samePath(tree, path.join(path.dirname(root), `${repo}-${owner}`)));
+    const stale = Date.now() - fs.statSync(path.join(dir, name)).mtimeMs > 30 * 60 * 1000;
+    if (!alive && stale) fs.rmSync(path.join(dir, name), { recursive: true, force: true });
+  }
+  const used = nextOffset(basePort);
+  const take = (offset) => {
+    if (used.has(offset)) return false;
+    try {
+      fs.mkdirSync(path.join(dir, String(offset)));
+    } catch (error) {
+      if (error.code === 'EEXIST') return false;
+      throw error;
+    }
+    fs.writeFileSync(path.join(dir, String(offset), 'slug'), slug);
+    return true;
+  };
+  if (forced !== undefined) {
+    if (!take(forced)) fail(`offset ${forced} is taken by another worktree of this repository; leave it out and the first free one is picked`);
+    return forced;
+  }
   let offset = 100;
-  while (used.has(offset)) offset += 100;
+  while (!take(offset)) offset += 100;
   return offset;
+}
+function releaseOffset() {
+  const dir = reservationsDir();
+  if (!fs.existsSync(dir)) return;
+  for (const name of fs.readdirSync(dir)) {
+    const slugFile = path.join(dir, name, 'slug');
+    if (fs.existsSync(slugFile) && fs.readFileSync(slugFile, 'utf8').trim() === slug) fs.rmSync(path.join(dir, name), { recursive: true, force: true });
+  }
 }
 
 // `--name value`, where the value is required; any other argument is a mistake, never ignored.
@@ -163,8 +209,8 @@ async function up() {
   const fe = readEnv(path.join(root, 'apps', 'frontend', '.env'));
   const backendPort = portOf(be, 'PORT', 4000);
   const frontendPort = portOf(fe, 'PORT', 3000);
-  const offset = offsetArg === undefined ? nextOffset(backendPort) : Number(offsetArg);
-  if (!Number.isInteger(offset) || offset <= 0) usage();
+  const forcedOffset = offsetArg === undefined ? undefined : Number(offsetArg);
+  if (forcedOffset !== undefined && (!Number.isInteger(forcedOffset) || forcedOffset <= 0)) usage();
   const flags = parseFlags(rest, ['--branch', '--from']);
   const branch = flags['--branch'] ?? `feat/${slug}`;
   assertBranchName('--branch', branch);
@@ -180,6 +226,8 @@ async function up() {
     fail(`database ${dbName} already exists but ${worktree} does not; it was not created by "up ${slug}" here, so it is not reused. Drop it by hand if it is a leftover, or pick another slug`);
   }
 
+  // reserved only now, with every refusal behind: a failed `up` leaves no offset taken
+  const offset = reserveOffset(backendPort, forcedOffset);
   const exists = git(['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]).status === 0;
   sh(exists ? ['git', 'worktree', 'add', worktree, branch] : ['git', 'worktree', 'add', worktree, '-b', branch, from]);
 
@@ -193,7 +241,7 @@ async function up() {
   }
 
   const ports = { backend: backendPort + offset, frontend: frontendPort + offset };
-  console.log(`ports: offset ${offset}${offsetArg === undefined ? ' (first free hundred among the worktrees)' : ''}`);
+  console.log(`ports: offset ${offset}${offsetArg === undefined ? ' (first free hundred among the worktrees, reserved)' : ''}`);
 
   rewriteEnv(path.join(worktree, backendEnv), (key, value) => {
     if (key === 'PORT') return String(ports.backend);
@@ -261,6 +309,7 @@ async function down() {
     console.log(`worktree ${worktree}: already gone`);
   }
   sh(['git', 'worktree', 'prune']);
+  releaseOffset();
 }
 
 (command === 'up' ? up() : down()).catch((error) => fail(error.message));

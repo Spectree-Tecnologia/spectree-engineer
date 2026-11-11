@@ -20,7 +20,7 @@ The contract has two readers who never talk to each other: the owner, who builds
    - **Actors and scenarios.** Who uses this and what each one is trying to do, as short scenarios: the main path, the paths that go wrong, the ones that must be refused. This is where the breadth of the behaviour lives; the criteria below pick what decides the goal.
    - **Decided already.** The product rules that are settled, each with its reason, because a reason lets the builder decide the cases you did not foresee. Cite the glossary term, the ADR or the decision line.
    - **What exists today.** What the goal touches or resembles in the product as it is: the modules and screens involved, the contracts already there, and one piece of existing work that is the house pattern to read first. State facts ("accounts already refuses another user's id with 404"), never instructions ("add a guard").
-   - **Facts from outside.** What an external system really does, with the source: version, payload, limit, error. Never from memory.
+   - **Facts from outside.** What an external system really does, with the source: version, payload, limit, error. Never from memory. A vendor's example payload keeps its shape and its id formats, since that is the point of quoting it, except for token-shaped values (card tokens, keys, wallet ids, Pix keys): those become a placeholder such as `<docs-example-token>` before anything is committed, because a secret scan reads every commit and cannot be told it was only an example.
    - **Prior thinking, when there is some.** An approach someone sketched, a prototype, a spec from before. Label it as that: it informs the owner and does not bind it.
    - **Unknowns.** What you do not know and the owner will have to find out or raise. An honest gap is worth more than a confident guess.
    - **Priorities.** What wins when two good things pull apart (simplicity over configurability, correctness of money over latency).
@@ -31,6 +31,8 @@ The contract has two readers who never talk to each other: the owner, who builds
 
    - **Observable from outside the code.** A behaviour through the API or the screen, a number, a state of the data. Never "the code has X" or "uses Y".
    - **Decided by a proof.** A command whose exit code decides it, a measurement against a threshold, or an observation someone else can repeat (the built screen against the approved artboard). The proof may name a test that does not exist yet: say what it must assert, and at which seam, the highest one that exercises the behaviour.
+   - **Run by a script wherever a command can decide it.** Write the command in the Proof cell as ``run: `<command>` ``, runnable from the project root, then what it must assert. The owner, the verifier and the orchestrator all run the same line through `npm run goal -- prove <slug>`, and the exit code is the verdict's evidence. A proof that needs a database is still one command: whoever runs it gives it a database of its own. A proof with no `run:` is decided by hand, so keep those for what only eyes can judge.
+   - **Exact about what was approved.** A criterion about an approved screen names the artboard and quotes its copy and its geometry as the artboard has them (or points at the line of the artboard's code), never a paraphrase from notes: the owner builds what the criterion says, and a paraphrase that drifts from the approved visual costs a round.
    - **Complete in its cases.** Name the cases inside the criterion: the main one, the edges, what is refused. A verifier will try the case you left out.
    - **Not an adjective.** "Faster", "simpler", "robust" and "secure" are wishes. Turn each into the number or the observable behind it, or ask the user for it.
    - **Negative too.** What must be refused, what must not appear, what must not regress. A goal stated only by its happy path is met by the wrong system as well.
@@ -40,13 +42,13 @@ The contract has two readers who never talk to each other: the owner, who builds
 
 5. Write the **limits**: what must stay true and what must not be touched while getting there. Public contracts other code or other people depend on, data that already exists, money and external services, and what is out of scope. A limit is a boundary the owner stops at and reports, not a preference.
 
-6. Set the **budget**: how many rounds of independent verification the goal gets before the user is asked again. Default 3.
+6. Set the **budget**: how many rounds of independent verification the goal gets before the user is asked again (default 3), and how large the change may grow before it is landed in parts (default 4000 changed lines of product code; tests, documents and the lockfile do not count). Set it by what a reviewer can hold, and remember that every part landed is a pull request and a CI run: a budget too small buys runs, not quality. A goal that passes its size is not finished later: what is met lands, and the rest continues as its own goal.
 
 7. Do not restate the project's standing gates (build, tests, boundary checks, latency budgets, review). They hold for every goal and live in the project's own documents. Name one here only when this goal tightens it, as a criterion with its number.
 
 8. The objective is the user's; the criteria are yours to write. When the objective is already approved scope (an item of the roadmap), derive the criteria from what is already decided, record the approval and report the contract without waiting. Ask the user, once, only when the goal is new scope or a criterion makes a product rule nobody decided: show the contract, with your recommendation. Never ask the user how to build it.
 
-9. Write the contract to `docs/goals/<slug>.md` with the template below. The slug is the branch's slug.
+9. Write the contract to `docs/goals/<slug>.md` with the template below. The slug is the branch's slug. Where the project has the script, `npm run goal -- check <slug>` must exit 0 before you go on.
 
 10. Read it once more as the owner would, with nothing else in hand. Whatever you had to remember to understand it is missing from the context: add it.
 
@@ -105,6 +107,7 @@ Who gets what, and why it matters now. No solution.
 ## Budget
 
 Verification rounds: 3.
+Size: 4000 changed lines of product code.
 
 ## Evidence
 
@@ -113,9 +116,28 @@ Filled by the orchestrator from what the verifiers ran, never by the owner. One 
 | # | Round | Verdict | Command run by the verifier and its exit code |
 |---|-------|---------|-----------------------------------------------|
 
+## Amendments
+
+A criterion changes only here, never by editing the table above in silence.
+
+| Date | # | Change | Decided by | Follow-up |
+|------|---|--------|------------|-----------|
+
 </goal-template>
 
-`Status` moves through `proposed`, `approved by <who> on <date>`, `met on <date>` or `stopped on <date>: <why>`. Verdicts are `met`, `not met` or `weak proof` (the proof passes but would also pass without the behaviour).
+`Status` moves through `proposed`, `approved by <who> on <date>`, `met on <date>` or `stopped on <date>: <why>`. Verdicts are `met`, `not met`, `weak proof` (the proof passes but would also pass without the behaviour) or `waived` (an amendment took the criterion out). There is no "met, with a caveat": a criterion that was not met as written is amended or it is not met.
+
+## Amending a contract
+
+A contract changes after approval only by a row in `## Amendments`, written by the orchestrator, with the date, the criterion, who decided and where the rest continues. The `Change` cell starts with the kind and then says what changed, keeping the words that were replaced:
+
+- `narrowed`: the criterion now asks for less. The user decides. The part left out continues in a goal named in Follow-up.
+- `waived`: the criterion is dropped from this goal. The user decides. Follow-up names the goal that takes it, or says why nothing does.
+- `moved`: the criterion goes to a continuation goal because this one passed its size or was split by outcome. Same approved scope, so the orchestrator decides. Follow-up names the new goal, and the row leaves this contract's criteria table.
+- `added`: a new criterion. The user decides when it makes a product rule nobody decided; the orchestrator when it follows from one already recorded.
+- `reworded`: the same demand in clearer words, or a proof corrected. The orchestrator decides.
+
+Then edit the criteria table to match, and record `waived` in the evidence for a waived criterion.
 
 <criterion-examples>
 

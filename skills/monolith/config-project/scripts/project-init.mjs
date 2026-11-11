@@ -1089,6 +1089,8 @@ async function patchRootPackageJson(rootDir, scope) {
   // mutation testing per module (StrykerJS, Apache 2.0): the quality-engineer runs it on the modules a diff touched
   pkg.scripts.mutation = 'node scripts/mutation.mjs';
   pkg.scripts['check:pr'] = pkg.scripts['check:pr'] ?? 'node scripts/check-pr.mjs';
+  pkg.scripts['db:scratch'] = pkg.scripts['db:scratch'] ?? 'node scripts/db-scratch.mjs';
+  pkg.scripts.goal = pkg.scripts.goal ?? 'node scripts/goal.mjs';
   pkg.devDependencies = pkg.devDependencies ?? {};
   // "*": the lockfile pins what npm install resolved, Dependabot moves it; nothing is pinned by hand
   pkg.devDependencies['@stryker-mutator/core'] = pkg.devDependencies['@stryker-mutator/core'] ?? '*';
@@ -1134,6 +1136,18 @@ async function patchRootPackageJson(rootDir, scope) {
     ensureNewline: false,
     markRiskOnOverwrite: false,
     note: 'the pull-request-only gates of ci.yml, run locally before the PR',
+  });
+  const dbScratchScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'db-scratch.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'db-scratch.mjs'), await fs.readFile(dbScratchScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'a throwaway database for one command: created, migrated, seeded, dropped',
+  });
+  const goalScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'goal.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'goal.mjs'), await fs.readFile(goalScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'the goal contract by script: check its shape, run its proofs, measure its size',
   });
   // Stryker's scratch and incremental report stay out of git
   const rootGitignore = path.join(rootDir, '.gitignore');
@@ -1482,6 +1496,11 @@ async function patchFrontendNextConfig({ rootDir, frontendPath }) {
 }
 
 async function main() {
+  // The release cooldown holds from the first install, not from the moment .npmrc is written further down:
+  // create-turbo and the Nest CLI install before that file exists, and a version published hours earlier got into
+  // the lockfile (2026-11-11: a native binary so new that Windows refused to load it). Every npm and npx this
+  // script starts inherits it; a dist-tag newer than the window resolves to the newest version inside it.
+  process.env.npm_config_min_release_age ??= '3';
   // Always apply bootstrap to the current working directory where the user invokes the skill.
   const rootDir = process.cwd();
   const logger = await createSkillRunLogger({
