@@ -1,5 +1,6 @@
 ---
 name: module-value-object
+user-invocable: false
 description: Criar, revisar ou orientar a implementação de Value Objects de módulo no projeto. Usar quando o pedido envolver "value object", "objeto de valor", "VO", regras de validação e normalização para atributos de domínio, criação de novos arquivos com padrão `ValueObject` + `Result`, ou a skill `module-value-object`.
 ---
 

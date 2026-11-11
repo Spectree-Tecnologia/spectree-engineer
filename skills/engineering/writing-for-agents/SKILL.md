@@ -1,5 +1,6 @@
 ---
 name: writing-for-agents
+user-invocable: false
 description: Writing documents for agents. Use when creating or editing skills, or modifying AGENTS.md or CLAUDE.md.
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: retro
+user-invocable: false
 description: "Conduct a retrospective on a coding session."
 ---
 

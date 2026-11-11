@@ -1,5 +1,6 @@
 ---
 name: module-use-case
+user-invocable: false
 description: Criar, revisar ou orientar a implementação de casos de uso de módulo (application services) no padrão do projeto. Usar quando o pedido envolver "caso de uso", "use case", arquivos `*.use-case.ts`, orquestração de entidades/repositórios/queries, regras de negócio de aplicação, mapeamento de falhas com `Result`, criação/ajuste de testes de use case ou a skill `module-use-case`.
 ---
 

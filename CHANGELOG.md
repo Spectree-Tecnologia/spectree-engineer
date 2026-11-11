@@ -2,6 +2,11 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.21.1] - 2026-11-11
+
+### Fixed
+- **As skills saem do menu de comandos.** As 32 skills do plugin são ferramentas dos agentes do squad, e apareciam como `/spectree-engineer:<skill>` no app desktop e na CLI. Toda `SKILL.md` declara agora `user-invocable: false`: some do menu e continua chamável pelo Engineer e pelos especialistas. O único comando que o fundador digita é `/engineer`. Guarda: `tests/skills.test.mjs`.
+
 ## [0.21.0] - 2026-11-11
 
 Sete mudanças tiradas dos dois objetivos reais do SYND, que gastaram as três rodadas num único critério e chamaram o fundador.
@@ -278,6 +283,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.21.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.0...v0.19.1

@@ -1,5 +1,6 @@
 ---
 name: config-shared-frontend
+user-invocable: false
 description: Configura a estrutura compartilhada (shared/) e as rotas Next.js (grupos public/private) em um projeto frontend de destino. A navegação NÃO fica em shared/ — os caminhos são estado da aplicação e vivem no layout do grupo (private). Gera menu único, landing page, tela de auth de exemplo e um dashboard aberto (sem bloqueio de auth). Usa os assets embarcados nesta skill como fonte — nenhuma dependência de projeto específico em runtime.
 tools: Read, Glob, Grep, Bash, Write, Edit
 ---

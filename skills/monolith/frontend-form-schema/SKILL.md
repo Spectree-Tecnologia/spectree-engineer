@@ -1,5 +1,6 @@
 ---
 name: frontend-form-schema
+user-invocable: false
 description: 'Criar, revisar ou orientar forms frontend e schemas de validação no padrão do projeto Web. Usar quando o pedido envolver componentes de formulário React Hook Form, arquivos `apps/frontend/src/modules/<domain>/data/*.schema.ts`, validação com `v` (`@namespace/shared`), tipagem com `v.infer`, campos opcionais/refinamentos/arrays e integração de erro com componentes de form compartilhados.'
 ---
 
