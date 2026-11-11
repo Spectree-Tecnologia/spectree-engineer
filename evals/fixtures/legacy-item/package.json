@@ -1,0 +1,11 @@
+{
+  "name": "lab",
+  "private": true,
+  "workspaces": ["apps/*", "modules/*", "packages/*"],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "node scripts/check-boundaries.mjs && turbo run test",
+    "perf": "node scripts/perf.mjs",
+    "check:pr": "node scripts/check-pr.mjs"
+  }
+}

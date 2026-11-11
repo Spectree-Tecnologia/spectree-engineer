@@ -3,14 +3,14 @@
   "owner": {
     "name": "Spectree Tecnologia"
   },
-  "description": "Marketplace da Spectree Tecnologia: o Engineer, orquestrador em pt-BR para monólitos modulares spec-driven.",
+  "description": "Marketplace da Spectree Tecnologia: o Engineer, orquestrador em pt-BR para monólitos modulares em Goal Driven Development.",
   "plugins": [
     {
       "name": "spectree-engineer",
       "source": "./",
       "description": "Orquestrador em pt-BR com sub-agentes especialistas: skills de engenharia de Matt Pocock como processo, skills de monólito modular da Spectree como padrão de arquitetura.",
       "category": "engineering",
-      "keywords": ["orchestrator", "spec-driven", "modular-monolith", "tdd"]
+      "keywords": ["orchestrator", "goal-driven", "modular-monolith", "tdd"]
     }
   ]
 }
