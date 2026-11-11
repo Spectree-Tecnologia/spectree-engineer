@@ -557,6 +557,20 @@ async function main() {
     // the extends above is a path, invisible to `turbo prune`: declaring the package keeps it in the Docker build
     const tsConfigPackageJsonPath = path.join(path.dirname(tsConfigBasePath), 'package.json');
     const tsConfigPackageName = (await pathExists(tsConfigPackageJsonPath)) ? (await readJson(tsConfigPackageJsonPath)).name : '';
+    // the test runner's range is the project's, read from a module that already exists (a major bumped by an
+    // upgrade must not come back pinned in the next module); the template's own range only for the first one
+    const siblingRange = async (dependency) => {
+      const siblings = (await pathExists(modulesDir)) ? await fs.readdir(modulesDir) : [];
+      for (const sibling of siblings.sort()) {
+        const siblingPkgPath = path.join(modulesDir, sibling, 'package.json');
+        if (sibling === moduleName || !(await pathExists(siblingPkgPath))) continue;
+        const range = (await readJson(siblingPkgPath)).devDependencies?.[dependency];
+        if (range) return range;
+      }
+      return undefined;
+    };
+    const vitestRange = (await siblingRange('vitest')) ?? '^4.1.2';
+    const coverageRange = (await siblingRange('@vitest/coverage-v8')) ?? vitestRange;
     const moduleClassName = toPascalCase(moduleName);
     const backendControllerClassName = `${moduleClassName}Controller`;
     const backendPrismaClassName = `${moduleClassName}Prisma`;
@@ -616,8 +630,8 @@ async function main() {
         [sharedDependency]: '*',
       },
       devDependencies: {
-        '@vitest/coverage-v8': '^4.1.2',
-        vitest: '^4.1.2',
+        '@vitest/coverage-v8': coverageRange,
+        vitest: vitestRange,
         ...(tsConfigPackageName ? { [tsConfigPackageName]: '*' } : {}),
       },
     };

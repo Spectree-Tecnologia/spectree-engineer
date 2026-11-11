@@ -99,6 +99,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # the contract of the goal this pull request delivers: approved, every criterion's latest verdict met, or waived
+      # by an amendment. No dependency needed; a pull request with no contract has nothing to check.
+      - name: Goal contract
+        if: github.event_name == 'pull_request'
+        run: node scripts/goal.mjs check --ready --changed "origin/$BASE_REF"
+
       # npm reads the tree from package-lock.json: no install needed. osv-scanner.toml beside the lockfile lists the ids
       # ignored, each with a reason. Pin as above.
       - name: npm audit and osv-scanner (the lockfile against the advisory databases)

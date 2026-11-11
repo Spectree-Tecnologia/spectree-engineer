@@ -33,6 +33,9 @@ const webPort = await freePort();
 // compose project per run: `apps/backend` alone would name the network/volume `backend_*` in every run
 const dbCompose = `docker compose -p ${path.basename(root).toLowerCase()}-db`;
 
+// the smoke measures whatever else this machine is doing: the busy-machine refusal of perf is proved on purpose below
+process.env.PERF_MAX_CPU = '100';
+
 console.log(`project: ${root}`);
 
 // A step that must fail: exit code not 0 and the output naming why; the smoke goes on.
@@ -234,6 +237,87 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     refuse('check-pr-behind', `npm run check:pr -- --base ${tip}`, /FAIL\s+up to date with the base/);
     run('check-pr-restore', 'git checkout -q - && git branch -q -D feat/behind');
   });
+  // The goal contract by script: its shape, its proofs (in UTC, as CI), the verdicts a pull request needs, an
+  // amendment for a waived criterion, and the size budget. check:pr refuses the branch until the contract is ready.
+  await step('goal-contract', () => {
+    const NL = String.fromCharCode(10);
+    const base = run('goal-base', 'git rev-parse HEAD').trim();
+    const commit = 'git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm';
+    const contract = path.join(root, 'docs', 'goals', 'probe-thing.md');
+    const write = ({ evidence = [], amendments = [], size = 2000 } = {}) => {
+      fs.mkdirSync(path.dirname(contract), { recursive: true });
+      fs.writeFileSync(contract, [
+        '# Goal: probe-thing', '', 'Status: approved by founder on 2026-11-11', 'Type: feat', '',
+        '## Objective', '', 'A user sees their things.', '',
+        '## Context', '', '### What exists today', '', '- The probe module lists things.', '',
+        '## Success criteria', '',
+        '| # | Criterion | Proof |', '|---|-----------|-------|',
+        '| 1 | The boundaries hold: a module imports `core | shared` and nothing else. | run: `node scripts/check-boundaries.mjs` exits 0. |',
+        '| 2 | The proof runs in UTC, as CI does. | run: `node scripts/tz-probe.mjs` exits 0 only in UTC. |',
+        '| 3 | The list matches the approved artboard `things/list`. | A screenshot beside the artboard. |', '',
+        '## Limits', '', '- Out of scope: editing.', '',
+        '## Budget', '', 'Verification rounds: 3.', `Size: ${size} changed lines.`, '',
+        '## Evidence', '',
+        '| # | Round | Verdict | Command run by the verifier and its exit code |', '|---|-------|---------|-----------------------------------------------|',
+        ...evidence, '',
+        '## Amendments', '', '| Date | # | Change | Decided by | Follow-up |', '|------|---|--------|------------|-----------|',
+        ...amendments, '',
+      ].join(NL));
+    };
+    run('goal-branch', 'git checkout -q -b feat/probe-thing');
+    fs.writeFileSync(path.join(root, 'scripts', 'tz-probe.mjs'), `process.exit(process.env.TZ === 'UTC' ? 0 : 1);${NL}`);
+    write();
+    run('goal-check', 'npm run goal -- check probe-thing');
+    const proved = run('goal-prove', 'npm run goal -- prove probe-thing');
+    if (!/exit 0\s+criterion 1/.test(proved) || !/exit 0\s+criterion 2/.test(proved) || !/manual\s+criterion 3/.test(proved)) throw new Error(`goal prove did not report each criterion:${proved.slice(-500)}`);
+    run('goal-commit', `${commit} "feat(probe): contract"`);
+    // no verdict yet: the branch cannot become a pull request
+    refuse('goal-not-ready', `npm run check:pr -- --base ${base}`, /FAIL\s+goal contract/);
+    write({ evidence: ['| 1 | 1 | met | `npm run goal -- prove probe-thing` exit 0 |', '| 2 | 1 | met | same |', '| 3 | 1 | met, narrowed | founder |'] });
+    refuse('goal-verdict-with-a-caveat', 'npm run goal -- check probe-thing', /is not one of met, not met, weak proof, waived/);
+    write({ evidence: ['| 1 | 1 | met | `npm run goal -- prove probe-thing` exit 0 |', '| 2 | 1 | met | same |', '| 3 | 1 | waived | founder |'] });
+    refuse('goal-waived-without-amendment', 'npm run goal -- check probe-thing', /waived with no row/);
+    const amended = { evidence: ['| 1 | 1 | met | `npm run goal -- prove probe-thing` exit 0 |', '| 2 | 1 | not met | exit 1 |', '| 2 | 2 | met | exit 0 |', '| 3 | 2 | waived | founder |'], amendments: ['| 2026-11-11 | 3 | waived: the list ships without the artboard check | founder | `probe-thing-visual` in the roadmap |'] };
+    write(amended);
+    run('goal-ready', 'npm run goal -- check --ready probe-thing');
+    run('goal-commit-ready', `${commit} "docs(probe): evidence"`);
+    const ready = run('goal-check-pr-ready', `npm run check:pr -- --base ${base}`);
+    if (!/ok\s+goal contract/.test(ready)) throw new Error(`check:pr did not check the goal contract:${ready.slice(-400)}`);
+    write({ ...amended, size: 5 });
+    refuse('goal-over-size', `npm run goal -- size probe-thing --base ${base}`, /OVER THE SIZE BUDGET/);
+    run('goal-restore', 'git checkout -q -- . && git checkout -q - && git branch -q -D feat/probe-thing');
+  });
+  // A throwaway database for one command: the command sees it under both URLs, as the runtime role; it is dropped
+  // whatever the exit code; a name in use is never reused; the backend e2e passes on one.
+  await step('db-scratch', () => {
+    const NL = String.fromCharCode(10);
+    const probe = path.join(root, 'db-probe.mjs');
+    fs.writeFileSync(probe, [
+      "import { createRequire } from 'node:module';",
+      "import path from 'node:path';",
+      "const { Client } = createRequire(path.join(process.cwd(), 'apps', 'backend', 'package.json'))('pg');",
+      'const client = new Client({ connectionString: process.env.DATABASE_URL });',
+      'await client.connect();',
+      "const { rows } = await client.query('select current_database() as db, current_user as role');",
+      'await client.end();',
+      'console.log(`${rows[0].db} ${rows[0].role} ${process.env.DB_SCRATCH}`);',
+      "process.exit(process.argv[2] === 'fail' ? 7 : 0);",
+      '',
+    ].join(NL));
+    try {
+      const seen = run('db-scratch-probe', 'npm run db:scratch -- probe -- node db-probe.mjs');
+      if (!/_scratch_probe app_runtime \S+_scratch_probe/.test(seen)) throw new Error(`the command did not see the scratch database as the runtime role:${seen.slice(-400)}`);
+      if (!/not there/.test(run('db-scratch-dropped', 'npm run db:scratch -- probe --drop'))) throw new Error('the scratch database outlived its command');
+      refuse('db-scratch-exit-code', 'npm run db:scratch -- fails -- node db-probe.mjs fail', /_scratch_fails: dropped/);
+      run('db-scratch-keep', 'npm run db:scratch -- kept --keep -- node db-probe.mjs');
+      refuse('db-scratch-name-taken', 'npm run db:scratch -- kept -- node db-probe.mjs', /already exists/);
+      run('db-scratch-drop-kept', 'npm run db:scratch -- kept --drop');
+      refuse('db-scratch-long-name', `npm run db:scratch -- ${'a'.repeat(70)} -- node db-probe.mjs`, /too long/);
+      run('db-scratch-e2e', 'npm run db:scratch -- e2e -- npm --workspace apps/backend run test:e2e');
+    } finally {
+      fs.rmSync(probe, { force: true });
+    }
+  });
   // no offset given: the first worktree takes +100 by itself
   run('worktree-up', 'npm run worktree -- up t1');
   await step('worktree-ready', () => {
@@ -244,9 +328,13 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     if (!/_t1\?/.test(env('apps/backend/.env'))) throw new Error('database URLs not pointed at <db>_t1');
     if (!fs.existsSync(path.join(tree, 'apps', 'backend', 'dist'))) throw new Error('worktree not built');
   });
+  // the offset is reserved, not just read: a second tree cannot be given the same ports while this one lives
+  refuse('worktree-up-taken-offset', 'npm run worktree -- up t9 100', /offset 100 is taken/);
   run('worktree-down', 'npm run worktree -- down t1');
   await step('worktree-gone', () => {
     if (fs.existsSync(path.join(path.dirname(root), `${path.basename(root)}-t1`))) throw new Error('worktree folder still there');
+    const reservations = path.join(root, '.git', 'spectree-worktree-offsets');
+    if (fs.existsSync(reservations) && fs.readdirSync(reservations).length > 0) throw new Error(`offset reservation left behind: ${fs.readdirSync(reservations).join(', ')}`);
   });
   // the refusals: a database nobody's `up` created is never reused nor dropped; a long slug, a bad ref and a bare flag stop before anything
   await step('worktree-refusals', async () => {
@@ -341,6 +429,10 @@ export class ProbeController {
   });
   // p95 budget per route (architecture rule 11): perf.mjs boots dist/main.js itself and fails over budget or on any non-2xx
   console.log(run('perf', 'npm run perf').trim().split(/\r?\n/).slice(-12).join('\n'));
+  // a busy machine is refused before anything starts: exit 3, nothing measured
+  process.env.PERF_MAX_CPU = '-1';
+  refuse('perf-busy-machine', 'npm run perf', /Nothing was measured/);
+  process.env.PERF_MAX_CPU = '100';
   // perf proportional to the diff: a change inside modules/probe measures /probe alone; no change measures nothing
   await step('perf-changed', () => {
     const none = run('perf-changed-none', 'npm run perf -- --changed HEAD');
