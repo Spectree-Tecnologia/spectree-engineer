@@ -32,6 +32,7 @@ The contract has two kinds of reader who never talk to each other: the `full-sta
    - **Observable from outside the code.** A behaviour through the API or the screen, a number, a state of the data. Never "the code has X" or "uses Y".
    - **Decided by a proof.** A command whose exit code decides it, a measurement against a threshold, or an observation someone else can repeat (the built screen against the approved artboard). The proof may name a test that does not exist yet: say what it must assert, and at which seam, the highest one that exercises the behaviour.
    - **Run by a script wherever a command can decide it.** Write the command in the Proof cell as ``run: `<command>` ``, runnable from the project root, then what it must assert. The full-stack-developer, the verifier and the orchestrator all run the same line through `npm run goal -- prove <slug>`, and the exit code is the verdict's evidence. A proof that needs a database is still one command: whoever runs it gives it a database of its own. A proof with no `run:` is decided by hand, so keep those for what only eyes can judge.
+   - **Deferred only when it must be.** A proof that only the pull request's run or the merged main can give (a trigger that fires on merge, a scheduled job) starts with `in ci:` or `after merge:`, before its `run:`. It is not run before the pull request, its verdict is `pending` until it can be, and the goal is `landed`, not `met`, while one is pending. Whatever a command can decide before the merge is decided before the merge.
    - **Exact about what was approved.** A criterion about an approved screen names the artboard and quotes its copy and its geometry as the artboard has them (or points at the line of the artboard's code), never a paraphrase from notes: the full-stack-developer builds what the criterion says, and a paraphrase that drifts from the approved visual costs a round.
    - **Complete in its cases.** Name the cases inside the criterion: the main one, the edges, what is refused. A verifier will try the case you left out.
    - **Not an adjective.** "Faster", "simpler", "robust" and "secure" are wishes. Turn each into the number or the observable behind it, or ask the user for it.
@@ -51,6 +52,8 @@ The contract has two kinds of reader who never talk to each other: the `full-sta
 9. Write the contract to `docs/goals/<slug>.md` with the template below. The slug is the branch's slug. Where the project has the script, `npm run goal -- check <slug>` must exit 0 before you go on.
 
 10. Read it once more as the full-stack-developer would, with nothing else in hand. Whatever you had to remember to understand it is missing from the context: add it.
+
+11. Have it attacked before it is built. Hand the contract alone to a verifier and ask, criterion by criterion, which wrong system would pass the proof, which case the criterion does not name, and which proof an exit code cannot decide. Fix the contract with what comes back, once: before approval it is an edit, after it an amendment. A weak proof found here costs one reading; found after the code, it costs a round.
 
 <goal-template>
 
@@ -125,17 +128,18 @@ A criterion changes only here, never by editing the table above in silence.
 
 </goal-template>
 
-`Status` moves through `proposed`, `approved by <who> on <date>`, `met on <date>` or `stopped on <date>: <why>`. Verdicts are `met`, `not met`, `weak proof` (the proof passes but would also pass without the behaviour) or `waived` (an amendment took the criterion out). There is no "met, with a caveat": a criterion that was not met as written is amended or it is not met.
+`Status` moves through `proposed`, `approved by <who> on <date>`, `landed on <date>` (merged, with an `after merge:` proof still to run), `met on <date>` or `stopped on <date>: <why>`. Verdicts are `met`, `not met`, `weak proof` (the proof passes but would also pass without the behaviour), `waived` (an amendment took the criterion out) or `pending` (only for a proof written `in ci:` or `after merge:`, until it can run). When the pull request merges, the orchestrator adds one line under `Status`, `Landed: PR #<n>, <lines> product lines, CI <minutes> min`, which `npm run goal -- stats` reads. There is no "met, with a caveat": a criterion that was not met as written is amended or it is not met.
 
 ## Amending a contract
 
 A contract changes after approval only by a row in `## Amendments`, written by the orchestrator, with the date, the criterion, who decided and where the rest continues. The `Change` cell starts with the kind and then says what changed, keeping the words that were replaced:
 
-- `narrowed`: the criterion now asks for less. The user decides. The part left out continues in a goal named in Follow-up.
+- `narrowed`: the criterion now asks for less. The user decides, or the project's risk policy where it covers the case (`Decided by` then reads `risk policy (<its date>)`). The part left out continues in a goal named in Follow-up. The narrowed criterion gets one more evidence row in the same round, `met`, saying `as narrowed on <date>` and which findings moved: it is the only way a round's reproof becomes `met` without another round.
 - `waived`: the criterion is dropped from this goal. The user decides. Follow-up names the goal that takes it, or says why nothing does.
 - `moved`: the criterion goes to a continuation goal because this one passed its size or was split by outcome. Same approved scope, so the orchestrator decides. Follow-up names the new goal, and the row leaves this contract's criteria table.
 - `added`: a new criterion. The user decides when it makes a product rule nobody decided; the orchestrator when it follows from one already recorded.
 - `reworded`: the same demand in clearer words, or a proof corrected. The orchestrator decides.
+- `extended`: more verification rounds than the budget gave. The user decides. The `#` cell reads `budget`, and the `Change` cell says how many.
 
 Then edit the criteria table to match, and record `waived` in the evidence for a waived criterion.
 
