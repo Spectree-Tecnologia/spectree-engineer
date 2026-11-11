@@ -39,7 +39,7 @@ A resident who lost a bill gets a second copy of it by e-mail without calling th
 | 1 | A resident with an open charge receives the second copy by e-mail within one request; a resident of another condominium asking for the same charge gets 404 and no e-mail is sent. | run: `npm -w apps/backend run test:e2e -- second-copy` exits 0, with a test at the HTTP seam that asserts 200 for the resident of the unit and 404 for the resident of the other condominium. |
 | 2 | The second copy is refused, with `CHARGE_NOT_PAYABLE`, for a charge that is `paid` or `cancelled`. | The same file: a test asserts 409 and the code for a paid charge. |
 | 3 | The second copy answers quickly even for a condominium with many charges. | run: `npm test` exits 0. |
-| 4 | The module boundaries hold. | run: `node scripts/check-boundaries.mjs` exits 0. |
+| 4 | A signed-in resident asking for a charge id that no charge has gets 404, and no e-mail is sent. | The same file: a test asks, as a signed-in resident, for an id that no charge has, and asserts 404 and that the outbox is empty after the request. |
 
 ## Limits
 
