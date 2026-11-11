@@ -2,6 +2,22 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.22.0] - 2026-11-11
+
+Código enxuto num squad goal driven, a partir da leitura do [ponytail](https://github.com/DietrichGebert/ponytail) de Dietrich Gebert (MIT). Lá o agente adivinha o que ninguém pediu; aqui o contrato decide: é o código que nenhum critério, limite ou regra exige.
+
+### Added
+- **Regra 15 da arquitetura: nada existe que o objetivo não peça.** Antes de criar, o que já existe, nesta ordem: o projeto, o `@<ns>/shared`, a plataforma, uma dependência instalada. Nada de abstração, opção ou código "para depois" além do que as regras pedem; scaffold que nenhum critério exercita sai antes do commit. Nunca se corta validação em fronteira de confiança, erro que evita perda de dado, segurança, acessibilidade nem o que um critério pede.
+- **O plano diz o que reusa.** Cada fatia do `full-stack-developer` traz `Reuses:` e `New:`, e o `solutions-architect` em modo gate ganha o bloco `Reuse`: criar o que já existe é `violates rule 15`, antes de existir código.
+- **O `quality-engineer` lê além do diff.** Para todo símbolo que muda de assinatura, retorno, nome ou comportamento, ele procura cada chamador no projeto; chamador que o diff não tocou e que quebra é `blocking`. E ganha o bloco `## Lean`: `delete`, `reuse`, `yagni`, `merge`, sempre `should`, que a política de risco manda para o objetivo de hardening sem gastar rodada. Caso novo de eval: `qe-caller-outside-the-diff`.
+- **Atalho declarado.** `shortcut: <o limite>, <quando subir>` no código é decisão, não achado, salvo quando a carga do contrato já passa do limite ou quando adia o que a regra 15 proíbe cortar. O relato de estado do Engineer lista os atalhos abertos.
+- **Achado em quatro partes para o fundador.** Numerado, e com o que é, o problema, a correção e o que acontece se pularmos. Todo relato fecha com o que não foi conferido.
+- **`tooling-sync` leva regra nova a projeto antigo.** Regra numerada que o `docs/architecture.md` do projeto não tem é acrescentada abaixo das que ele tem, que ficam como estão.
+- `tests/lean.test.mjs`: a regra em cada papel e o orçamento de palavras do comando e dos cards.
+
+### Changed
+- **O comando `/engineer` perdeu 416 palavras.** O passo 3 repetia o que a skill `to-goal`, carregada nesse mesmo passo, já diz; a regra de fechar a classe e o que cada verificador faz ficaram só nos cards. O comando e os cards somados têm 2 palavras a menos que na 0.21.1.
+
 ## [0.21.1] - 2026-11-11
 
 ### Fixed
@@ -283,6 +299,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.22.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.1...v0.20.0
