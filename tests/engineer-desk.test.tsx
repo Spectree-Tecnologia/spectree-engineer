@@ -221,18 +221,23 @@ test('a long session stays in budget: each step writes its own subagent, the pan
   await ui.unmount()
 })
 
-test("no subagent runs under Sonnet: Haiku named or defaulted is raised, a role's own model is left alone", async ($, on) => {
+test("no subagent runs under Opus: Haiku or Sonnet, named or defaulted, is raised; a role's own model and Fable are left alone", async ($, on) => {
   engine(on, 'w1')
-  // The harness's web-fetch picks Haiku on its own; a call may also name it.
+  // The harness's web-fetch picks Haiku on its own; a call may also name a model under the floor.
   await spawn($, 'w1', 'web-fetch', 'Read Asaas visao-geral page')
   await ($ as any).agent.spawn({ tool_use_id: 'tu-h1', prompt: 'x', description: 'named haiku', subagentType: 'general-purpose', provider: ENGINE, parentModel: 'model', model: 'haiku', background: false, fork: false })
+  await ($ as any).agent.spawn({ tool_use_id: 'tu-s1', prompt: 'x', description: 'named sonnet', subagentType: 'spectree-engineer:platform-engineer', provider: ENGINE, parentModel: 'model', model: 'sonnet', background: false, fork: false })
+  // The third verification round of a goal names Fable: the floor does not touch it.
+  await ($ as any).agent.spawn({ tool_use_id: 'tu-f1', prompt: 'x', description: 'round 3', subagentType: 'spectree-engineer:quality-engineer', provider: ENGINE, parentModel: 'model', model: 'fable', background: false, fork: false })
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'ticket')
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /^web-fetch · sonnet$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^general-purpose · sonnet$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^web-fetch · opus$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^general-purpose · opus$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^spectree-engineer:platform-engineer · opus$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^spectree-engineer:quality-engineer · fable$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^spectree-engineer:full-stack-developer · model$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Haiku/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Haiku|Sonnet/ })).toBeUndefined()
   await ui.unmount()
 })
 

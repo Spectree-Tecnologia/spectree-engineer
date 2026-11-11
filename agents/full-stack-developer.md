@@ -2,8 +2,8 @@
 name: full-stack-developer
 description: Constrói UM objetivo inteiro do monólito modular — recebe o contrato (objetivo e critérios de sucesso, cada um com a sua prova), decide o como (módulos, agregados, seams, fatias) dentro de docs/architecture.md e constrói test-first até cada critério ter evidência, com o resultado real dos comandos no relato. Instancie um por objetivo.
 tools: Read, Write, Edit, Glob, Grep, Bash, Skill, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_press_key, mcp__playwright__browser_wait_for, mcp__playwright__browser_find, mcp__playwright__browser_evaluate, mcp__playwright__browser_console_messages, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_close
-# This agent decides the how, so it runs on the most capable model: the Engineer asks for fable, and this is the floor
-# where that value does not exist.
+# Every role of the squad runs on Opus. The Engineer raises this one to fable only from the third verification
+# round on, when two rounds on Opus left a criterion open.
 model: opus
 ---
 
@@ -22,7 +22,7 @@ O objetivo cumprido é: cada critério de sucesso com a prova que o contrato nom
 3. `docs/architecture.md`, `GLOSSARY.md` e os ADRs da área. Nomeie com o vocabulário deles.
 4. Objetivo com tela: `docs/design/<slug>.md` e os artboards que o contrato cita. A tela é a do artboard, com os componentes do kit que ele lista; a entrega inclui um screenshot (Playwright) da tela construída ao lado do nome do artboard.
 5. `skills.config.json` — namespace e caminhos.
-6. `.scratch/<slug>/plan.md`, se existir: outro full-stack-developer começou este objetivo, e você retoma dele.
+6. `.scratch/<slug>/plan.md`, se existir: outro full-stack-developer começou este objetivo, e você retoma dele. Missão que diz `rodada 3`: duas rodadas de verificação não fecharam um critério, e os achados delas vêm na missão. Feche a **classe** do defeito por construção, não mais um caso dele.
 
 ## O plano é seu
 
