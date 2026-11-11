@@ -2,6 +2,14 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.20.0] - 2026-11-11
+
+### Changed
+- **Opus em todos, Fable só na terceira rodada.** Todo card do squad declara `model: opus`, e o Engineer não passa mais `model` no despacho: o `full-stack-developer` deixa de nascer em `fable`. A única subida acontece quando duas rodadas de verificação em Opus não fecharam um critério: a correção e a verificação da rodada 3 em diante rodam em `fable`, com um `full-stack-developer` novo, que retoma de `.scratch/<slug>/plan.md` com os achados das duas rodadas, e com o `quality-engineer` e o `security-engineer` também em `fable`. A subida fica registrada em `decisions.md` e no relato ao fundador.
+- A sessão de item nasce em Opus quando a sessão principal roda num modelo acima dele.
+- O piso do painel sobe de Sonnet para Opus: um despacho que nomeia `haiku` ou `sonnet`, ou um agente do harness que cairia em Haiku, vai para `opus`. `fable` nomeado passa como está.
+- `tests/models.test.mjs` guarda a política: os sete cards em Opus, um só pedido de `fable` no comando, o da terceira rodada, e o piso do painel.
+
 ## [0.19.1] - 2026-11-11
 
 ### Changed
@@ -253,6 +261,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.20.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.17.0...v0.18.0
