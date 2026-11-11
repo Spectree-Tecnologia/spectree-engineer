@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: 'update-account\.use-case\.ts:2\d\b'
+pattern: 'update-account\.(use-case|test)\.ts:\d+'
 ---
