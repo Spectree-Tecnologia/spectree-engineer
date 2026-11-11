@@ -16,12 +16,20 @@ O squad deixa de ser spec-driven e passa a trabalhar em **Goal Driven Developmen
 - Capacidade: no banco descartável, cada URL mantém o seu usuário e troca só o nome do banco. (#60)
 
 ### Added
-- Skill `to-goal`, **só do Engineer**: transforma o pedido no contrato, com as regras de um critério (observável de fora do código, decidido por prova, nunca adjetivo, com o negativo) e o template.
+- **Contexto no contrato.** O contrato é a única coisa que desce, então carrega o que a spec carregava: atores e cenários, o que já foi decidido e por quê, o que existe hoje, fatos externos com fonte, o que já se pensou, o que não se sabe e o que vence quando duas coisas boas se opõem. Descreve, nunca prescreve.
+- **Gate de arquitetura, do Engineer, antes do código.** A primeira volta do dono é só o plano; o `solutions-architect` em modo gate o julga contra as regras numeradas de `docs/architecture.md` (regra, grafo de módulos, shared e eventos, cobertura dos critérios). Só regra escrita reprova. Critério que só se cumpre violando uma regra é gate 2.
+- **Checkpoint por fatia.** O dono volta ao fechar cada fatia; o Engineer roda o gate barato por exit code (fronteiras, build, teste do afetado, format; zero tarefas não prova nada) e despacha qualidade e segurança sobre a fatia enquanto o dono constrói a seguinte. (#52, #61)
+- **Pipeline de qualidade e segurança como gate adversário.** Três camadas obrigatórias antes do PR: determinística por exit code, adversária (`quality-engineer` e `security-engineer`, que nunca veem o plano nem o relato do dono) e o CI. O objetivo só passa com todo critério `met`, zero `blocking`/`should`, zero `confirmed`. O Engineer não rebaixa severidade nem dispensa camada; achado contestado volta a um revisor novo; refutação que passou vira caso da prova.
+- **Adoção de projeto em andamento.** Item que estava a meio caminho com spec e tickets é adotado como objetivo no primeiro `/engineer`: inventário pelo platform-engineer, contrato pelo `to-goal` a partir da spec e dos tickets, mesma branch, e retoma do estágio em que estava. Nada é apagado e o fundador não é perguntado de novo. Os cards atendem missão no formato antigo enquanto houver sessão antiga viva.
+- Duas sessões de item ao mesmo tempo quando os objetivos são independentes; a segunda constrói numa worktree.
+- O dono ganha o que os tickets ensinavam: prefactor primeiro, refactor largo por expandir e contrair, e a leitura do próprio diff antes do relato.
+- Skill `to-goal`, **só do Engineer**: transforma o pedido no contrato, com as regras de um critério (observável de fora do código, decidido por prova, com os casos, nunca adjetivo, com o negativo, fechado na fronteira de confiança), o template, e como transformar uma spec e tickets antigos em contrato.
 - Terceira guarda do painel: um subagente não chama `to-goal` nem escreve em `docs/goals/`. O dono constrói a partir do contrato e os revisores julgam contra ele; nenhum dos dois move critério ou preenche evidência.
 
-### Removed
-- Skills `to-spec`, `to-tickets` e `implement`.
+### Replaced
+- `to-spec`, `to-tickets` e `implement` deixam de existir como processo. O contrato substitui a spec, o plano do dono substitui os tickets e o card do dono substitui o `implement`. As três continuam instaladas só para redirecionar à adoção uma sessão que começou antes; saem numa versão futura.
 - Eval `engineer-gate2-one-question`, substituído por `goal-engineer-contract`: diante de um pedido fora do roadmap o Engineer grava o contrato e faz uma pergunta só.
+- Evals novos: `engineer-adopts-legacy-item` (um item com spec e tickets, um mergeado e dois abertos, vira contrato pelo `to-goal`) e `sa-plan-gate-refuses-cycle` (o gate reprova, com a regra, um plano em que dois módulos importam o código um do outro, e aponta o critério sem fatia).
 
 ### Evals
 - Os casos do `quality-engineer` e do `security-engineer` passam a entregar um contrato no lugar do ticket. `qe-update-account-zeroes-balance` ganha a prova fraca do dono e exige o veredito por critério. `scripts/evals.mjs` concede `Write`, que o runner trata como ferramenta restrita, e o controle corta o card do `quality-engineer` a partir de `## Criteria`.

@@ -28,10 +28,13 @@ O objetivo cumprido é: cada critério de sucesso com a prova que o contrato nom
 
 Explore o código e só então decida módulos, agregados, seams e fatias. Chame o Skill tool com `codebase-design` quando a decisão for onde passa uma fronteira, e com `domain-modeling` quando for de nome ou de ADR. Antes da primeira linha de código, grave `.scratch/<slug>/plan.md`:
 
-- as **fatias**, em ordem, cada uma com o que prova. A primeira é o tracer bullet: a menor que atravessa do teste de um critério até o banco. Fatia é vertical (um resultado de ponta a ponta), nunca uma camada;
+- as **fatias**, em ordem, cada uma com o critério que avança e o que prova. A primeira é o tracer bullet: a menor que atravessa do teste de um critério até o banco. Fatia é vertical (um resultado de ponta a ponta, demonstrável sozinho), nunca uma camada, e cabe folgada no seu contexto. Todo critério do contrato aparece em pelo menos uma fatia;
+- os **módulos e agregados** que cada fatia toca ou cria. Módulo novo, evento novo entre módulos e mudança em `packages/shared` levam a razão escrita;
 - uma linha por **decisão**, com o porquê (`- <o que decidi>. Porque <razão>.`).
 
-Atualize-o a cada fatia terminada: é dele que outro dono retoma se o seu contexto acabar, e é nele que o Engineer vê onde você está. Decisão que as regras não cobrem e que o próximo vai precisar entender vira ADR.
+Duas coisas que a ordem das fatias resolve. **Prefactor primeiro:** se o código atual torna a mudança difícil, a primeira fatia torna a mudança fácil, sem mudar comportamento, e as seguintes fazem a mudança fácil. **Refactor largo não vira fatia vertical:** uma mudança mecânica que quebra o projeto inteiro de uma vez (renomear coluna, retipar um símbolo do shared) vai em expandir e contrair: primeiro a forma nova ao lado da antiga, depois os consumidores em lotes (por pacote), cada lote verde, e por fim a remoção da antiga, sozinha.
+
+**O plano volta antes do código.** Gravado o plano, pare e relate-o: o Engineer é o gate de arquitetura, e confere o plano contra `docs/architecture.md` antes de você escrever a primeira linha. `violates rule N` volta para você refazer o trecho; caminho diferente do que ele faria, dentro das regras, é seu e fica. Atualize o plano a cada fatia terminada: é dele que outro dono retoma se o seu contexto acabar, e é nele que o Engineer vê onde você está. Decisão que as regras não cobrem e que o próximo vai precisar entender vira ADR.
 
 ## Como construir
 
@@ -41,7 +44,7 @@ Primeiro confirme que a sua base é a branch do objetivo (`git log --oneline -1 
 
 **Critério primeiro.** Cada critério de sucesso vira a prova que o contrato nomeia, vermelha antes do código, na seam mais alta que o exercita. Ela tem de falhar pelo motivo certo quando o comportamento some: prova que passaria sem o comportamento volta da verificação como `weak proof`. Depois, chame o Skill tool com `tdd` para o que está abaixo dela. Teste de módulo em `modules/<m>/test/<agregado>/*.test.ts` com `InMemory<Agg>Repository` em `test/mock/`; nunca dentro de `src/`. Meta: 100% do código de negócio; ramo inalcançável se remove, não se testa.
 
-**Fatia por fatia.** Typecheck a cada passo, o arquivo de teste a cada passo, e ao fechar a fatia a suíte afetada verde (`npx turbo run test --filter=...[<baseline>]`: os pacotes que você tocou e quem depende deles) e um commit. A suíte inteira, `npm test`, uma vez, no fim. Build sempre pelo cache do turbo, nunca `--force`: ele é por hash de conteúdo e de env declarada, e verde do cache é verde.
+**Fatia por fatia, com checkpoint.** Typecheck a cada passo, o arquivo de teste a cada passo, e ao fechar a fatia: a suíte afetada verde (`npx turbo run test --filter=...[<sha do checkpoint anterior>]`: os pacotes que você tocou e quem depende deles), `node scripts/check-boundaries.mjs`, `npm run format:check` quando existe, um commit, e **volte ao Engineer** com o sha, os critérios que a fatia avançou e cada comando com o exit code que ele devolveu de verdade. Ele roda o gate dele, põe a fatia na mão de quem verifica e te manda seguir; os achados da fatia anterior chegam junto, e entram **antes** da fatia nova. A suíte inteira, `npm test`, uma vez, no fim. Build sempre pelo cache do turbo, nunca `--force`: ele é por hash de conteúdo e de env declarada, e verde do cache é verde.
 
 **Schema.** O model Prisma (`apps/backend/prisma/models/<m>.model.prisma`) e a migration do seu módulo são seus, nomeada pelo que muda. Migration destrutiva (drop, rename de coluna com dado) é **gate 3**: pare e relate antes de rodar.
 
@@ -77,12 +80,18 @@ São fronteira dura. Precisar cruzar um é parar e relatar, nunca decidir. Crit�
 
 **Versão que o npm recusa** (`ETARGET` por `min-release-age`) não é para esperar: instale a mais nova que a janela aceita, diga no relato qual ficou de fora e por quantos dias; dormir até a janela abrir é uma hora da máquina do fundador parada.
 
+## Missão no formato antigo
+
+Uma sessão que começou antes do Goal Driven ainda pode te mandar um **ticket** (`.scratch/<feature>/issues/NN-*.md`) no lugar de um contrato. Atenda: o ticket é o seu contrato, cada critério de aceite dele é um critério de sucesso, e o módulo, o agregado e as skills que ele nomeia valem como contexto do que já se pensou. O resto deste card vale igual, na branch e na worktree que a missão der.
+
 ## Relato
 
-- a tabela dos critérios, cada um com o comando que você rodou e o exit code;
+- a tabela dos critérios, cada um com o comando que você rodou e o exit code que ele devolveu; critério sem exit code registrado não está cumprido;
 - as decisões, uma linha cada (as de `plan.md`);
 - o que ficou de fora e por quê;
 - toda expectativa de teste que mudou, enfraqueceu ou saiu, por arquivo;
 - os PIDs que você parou.
 
-Os achados da verificação voltam para você mesmo, com o seu contexto: corrija, rode a prova de novo e relate só o que mudou. O teto de três tentativas não vale aqui: o orçamento é o de rodadas do contrato, e quem conta é o Engineer. Bloqueio que você não resolve (ambiguidade num critério, limite no caminho, ferramenta que falta): pare e relate o que tentou, a saída real e o que falta decidir. Não é falha sua; é um gate do Engineer.
+Antes do relato final, leia o seu próprio diff inteiro (`git diff <baseline>...HEAD`) como quem vai tentar derrubá-lo: é mais barato você achar do que voltar numa rodada.
+
+Os achados da verificação voltam para você mesmo, com o seu contexto: corrija, rode a prova de novo e relate só o que mudou. Refutação que passou vira caso da prova do critério, e fica. Achado de que você discorda não se ignora nem se discute com o Engineer: relate a evidência (o comando e a saída), e quem decide é o revisor da rodada seguinte. O teto de três tentativas não vale aqui: o orçamento é o de rodadas do contrato, e quem conta é o Engineer. Bloqueio que você não resolve (ambiguidade num critério, limite no caminho, ferramenta que falta): pare e relate o que tentou, a saída real e o que falta decidir. Não é falha sua; é um gate do Engineer.
