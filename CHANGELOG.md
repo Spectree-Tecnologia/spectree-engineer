@@ -2,6 +2,23 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.21.0] - 2026-11-11
+
+Sete mudanças tiradas dos dois objetivos reais do PILOT, que gastaram as três rodadas num único critério e chamaram o fundador.
+
+### Added
+- **Ataque ao contrato antes do código.** O `quality-engineer` ganha o modo contrato: lê só o contrato e responde, por critério, `wrong system passes`, `unnamed case`, `not decidable` ou `ok`. O Engineer o despacha no passo 3, uma passada, e corrige o contrato enquanto é edição e não emenda. Caso novo de eval: `qe-contract-wrong-system-passes`.
+- **Política de risco, decidida uma vez.** A entrevista fecha `docs/risk-policy.md`: com o orçamento gasto, o que sobra de `confirmed` `low` ou `informational` e de `should` vira critério de um objetivo de hardening, por emenda `narrowed` decidida pela política, e o PR segue. O resto continua gate 4.
+- **Prova depois do merge.** Prova escrita como `in ci:` ou `after merge:` fica `pending`, o `check --ready` a aceita, `npm run goal -- prove <slug> --after-merge` a roda na main, e o contrato é `landed on <data>` até lá. `met` com prova pendente é recusado.
+- **`npm run goal -- stats`.** Lê os contratos e imprime, por objetivo, rodadas contra o orçamento, critérios reprovados, decisões do fundador, decisões da política, subida para Fable, linhas de produto e minutos de CI, e os totais. O contrato ganha a linha `Landed: PR #<n>, <linhas> product lines, CI <min> min`.
+- **`tooling-sync.mjs`.** Leva os scripts do squad a um projeto de versão anterior: `--check`, `--apply` e `--keep <arquivo>`. Copia o que falta, atualiza o que o projeto nunca mexeu e nunca sobrescreve o que ele alterou. O bootstrap grava `scripts/.squad-tooling.json`, e o `platform-engineer` roda o sync no primeiro commit da branch do objetivo, antes da baseline.
+- Emenda `extended`, para rodadas além do orçamento.
+
+### Changed
+- **Fechar a classe, não o caso.** Critério reprovado pela segunda vez volta com `Class:` e `Closed by:` do `full-stack-developer`, e o `quality-engineer` e o `security-engineer` julgam primeiro a construção.
+- **Rodada seguinte mais estreita.** A camada determinística roda inteira; os agentes recebem o diff da correção e os critérios reabertos, e o que não foi tocado segue `met` com a evidência `carried`. No checkpoint de fatia, o `security-engineer` só entra quando a fatia toca uma fronteira de confiança.
+- A reprovação de uma rodada só vira `met` na mesma rodada por emenda `narrowed`: o `goal check` recusa a troca sem ela.
+
 ## [0.20.0] - 2026-11-11
 
 ### Changed
@@ -261,6 +278,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.21.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.18.0...v0.19.0
