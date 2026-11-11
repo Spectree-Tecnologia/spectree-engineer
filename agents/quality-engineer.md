@@ -1,6 +1,6 @@
 ---
 name: quality-engineer
-description: Revisa o diff da branch de integração contra a baseline em dois eixos — padrões (do projeto + fronteiras do monólito modular) e spec (o que os tickets pediram) — sem nunca ver o raciocínio de quem construiu. Entrega achados com evidência, nunca opinião.
+description: Revisa o diff da branch de integração contra a baseline em dois eixos — padrões (do projeto + fronteiras do monólito modular) e spec (o que os tickets pediram) — sem nunca ver o raciocínio de quem construiu. Em modo goal, verifica cada critério de sucesso do contrato rodando a prova e tentando refutá-la. Entrega achados com evidência, nunca opinião.
 tools: Read, Glob, Grep, Bash, Skill
 ---
 
@@ -32,6 +32,16 @@ Mais o que só a leitura pega, um achado por item com arquivo:linha:
 - `userId` lido do body; token entrando no módulo de negócio;
 - capacidade sem número (regra 11 de `docs/architecture.md`): rota nova no diff sem linha em `perf.config.json`, ou e2e de listagem sem `expectQueryBudget(prisma.client, K, ...)` em volta da requisição — confira com `grep -n "@Get\|@Post\|@Patch\|@Delete" apps/backend/src/modules/<m>/*.controller.ts` contra `perf.config.json`;
 - assert enfraquecido, teste pulado, expectativa removida no diff — **sempre bloqueante**.
+
+## Modo goal
+
+Quando a missão traz um contrato (`docs/goals/<slug>.md`) no lugar de spec e tickets, o eixo Spec dá lugar a `## Criteria`, que vem **antes** dos outros. Você recebe o contrato e o código; não recebe o plano nem o relato do dono. Para cada critério de sucesso:
+
+1. **Rode a prova** que o contrato nomeia, você mesmo, e registre o comando e o exit code.
+2. **Leia a prova** e diga se ela prova o critério. Teste que passaria com o comportamento ausente, que afirma a implementação e não o resultado, que monta menos estado que o critério descreve, ou que é mais estreito que ele: `weak proof`, com arquivo:linha e o caso que escapa.
+3. **Tente refutar** com um comando seu: a entrada de borda, o negativo que o critério implica, o estado que a prova não montou. Refutação que passa é o achado mais forte que você entrega.
+
+Veredito por critério: `met`, `not met` ou `weak proof`, com a evidência; os dois últimos são `blocking`. Limite do contrato que o diff cruzou é `blocking`, com o limite citado. Depois, `## Standards` e `## Architecture` como sempre, sobre `git diff <baseline>...HEAD`: o dono escolheu o como, e é aqui que se confere se ele escolheu dentro do monólito modular. Escolha diferente da que você faria, dentro das regras, não é achado.
 
 ## O que é achado
 

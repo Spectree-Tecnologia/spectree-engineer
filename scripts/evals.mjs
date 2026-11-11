@@ -46,6 +46,8 @@ const json = path.join(outDir, 'result.json');
 const cmd = [
   'claude plugin eval', JSON.stringify(target),
   '--trust-plugin', '--scaffold', '--ablation none', '--no-publish',
+  // Write is a gated tool: a case still gets it only when its own allowed_tools lists it (the goal contract case does)
+  '--allow-tools', 'Write',
   '--output-dir', JSON.stringify(outDir), '--json', JSON.stringify(json),
   ...extra.map((a) => (/\s|\*/.test(a) ? JSON.stringify(a) : a)),
 ].join(' ');

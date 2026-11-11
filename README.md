@@ -36,9 +36,22 @@ claude plugin install spectree-engineer@spectree-engineer
 ```
 /engineer                      estado do projeto, próximo passo, decisões pendentes
 /engineer <o que você quer>    leva o pedido pelo fluxo
+/engineer goal <objetivo>      Goal Driven Development: você dá o objetivo e os critérios de sucesso, o squad decide o como
 ```
 
 Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (tracker, labels, layout de domínio) antes de qualquer outra coisa.
+
+### Duas modalidades de construção
+
+| | Mudança (spec-driven) | Objetivo (Goal Driven Development) |
+|---|---|---|
+| O que desce para quem constrói | spec e tickets: módulo, agregado e skill nomeados | um contrato (`docs/goals/<slug>.md`): objetivo, critérios de sucesso com a prova de cada um, limites e orçamento |
+| Quem decide o como | o Engineer, na spec | o dono do objetivo, olhando o código, dentro de `docs/architecture.md` |
+| Quem constrói | um developer por ticket, até dois em paralelo, cada um na sua worktree | um developer só, no modelo mais capaz, na branch de integração |
+| Como se sabe que acabou | critérios de aceite dos tickets e review em dois eixos | cada critério verificado por quem não construiu: roda a prova, julga se ela prova, tenta refutar; volta ao dono até cumprir ou o orçamento acabar |
+| Cabe quando | o problema ainda pede desenho, ou há fatias independentes para construir em paralelo | o resultado se confere por comando ou número e um dono dá conta |
+
+Nas duas valem os quatro gates, o protótipo aprovado pelo fundador para tela nova, as regras do monólito modular cobradas por `check-boundaries`, e um PR por entrega. No roadmap, o item `[goal]` roda como Objetivo.
 
 ### O painel do Engineer
 
@@ -53,8 +66,8 @@ Abre sozinho uma vez por sessão no app desktop e no VS Code, numa pasta com `sk
 | `engineer` (comando) | fala com você em pt-BR, grill, spec, tickets, despacha | código |
 | `solutions-architect` | mapa de módulos/agregados, seams, fronteira de perguntas | escrever arquivo |
 | `ui-ux-designer` | protótipo das telas no artefato Design antes da spec, em rodadas com o fundador até a aprovação; design system do projeto; toda referência do fundador passa pelo `to-wireframe` antes do artboard | regra de negócio, código |
-| `full-stack-developer` | um ticket, test-first, scaffold pelas skills de monólito; Sonnet por padrão, Opus quando o Engineer classifica a missão como complexa (correção de review, mais de um módulo, tela + backend, migration com dado, nova tentativa) | sair do ticket |
-| `quality-engineer` | review em dois eixos + fronteiras do monólito | editar |
+| `full-stack-developer` | um ticket, test-first, scaffold pelas skills de monólito; Sonnet por padrão, Opus quando o Engineer classifica a missão como complexa (correção de review, mais de um módulo, tela + backend, migration com dado, nova tentativa); em modo goal, dono de um objetivo no modelo mais capaz: decide módulos, agregados e fatias | sair do ticket; em modo goal, cruzar um limite do contrato ou uma regra da arquitetura |
+| `quality-engineer` | review em dois eixos + fronteiras do monólito; em modo goal, verifica cada critério de sucesso rodando a prova e tentando refutá-la | editar |
 | `security-engineer` | review como atacante com o `security-audit` da Cloudflare (guidance); achados só com fronteira violada e impacto | editar, rodar o alvo |
 | `platform-engineer` | bootstrap, git, worktrees, merge, Prisma, PR | código de módulo, merge na main |
 | `integration-engineer` | fatos sobre sistemas externos, com fonte; vigilância de suporte e advisories da stack | afirmar de memória |
@@ -91,7 +104,7 @@ Roda todas as skills de monólito a partir deste repo num projeto temporário (`
 node scripts/evals.mjs
 ```
 
-Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` bloqueia um `UpdateAccount` que zera o saldo num PATCH parcial (com `arquivo:linha`) e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; e `/engineer` faz exatamente uma pergunta (gate 2) a um pedido fora do roadmap.
+Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` bloqueia um `UpdateAccount` que zera o saldo num PATCH parcial (com `arquivo:linha`) e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; `/engineer` faz exatamente uma pergunta (gate 2) a um pedido fora do roadmap; e, no Goal Driven Development, `/engineer goal` transforma um objetivo em contrato pelo `to-goal` e faz uma pergunta só de aprovação, e o `quality-engineer` em modo goal dá `weak proof` ou `not met`, bloqueante e com `arquivo:linha`, a um critério cuja prova passa com o defeito.
 
 ```bash
 node --test tests/engineer-desk.test.mjs
@@ -103,7 +116,7 @@ node scripts/desk-test.mjs
 
 O primeiro guarda a estrutura do painel (módulo nomeado, estado sob o nome do plugin, um desenho por card de `agents/`, arte vetorizada dentro dos limites do engine, nada de rede, sem colidir com `/engineer`). O segundo roda `tests/engineer-desk.test.tsx` com `claude plugin test` a partir de uma cópia só com manifesto, `hooks/` e `tests/`, porque o comando varre todo `*.test.ts` da pasta e os testes Vitest de `templates/shared` não carregam nele.
 
-Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 2,50 por passada completa (seis casos, uma run cada): uns 5 minutos com `-j 3`, uns 12 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso 1 contra uma cópia do plugin com o card do `quality-engineer` sem a lista de regras e exige que ele **falhe**.
+Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 3,50 por passada completa (oito casos, uma run cada): uns 6 minutos com `-j 3`, uns 14 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso 1 contra uma cópia do plugin com o card do `quality-engineer` sem a lista de regras e exige que ele **falhe**.
 
 ## Versão
 

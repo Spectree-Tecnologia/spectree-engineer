@@ -2,6 +2,17 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.18.0] - 2026-11-10
+
+### Added
+- **Goal Driven Development**, a segunda modalidade de construção: `/engineer goal <objetivo>`, ou item `[goal]` no roadmap. Desce um contrato (`docs/goals/<slug>.md`) com o objetivo, os critérios de sucesso cada um com a prova que o decide, os limites e o orçamento de rodadas; o **como** (módulos, agregados, seams, fatias) é do dono do objetivo, um `full-stack-developer` em modo goal no modelo mais capaz (`fable`, ou `opus`), que decide dentro de `docs/architecture.md` e grava o plano dele em `.scratch/<slug>/plan.md`. Sem spec, tickets ou worktree por ticket.
+- Verificação por quem não construiu: o `quality-engineer` em modo goal roda a prova de cada critério, julga se ela prova o critério (`weak proof`) e tenta refutá-la; o Engineer roda os critérios permanentes por exit code e é quem preenche a tabela `Evidence`. Os achados voltam ao mesmo dono (a única continuação de contexto do fluxo) até cumprir ou o orçamento acabar, que é gate 4.
+- Skill `to-goal`: transforma o pedido no contrato, com as regras de um critério (observável de fora do código, decidido por prova, nunca adjetivo, com o negativo) e o template.
+- Dois evals: `goal-engineer-contract` (o objetivo vira contrato pelo `to-goal` e uma pergunta só de aprovação) e `goal-qe-weak-proof` (o `quality-engineer` em modo goal recusa a prova que passa com o defeito). `scripts/evals.mjs` passa a conceder `Write`, que o runner trata como ferramenta restrita.
+
+### Changed
+- `/engineer`: o roadmap marca a modalidade de cada item; o contrato de despacho ganha as exceções do dono (modelo, teto, continuação).
+
 ## [0.17.0] - 2026-11-10
 
 Minutos de Actions como orçamento. O PILOT gastou 1 308 minutos cobrados em oito dias (16 PRs mergeados, 82 por PR) contra perto de 2 000 por mês do plano Free: 57% em runs de push na main que repetiam o PR, e cada run de PR pagando oito jobs.
@@ -193,6 +204,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.18.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.14.0...v0.15.0
