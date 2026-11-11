@@ -5,9 +5,9 @@ description: "For the orchestrator only (the Engineer, the one agent that talks 
 
 Only the orchestrator uses this skill: the agent that talks to the user and dispatches the others. If you were dispatched with a mission (you build, review, explore or operate), stop: the contract is not yours to write or change. Read it and carry on.
 
-A goal contract says what must be true when the work is done, how anyone can check it, and everything the builder needs to know to get there well. It says nothing about how to get there. Modules, aggregates, files, libraries and the order of the work belong to the agent that will own the goal, and a contract that names them has taken the decision away from the one who will be able to see the code.
+A goal contract says what must be true when the work is done, how anyone can check it, and everything the builder needs to know to get there well. It says nothing about how to get there. Modules, aggregates, files, libraries and the order of the work belong to the `full-stack-developer`, the agent that builds the goal, and a contract that names them has taken the decision away from the one who will be able to see the code.
 
-The contract has two readers who never talk to each other: the owner, who builds from it, and the verifier, who checks the result against it without seeing the owner's reasoning. Write it so that either one could work from it alone. It replaces the spec, the tickets and the implementation brief: nothing else is handed to the owner.
+The contract has two kinds of reader who never talk to each other: the `full-stack-developer`, who builds from it, and the `quality-engineer` and the `security-engineer`, who check the result against it without seeing the full-stack-developer's reasoning. Write it so that either one could work from it alone. It replaces the spec, the tickets and the implementation brief: nothing else is handed to the full-stack-developer.
 
 ## Process
 
@@ -21,18 +21,18 @@ The contract has two readers who never talk to each other: the owner, who builds
    - **Decided already.** The product rules that are settled, each with its reason, because a reason lets the builder decide the cases you did not foresee. Cite the glossary term, the ADR or the decision line.
    - **What exists today.** What the goal touches or resembles in the product as it is: the modules and screens involved, the contracts already there, and one piece of existing work that is the house pattern to read first. State facts ("accounts already refuses another user's id with 404"), never instructions ("add a guard").
    - **Facts from outside.** What an external system really does, with the source: version, payload, limit, error. Never from memory. A vendor's example payload keeps its shape and its id formats, since that is the point of quoting it, except for token-shaped values (card tokens, keys, wallet ids, Pix keys): those become a placeholder such as `<docs-example-token>` before anything is committed, because a secret scan reads every commit and cannot be told it was only an example.
-   - **Prior thinking, when there is some.** An approach someone sketched, a prototype, a spec from before. Label it as that: it informs the owner and does not bind it.
-   - **Unknowns.** What you do not know and the owner will have to find out or raise. An honest gap is worth more than a confident guess.
+   - **Prior thinking, when there is some.** An approach someone sketched, a prototype, a spec from before. Label it as that: it informs the full-stack-developer and does not bind it.
+   - **Unknowns.** What you do not know and the full-stack-developer will have to find out or raise. An honest gap is worth more than a confident guess.
    - **Priorities.** What wins when two good things pull apart (simplicity over configurability, correctness of money over latency).
 
-   Context describes; it never prescribes. If a sentence tells the owner what to build or in which order, turn it into the fact or the reason behind it, or delete it.
+   Context describes; it never prescribes. If a sentence tells the full-stack-developer what to build or in which order, turn it into the fact or the reason behind it, or delete it.
 
 4. Find the **success criteria**. For each thing the user wants to be true, ask "what would I run or look at to know?", and keep asking until there is an answer. A criterion is:
 
    - **Observable from outside the code.** A behaviour through the API or the screen, a number, a state of the data. Never "the code has X" or "uses Y".
    - **Decided by a proof.** A command whose exit code decides it, a measurement against a threshold, or an observation someone else can repeat (the built screen against the approved artboard). The proof may name a test that does not exist yet: say what it must assert, and at which seam, the highest one that exercises the behaviour.
-   - **Run by a script wherever a command can decide it.** Write the command in the Proof cell as ``run: `<command>` ``, runnable from the project root, then what it must assert. The owner, the verifier and the orchestrator all run the same line through `npm run goal -- prove <slug>`, and the exit code is the verdict's evidence. A proof that needs a database is still one command: whoever runs it gives it a database of its own. A proof with no `run:` is decided by hand, so keep those for what only eyes can judge.
-   - **Exact about what was approved.** A criterion about an approved screen names the artboard and quotes its copy and its geometry as the artboard has them (or points at the line of the artboard's code), never a paraphrase from notes: the owner builds what the criterion says, and a paraphrase that drifts from the approved visual costs a round.
+   - **Run by a script wherever a command can decide it.** Write the command in the Proof cell as ``run: `<command>` ``, runnable from the project root, then what it must assert. The full-stack-developer, the verifier and the orchestrator all run the same line through `npm run goal -- prove <slug>`, and the exit code is the verdict's evidence. A proof that needs a database is still one command: whoever runs it gives it a database of its own. A proof with no `run:` is decided by hand, so keep those for what only eyes can judge.
+   - **Exact about what was approved.** A criterion about an approved screen names the artboard and quotes its copy and its geometry as the artboard has them (or points at the line of the artboard's code), never a paraphrase from notes: the full-stack-developer builds what the criterion says, and a paraphrase that drifts from the approved visual costs a round.
    - **Complete in its cases.** Name the cases inside the criterion: the main one, the edges, what is refused. A verifier will try the case you left out.
    - **Not an adjective.** "Faster", "simpler", "robust" and "secure" are wishes. Turn each into the number or the observable behind it, or ask the user for it.
    - **Negative too.** What must be refused, what must not appear, what must not regress. A goal stated only by its happy path is met by the wrong system as well.
@@ -40,7 +40,7 @@ The contract has two readers who never talk to each other: the owner, who builds
 
    Three to seven criteria. More than that is usually more than one goal: split it by outcome, never by layer.
 
-5. Write the **limits**: what must stay true and what must not be touched while getting there. Public contracts other code or other people depend on, data that already exists, money and external services, and what is out of scope. A limit is a boundary the owner stops at and reports, not a preference.
+5. Write the **limits**: what must stay true and what must not be touched while getting there. Public contracts other code or other people depend on, data that already exists, money and external services, and what is out of scope. A limit is a boundary the full-stack-developer stops at and reports, not a preference.
 
 6. Set the **budget**: how many rounds of independent verification the goal gets before the user is asked again (default 3), and how large the change may grow before it is landed in parts (default 4000 changed lines of product code; tests, documents and the lockfile do not count). Set it by what a reviewer can hold, and remember that every part landed is a pull request and a CI run: a budget too small buys runs, not quality. A goal that passes its size is not finished later: what is met lands, and the rest continues as its own goal.
 
@@ -50,7 +50,7 @@ The contract has two readers who never talk to each other: the owner, who builds
 
 9. Write the contract to `docs/goals/<slug>.md` with the template below. The slug is the branch's slug. Where the project has the script, `npm run goal -- check <slug>` must exit 0 before you go on.
 
-10. Read it once more as the owner would, with nothing else in hand. Whatever you had to remember to understand it is missing from the context: add it.
+10. Read it once more as the full-stack-developer would, with nothing else in hand. Whatever you had to remember to understand it is missing from the context: add it.
 
 <goal-template>
 
@@ -111,7 +111,7 @@ Size: 4000 changed lines of product code.
 
 ## Evidence
 
-Filled by the orchestrator from what the verifiers ran, never by the owner. One row per criterion per round.
+Filled by the orchestrator from what the verifiers ran, never by the full-stack-developer. One row per criterion per round.
 
 | # | Round | Verdict | Command run by the verifier and its exit code |
 |---|-------|---------|-----------------------------------------------|
@@ -170,7 +170,7 @@ A project that started with a spec and tickets carries the same knowledge in ano
 - **Actors and scenarios** come from the user stories, grouped by actor.
 - **Success criteria** come from the acceptance criteria of the tickets and from the user stories: group them by outcome into three to seven, keep every case, and give each the proof (the spec's testing decisions name the seam). A criterion already built is still a criterion: the verifier decides it like any other.
 - **Decided already** comes from the decisions recorded beside the spec.
-- **Prior thinking** takes the spec's implementation decisions and the tickets still open, labelled as the earlier plan: a suggestion of slices to the owner, not an order.
+- **Prior thinking** takes the spec's implementation decisions and the tickets still open, labelled as the earlier plan: a suggestion of slices to the full-stack-developer, not an order.
 - **What exists today** says what is already built: which tickets were merged, on which branch, at which commit, and which branches hold work that was never merged.
 - **Limits** come from the spec's out of scope.
 

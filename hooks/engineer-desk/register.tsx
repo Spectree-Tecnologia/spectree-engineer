@@ -218,7 +218,7 @@ const STASH_DENY =
 
 // The Founder's third guard (2026-11-10): the squad is goal driven, and the goal contract belongs to the
 // Engineer, the main loop that talks to the Founder. A subagent neither calls the `to-goal` skill nor
-// writes under docs/goals/: the owner of a goal builds from the contract and the verifiers judge against
+// writes under docs/goals/: the full-stack-developer builds from the contract and the verifiers judge against
 // it, so neither may move the criteria or fill in the evidence.
 const GOAL_SKILL = /(?:^|:)to-goal$/
 const GOAL_CONTRACT = /(?:^|[\\/])docs[\\/]goals[\\/][^\\/]+\.md$/

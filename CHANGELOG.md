@@ -2,6 +2,12 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.19.1] - 2026-11-11
+
+### Changed
+- O squad nomeia cada agente pelo nome do papel, nunca por apelido. "O dono" sai do comando, dos cards, da skill `to-goal`, do README e das mensagens dos scripts, e vira `full-stack-developer`; "revisor" e "quem verifica" viram `quality-engineer` e `security-engineer`. O `/engineer` ganha a regra para o relato ao fundador e para as missões: o fundador acompanha pelo painel, que mostra esses nomes, e precisa ler quem é o responsável por cada atividade sem traduzir.
+- `tests/vocabulary.test.mjs` guarda a regra: o comando e os cards não usam apelido para um agente.
+
 ## [0.19.0] - 2026-11-11
 
 O que a primeira rodada real do Goal Driven Development mostrou (SYND, `manager-registry`: 407 arquivos, 27 mil linhas, 100 commits, as três rodadas gastas, um critério fechado como "met, narrowed") e as issues abertas.
@@ -247,6 +253,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.19.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.16.0...v0.17.0

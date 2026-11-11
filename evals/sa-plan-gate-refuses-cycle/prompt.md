@@ -1,5 +1,5 @@
 ---
-description: Gate de arquitetura — o plano do dono faz dois módulos importarem o código um do outro e deixa um critério sem fatia; o solutions-architect em modo gate reprova com a regra numerada e aponta o critério descoberto, sem reescrever o plano.
+description: Gate de arquitetura — o plano do full-stack-developer faz dois módulos importarem o código um do outro e deixa um critério sem fatia; o solutions-architect em modo gate reprova com a regra numerada e aponta o critério descoberto, sem reescrever o plano.
 tags: [solutions-architect, architecture, goal]
 max_turns: 12
 timeout_seconds: 900
