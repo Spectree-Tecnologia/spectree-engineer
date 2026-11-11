@@ -148,7 +148,7 @@ function lint(goal, ready) {
   for (const name of ['objective', 'success criteria', 'limits', 'budget', 'evidence']) {
     if (!(name in goal.sections)) errors.push(`section "## ${name[0].toUpperCase()}${name.slice(1)}" is missing`);
   }
-  if (!('context' in goal.sections)) warnings.push('no "## Context": the owner gets nothing but the criteria');
+  if (!('context' in goal.sections)) warnings.push('no "## Context": the full-stack-developer gets nothing but the criteria');
   if (goal.criteria.length === 0) errors.push('no success criterion found in the table');
   if (goal.criteria.length > 7) errors.push(`${goal.criteria.length} criteria: more than seven is more than one goal, split it by outcome`);
   if (goal.criteria.length > 0 && goal.criteria.length < 3) warnings.push(`${goal.criteria.length} criteria: a goal usually needs three to seven`);
