@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, execSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadSkillConfig, resolveNamespace } from '../../utils/resolve-skill-config.mjs';
 import { createSkillRunLogger } from '../../utils/skill-run-log.mjs';
@@ -1148,6 +1148,20 @@ async function patchRootPackageJson(rootDir, scope) {
     ensureNewline: false,
     markRiskOnOverwrite: false,
     note: 'the goal contract by script: check its shape, run its proofs, measure its size',
+  });
+  // What the plugin installed, by hash: tooling-sync.mjs later replaces only the scripts the project never changed.
+  const scriptAssets = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts');
+  const installed = {};
+  for (const name of (await fs.readdir(scriptAssets)).filter((one) => one.endsWith('.mjs')).sort()) {
+    const text = (await fs.readFile(path.join(scriptAssets, name), 'utf8')).replace(/\r\n/g, '\n');
+    installed[`scripts/${name}`] = createHash('sha256').update(text).digest('hex');
+  }
+  const pluginManifest = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '.claude-plugin', 'plugin.json');
+  const pluginVersion = JSON.parse(await fs.readFile(pluginManifest, 'utf8')).version;
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', '.squad-tooling.json'), `${JSON.stringify({ plugin: pluginVersion, installed, kept: {} }, null, 2)}\n`, {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'which version of the squad scripts this project holds, read by tooling-sync.mjs',
   });
   // Stryker's scratch and incremental report stay out of git
   const rootGitignore = path.join(rootDir, '.gitignore');

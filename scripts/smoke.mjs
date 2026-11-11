@@ -3,7 +3,7 @@
 // (como o plugin instalado faz), num projeto temporário. Sai 1 no primeiro
 // passo que falhar, mostrando as últimas 30 linhas da saída.
 // SMOKE_KEEP=1 preserva o projeto gerado para inspeção.
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -244,17 +244,17 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     const base = run('goal-base', 'git rev-parse HEAD').trim();
     const commit = 'git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm';
     const contract = path.join(root, 'docs', 'goals', 'probe-thing.md');
-    const write = ({ evidence = [], amendments = [], size = 2000 } = {}) => {
+    const write = ({ evidence = [], amendments = [], size = 2000, status = 'approved by founder on 2026-11-11', proof3 = 'A screenshot beside the artboard.' } = {}) => {
       fs.mkdirSync(path.dirname(contract), { recursive: true });
       fs.writeFileSync(contract, [
-        '# Goal: probe-thing', '', 'Status: approved by founder on 2026-11-11', 'Type: feat', '',
+        '# Goal: probe-thing', '', `Status: ${status}`, 'Type: feat', '',
         '## Objective', '', 'A user sees their things.', '',
         '## Context', '', '### What exists today', '', '- The probe module lists things.', '',
         '## Success criteria', '',
         '| # | Criterion | Proof |', '|---|-----------|-------|',
         '| 1 | The boundaries hold: a module imports `core | shared` and nothing else. | run: `node scripts/check-boundaries.mjs` exits 0. |',
         '| 2 | The proof runs in UTC, as CI does. | run: `node scripts/tz-probe.mjs` exits 0 only in UTC. |',
-        '| 3 | The list matches the approved artboard `things/list`. | A screenshot beside the artboard. |', '',
+        `| 3 | The list matches the approved artboard \`things/list\`. | ${proof3} |`, '',
         '## Limits', '', '- Out of scope: editing.', '',
         '## Budget', '', 'Verification rounds: 3.', `Size: ${size} changed lines.`, '',
         '## Evidence', '',
@@ -289,7 +289,56 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     if (!/product code\s+1 changed lines in 1 files/.test(sized) || !/documents [1-9]/.test(sized)) throw new Error(`goal size did not leave the contract out of the count:${sized.slice(-300)}`);
     write({ ...amended, size: 0 });
     refuse('goal-over-size', `npm run goal -- size probe-thing --base ${base}`, /OVER THE SIZE BUDGET/);
+    // a proof that only the merged main can give waits as `pending`; nothing else may
+    const met12 = ['| 1 | 1 | met | `npm run goal -- prove probe-thing` exit 0 |', '| 2 | 1 | met | same |'];
+    write({ evidence: [...met12, '| 3 | 1 | pending | waits for the merge |'] });
+    refuse('goal-pending-without-a-deferred-proof', 'npm run goal -- check probe-thing', /only a proof written "after merge:" or "in ci:" may wait/);
+    const afterMerge = 'after merge: run: `node scripts/tz-probe.mjs` exits 0 on the merged main.';
+    write({ evidence: [...met12, '| 3 | 1 | pending | waits for the merge |'], proof3: afterMerge });
+    run('goal-ready-with-a-pending-proof', 'npm run goal -- check --ready probe-thing');
+    const waits = run('goal-prove-leaves-the-deferred-proof', 'npm run goal -- prove probe-thing');
+    if (!/waits\s+criterion 3/.test(waits)) throw new Error(`goal prove ran a proof written after merge:${waits.slice(-400)}`);
+    const later = run('goal-prove-after-merge', 'npm run goal -- prove probe-thing --after-merge');
+    if (!/exit 0\s+criterion 3/.test(later) || /criterion 1/.test(later)) throw new Error(`goal prove --after-merge did not run only criterion 3:${later.slice(-400)}`);
+    write({ evidence: [...met12, '| 3 | 1 | pending | waits for the merge |'], proof3: afterMerge, status: 'met on 2026-11-11' });
+    refuse('goal-met-with-a-pending-proof', 'npm run goal -- check probe-thing', /it is "landed on <date>" until the proof is run/);
+    write({ evidence: [...met12, '| 3 | 1 | pending | waits for the merge |'], proof3: afterMerge, status: 'landed on 2026-11-11' });
+    run('goal-landed', 'npm run goal -- check --ready probe-thing');
+    // a round's reproof becomes met only by a narrowed amendment, here decided by the risk policy; more rounds is `extended`
+    const turned = ['| 1 | 1 | met | exit 0 |', '| 2 | 1 | not met | security low: the reverse order |', '| 2 | 1 | met | as narrowed on 2026-11-11: the reverse order moved to probe-hardening |', '| 3 | 1 | met | screenshot |'];
+    write({ evidence: turned });
+    refuse('goal-reproof-turned-met-by-argument', 'npm run goal -- check probe-thing', /goes from reproved to met inside round 1 with no "narrowed" row/);
+    write({ evidence: turned, amendments: ['| 2026-11-11 | 2 | narrowed: the reverse order is out | risk policy (2026-11-11) | `probe-hardening` in the roadmap |', '| 2026-11-11 | budget | extended: one more round | founder | none |'] });
+    run('goal-narrowed-by-the-risk-policy', 'npm run goal -- check --ready probe-thing');
+    const stats = run('goal-stats', 'npm run goal -- stats');
+    if (!/probe-thing\s+approved\s+3\s+1\/3\s+1\s+1\s+1\s/.test(stats)) throw new Error(`goal stats did not count the round, the reproof, the user decision and the policy one:${stats.slice(-500)}`);
     run('goal-restore', 'git checkout -q -- . && git checkout -q - && git branch -q -D feat/probe-thing');
+  });
+  // The squad's scripts follow the plugin: a fresh project is in step with it, a missing script is copied, one the
+  // project never changed is replaced, and one the project changed is left alone until someone says it stays.
+  await step('tooling-sync', () => {
+    const sync = (flags) => node('config-project/scripts/tooling-sync.mjs', flags);
+    const asset = (name) => fs.readFileSync(path.join(skills, 'config-project', 'assets', 'scripts', name), 'utf8');
+    const stampFile = path.join(root, 'scripts', '.squad-tooling.json');
+    const before = fs.readFileSync(stampFile, 'utf8');
+    run('tooling-in-step-after-bootstrap', sync('--check'));
+    fs.rmSync(path.join(root, 'scripts', 'goal.mjs'));
+    // an older version the project never touched: the stamp holds the hash it was installed with
+    const old = `// an older perf${String.fromCharCode(10)}`;
+    fs.writeFileSync(path.join(root, 'scripts', 'perf.mjs'), old);
+    const stamp = JSON.parse(before);
+    stamp.installed['scripts/perf.mjs'] = createHash('sha256').update(old).digest('hex');
+    fs.writeFileSync(stampFile, JSON.stringify(stamp, null, 2));
+    fs.appendFileSync(path.join(root, 'scripts', 'worktree.mjs'), `// the project's own change${String.fromCharCode(10)}`);
+    refuse('tooling-behind', sync('--check'), /missing\s+scripts\/goal\.mjs[\s\S]*outdated\s+scripts\/perf\.mjs[\s\S]*differs\s+scripts\/worktree\.mjs/);
+    const applied = refuse('tooling-apply-leaves-what-the-project-changed', sync('--apply'), /added\s+scripts\/goal\.mjs[\s\S]*updated\s+scripts\/perf\.mjs[\s\S]*differs\s+scripts\/worktree\.mjs/);
+    if (fs.readFileSync(path.join(root, 'scripts', 'goal.mjs'), 'utf8') !== asset('goal.mjs') || fs.readFileSync(path.join(root, 'scripts', 'perf.mjs'), 'utf8') !== asset('perf.mjs')) throw new Error(`tooling-sync --apply did not copy the plugin's scripts:${applied.slice(-300)}`);
+    if (!/the project's own change/.test(fs.readFileSync(path.join(root, 'scripts', 'worktree.mjs'), 'utf8'))) throw new Error('tooling-sync --apply overwrote a script the project changed');
+    run('tooling-keep', sync('--keep scripts/worktree.mjs'));
+    run('tooling-in-step-again', sync('--check'));
+    fs.writeFileSync(path.join(root, 'scripts', 'worktree.mjs'), asset('worktree.mjs'));
+    fs.writeFileSync(stampFile, before);
+    run('tooling-restored', sync('--check'));
   });
   // A throwaway database for one command: the command sees it under both URLs, as the runtime role; it is dropped
   // whatever the exit code; a name in use is never reused; the backend e2e passes on one.

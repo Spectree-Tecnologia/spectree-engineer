@@ -5,12 +5,18 @@
 //   npm run goal -- check --ready <slug>           also: approved, and every criterion's latest verdict is met or waived
 //   npm run goal -- check --ready --changed <ref>  the contracts this branch changed since <ref> (what CI and check:pr run)
 //   npm run goal -- prove <slug> [--criterion <n>] runs every `run:` proof and prints the exit code of each
+//   npm run goal -- prove <slug> --after-merge     runs only the proofs written `after merge:`, on the merged main
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
+//   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI
 //
 // A proof a command decides is written in the Proof cell as run: `<command>`. `prove` runs each from the project
 // root, in UTC as CI does, one after the other, and exits 1 if any exits non-zero. A proof with no `run:` is an
 // observation someone repeats by hand, listed as manual. Proofs that need a database run under one of their own:
 //   npm run db:scratch -- <name> -- npm run goal -- prove <slug>
+//
+// A proof that only the pull request's run or the merged main can give starts with `in ci:` or `after merge:`.
+// It is not run before the pull request; its verdict is `pending` until then, and the contract is `landed`, not
+// `met`, while one is pending.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -24,7 +30,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>]\n       npm run goal -- size <slug> --base <ref>',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats',
     2,
   );
 
@@ -76,9 +82,12 @@ function cells(line) {
 }
 const isRow = (line) => /^\s*\|/.test(line) && !/^\s*\|[\s:|-]+\|\s*$/.test(line);
 
-const VERDICTS = ['met', 'not met', 'weak proof', 'waived'];
-const CHANGES = ['narrowed', 'reworded', 'waived', 'added', 'moved'];
-const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2}|met on \d{4}-\d{2}-\d{2}|stopped on \d{4}-\d{2}-\d{2}: .+)$/;
+const VERDICTS = ['met', 'not met', 'weak proof', 'waived', 'pending'];
+// `extended` is the one amendment that is not about a criterion: more verification rounds, decided by the user.
+const CHANGES = ['narrowed', 'reworded', 'waived', 'added', 'moved', 'extended'];
+const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2}|landed on \d{4}-\d{2}-\d{2}|met on \d{4}-\d{2}-\d{2}|stopped on \d{4}-\d{2}-\d{2}: .+)$/;
+const DEFERRED = /^\s*(after merge|in ci):/i;
+const DEFAULT_ROUNDS = 3;
 const DEFAULT_SIZE = 4000;
 // The size budget is about what a reader has to hold to review the change: the product code. Tests, documents and
 // working files grow with a goal without making it harder to review (in the goal that set this rule they were 62% of
@@ -116,11 +125,16 @@ function parse(file) {
     n: Number(n),
     text,
     proof,
+    // 'after merge' or 'in ci' when the proof cannot run before the pull request, else null
+    deferred: proof.match(DEFERRED)?.[1].toLowerCase() ?? null,
     commands: [...proof.matchAll(/run:\s*`([^`]+)`/g)].map((m) => m[1].trim()),
   }));
   const evidence = rows('evidence').map(([n, round = '', verdict = '', run = '']) => ({ n: Number(n), round, verdict: verdict.toLowerCase().replace(/[*_`]/g, '').trim(), run }));
   const amendments = rows('amendments').map(([date, n = '', change = '', by = '', follow = '']) => ({ date, n: Number(n), change: change.toLowerCase().split(/[\s:,.]/)[0], by, follow }));
   const sizeLine = (sections.budget ?? []).join('\n').match(/^Size:\s*([\d\s.,]+)\s*changed lines/im);
+  const roundsLine = (sections.budget ?? []).join('\n').match(/^Verification rounds:\s*(\d+)/im);
+  // "Landed: PR #23, 1842 product lines, CI 27 min", written by the orchestrator when the pull request merges
+  const landed = lines.find((line) => /^Landed:/.test(line)) ?? '';
   return {
     slug,
     file,
@@ -131,20 +145,27 @@ function parse(file) {
     evidence,
     amendments,
     sizeBudget: sizeLine ? Number(sizeLine[1].replace(/[\s.,]/g, '')) : DEFAULT_SIZE,
+    roundsBudget: roundsLine ? Number(roundsLine[1]) : DEFAULT_ROUNDS,
+    landed: {
+      pr: landed.match(/PR\s*#?(\d+)/i)?.[1] ?? null,
+      lines: landed.match(/(\d[\d\s.]*)\s*product lines/i)?.[1].replace(/[\s.]/g, '') ?? null,
+      ci: landed.match(/CI\s*(\d+)\s*min/i)?.[1] ?? null,
+    },
   };
 }
 
-// The verdict of the latest round that names the criterion.
+// The verdict of the latest round that names the criterion; within a round, the row written last.
 function latestVerdict(goal, n) {
   const mine = goal.evidence.filter((row) => row.n === n && /^\d+$/.test(row.round));
-  return mine.sort((a, b) => Number(b.round) - Number(a.round))[0]?.verdict;
+  const last = Math.max(...mine.map((row) => Number(row.round)));
+  return mine.filter((row) => Number(row.round) === last).at(-1)?.verdict;
 }
 
 function lint(goal, ready) {
   const errors = [];
   const warnings = [];
   if (goal.title.trim() !== `# Goal: ${goal.slug}`) errors.push(`the first heading is "${goal.title.trim()}", expected "# Goal: ${goal.slug}"`);
-  if (!STATUS.test(goal.status)) errors.push(`Status "${goal.status}" is not proposed, approved by <who> on <date>, met on <date> or stopped on <date>: <why>`);
+  if (!STATUS.test(goal.status)) errors.push(`Status "${goal.status}" is not proposed, approved by <who> on <date>, landed on <date>, met on <date> or stopped on <date>: <why>`);
   for (const name of ['objective', 'success criteria', 'limits', 'budget', 'evidence']) {
     if (!(name in goal.sections)) errors.push(`section "## ${name[0].toUpperCase()}${name.slice(1)}" is missing`);
   }
@@ -166,18 +187,38 @@ function lint(goal, ready) {
     if (row.verdict === 'waived' && !goal.amendments.some((a) => a.n === row.n && a.change === 'waived')) {
       errors.push(`criterion ${row.n} is waived with no row in "## Amendments" saying who waived it and where it continues`);
     }
+    if (row.verdict === 'pending' && !goal.criteria.find((criterion) => criterion.n === row.n)?.deferred) {
+      errors.push(`criterion ${row.n} is pending, and only a proof written "after merge:" or "in ci:" may wait`);
+    }
+  }
+  // A round has one verdict per criterion. A second row that turns the round's "not met" or "weak proof" into "met"
+  // is the criterion as narrowed by an amendment, never a verdict changed by argument.
+  for (const criterion of goal.criteria) {
+    const byRound = new Map();
+    for (const row of goal.evidence.filter((one) => one.n === criterion.n)) byRound.set(row.round, [...(byRound.get(row.round) ?? []), row.verdict]);
+    for (const [round, verdicts] of byRound) {
+      const turned = verdicts.at(-1) === 'met' && verdicts.slice(0, -1).some((verdict) => ['not met', 'weak proof'].includes(verdict));
+      if (turned && !goal.amendments.some((a) => a.n === criterion.n && a.change === 'narrowed')) {
+        errors.push(`criterion ${criterion.n} goes from reproved to met inside round ${round} with no "narrowed" row in "## Amendments"`);
+      }
+    }
+  }
+  if (/^met\b/.test(goal.status) && goal.criteria.some((criterion) => latestVerdict(goal, criterion.n) === 'pending')) {
+    errors.push('Status is met while a proof is still pending: it is "landed on <date>" until the proof is run');
   }
   for (const amendment of goal.amendments) {
     if (!CHANGES.includes(amendment.change)) errors.push(`amendment of ${amendment.date}: change "${amendment.change}" is not one of ${CHANGES.join(', ')}`);
     if (!amendment.by) errors.push(`amendment of ${amendment.date}: nobody is named as having decided it`);
     if (['waived', 'moved', 'narrowed'].includes(amendment.change) && !amendment.follow) errors.push(`amendment of ${amendment.date}: a ${amendment.change} criterion names where the rest continues`);
-    if (!['moved', 'added'].includes(amendment.change) && !numbers.has(amendment.n)) errors.push(`amendment of ${amendment.date} names criterion ${amendment.n}, which the contract does not have`);
+    if (!['moved', 'added', 'extended'].includes(amendment.change) && !numbers.has(amendment.n)) errors.push(`amendment of ${amendment.date} names criterion ${amendment.n}, which the contract does not have`);
   }
   if (ready) {
-    if (!/^(approved|met)\b/.test(goal.status)) errors.push(`not ready: Status is "${goal.status}"`);
+    if (!/^(approved|landed|met)\b/.test(goal.status)) errors.push(`not ready: Status is "${goal.status}"`);
     for (const criterion of goal.criteria) {
       const verdict = latestVerdict(goal, criterion.n);
-      if (!['met', 'waived'].includes(verdict)) errors.push(`not ready: criterion ${criterion.n} is ${verdict ?? 'not verified yet'}`);
+      // a proof that only the pull request's run or the merged main can give is ready while it waits
+      const accepted = criterion.deferred ? ['met', 'waived', 'pending'] : ['met', 'waived'];
+      if (!accepted.includes(verdict)) errors.push(`not ready: criterion ${criterion.n} is ${verdict ?? 'not verified yet'}`);
     }
   }
   return { errors, warnings };
@@ -215,16 +256,26 @@ function check() {
 }
 
 function prove() {
-  const flags = parseArgs(args, ['--criterion'], []);
+  const flags = parseArgs(args, ['--criterion'], ['--after-merge']);
   if (flags.positional.length !== 1) usage();
   const goal = parse(slugFile(flags.positional[0]));
   const only = flags['--criterion'] === undefined ? null : Number(flags['--criterion']);
-  const criteria = goal.criteria.filter((criterion) => only === null || criterion.n === only);
+  const afterMerge = Boolean(flags['--after-merge']);
+  const criteria = goal.criteria.filter((criterion) => (only === null || criterion.n === only) && (!afterMerge || criterion.deferred === 'after merge'));
+  if (afterMerge && criteria.length === 0) {
+    console.log(`goal prove: docs/goals/${goal.slug}.md has no proof written "after merge:"`);
+    return 0;
+  }
   if (criteria.length === 0) fail(only === null ? `docs/goals/${goal.slug}.md has no criterion` : `docs/goals/${goal.slug}.md has no criterion ${only}`);
   // CI runs in UTC: a proof that passes only in the local zone is not a proof.
   const env = { ...process.env, TZ: 'UTC' };
   const results = [];
   for (const criterion of criteria) {
+    // what only the pull request's run or the merged main can show does not run here
+    if (criterion.deferred && !(afterMerge && criterion.deferred === 'after merge')) {
+      results.push({ n: criterion.n, command: `(${criterion.deferred}: not run now)`, status: null, waits: true });
+      continue;
+    }
     if (criterion.commands.length === 0) results.push({ n: criterion.n, command: '(no run: proof, decided by hand)', status: null });
     for (const line of criterion.commands) {
       console.log(`\n=== criterion ${criterion.n}\n$ ${line}`);
@@ -234,7 +285,7 @@ function prove() {
     }
   }
   console.log(`\ngoal prove: docs/goals/${goal.slug}.md`);
-  for (const row of results) console.log(`  ${row.status === null ? 'manual' : row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
+  for (const row of results) console.log(`  ${row.waits ? 'waits ' : row.status === null ? 'manual' : row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
   const failed = results.filter((row) => row.status !== null && row.status !== 0);
   if (results.every((row) => row.status === null)) console.log('  nothing to run: no criterion has a run: proof');
   return failed.length === 0 ? 0 : 1;
@@ -262,7 +313,57 @@ function size() {
   return over ? 1 : 0;
 }
 
+// Every contract in one table, read from the contracts themselves: what the squad's way of working costs and how
+// often it needed the user, goal by goal. Lenient where check is strict, so that old contracts still count.
+function stats() {
+  if (args.length > 0) usage();
+  const files = fs.existsSync(goalsDir) ? fs.readdirSync(goalsDir).filter((name) => name.endsWith('.md')).sort() : [];
+  if (files.length === 0) {
+    console.log('goal stats: no contract in docs/goals');
+    return 0;
+  }
+  const roundOf = (row) => Number(row.round.match(/^\d+/)?.[0] ?? 0);
+  const rows = files.map((name) => {
+    const goal = parse(path.join(goalsDir, name));
+    const decisions = path.join(root, '.scratch', goal.slug, 'decisions.md');
+    return {
+      slug: goal.slug,
+      status: goal.status.split(' ')[0] || '?',
+      criteria: goal.criteria.length,
+      rounds: Math.max(0, ...goal.evidence.map(roundOf)),
+      budget: goal.roundsBudget,
+      reproved: new Set(goal.evidence.filter((row) => /^(not met|weak proof)/.test(row.verdict)).map((row) => row.n)).size,
+      user: goal.amendments.filter((a) => /founder|fundador|user/i.test(a.by) && !/policy/i.test(a.by)).length,
+      policy: goal.amendments.filter((a) => /policy/i.test(a.by)).length,
+      fable: fs.existsSync(decisions) && /escalated to fable/i.test(fs.readFileSync(decisions, 'utf8')),
+      lines: goal.landed.lines,
+      ci: goal.landed.ci,
+    };
+  });
+  const head = ['goal', 'status', 'criteria', 'rounds', 'reproved', 'user', 'policy', 'fable', 'lines', 'ci min'];
+  const table = rows.map((r) => [r.slug, r.status, String(r.criteria), `${r.rounds}/${r.budget}`, String(r.reproved), String(r.user), String(r.policy), r.fable ? 'yes' : '-', r.lines ?? '-', r.ci ?? '-']);
+  const width = head.map((title, i) => Math.max(title.length, ...table.map((row) => row[i].length)));
+  const print = (row) => console.log(`  ${row.map((cell, i) => cell.padEnd(width[i])).join('  ')}`.trimEnd());
+  console.log('goal stats: docs/goals');
+  print(head);
+  table.forEach(print);
+  const done = rows.filter((r) => ['met', 'landed'].includes(r.status));
+  if (done.length > 0) {
+    const mean = (pick) => (done.reduce((sum, r) => sum + pick(r), 0) / done.length).toFixed(1);
+    const ci = done.filter((r) => r.ci).reduce((sum, r) => sum + Number(r.ci), 0);
+    console.log(`\n  ${done.length} landed or met`);
+    console.log(`  rounds per goal          ${mean((r) => r.rounds)}`);
+    console.log(`  met in the first round   ${done.filter((r) => r.rounds <= 1 && r.reproved === 0).length} of ${done.length}`);
+    console.log(`  spent the whole budget   ${done.filter((r) => r.rounds >= r.budget).length} of ${done.length}`);
+    console.log(`  user decisions per goal  ${mean((r) => r.user)}  (amendments the user decided; "policy" counts the ones the risk policy decided)`);
+    console.log(`  raised to fable          ${done.filter((r) => r.fable).length} of ${done.length}`);
+    if (ci > 0) console.log(`  CI minutes recorded      ${ci}`);
+  }
+  return 0;
+}
+
 if (command === 'check') process.exit(check());
 else if (command === 'prove') process.exit(prove());
 else if (command === 'size') process.exit(size());
+else if (command === 'stats') process.exit(stats());
 else usage();
