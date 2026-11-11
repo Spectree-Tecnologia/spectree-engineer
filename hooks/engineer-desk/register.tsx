@@ -191,8 +191,9 @@ export function modelFloor(subagentType: string, model: string | undefined): str
 // (`python - <<EOF`, `node -`) hangs on Windows, where Git Bash resolves `python` to the Store
 // stub that waits on stdin for ever, and leaves a process nobody can kill holding a worktree.
 // The script goes to a file with the Write tool and runs from there. `node -e "..."`, `python
-// file.py` and `python -I file.py` are not stdin and pass.
-const STDIN_INTERPRETER = /\b(?:python3?|py|node)\b[^\n|;&]*?(?:\s-\s*(?:<<|$|[|;&)])|\s<<)/m
+// file.py` and `python -I file.py` are not stdin and pass, and so does `cat > fix.py <<EOF`: the name
+// of a file is not the interpreter (the lookbehind refuses a `.`, `/`, `-` or word character before it).
+const STDIN_INTERPRETER = /(?<![\w./\\-])(?:python3?|py|node)\b[^\n|;&]*?(?:\s-\s*(?:<<|$|[|;&)])|\s<<)/m
 export const stdinInterpreter = (command: string) => STDIN_INTERPRETER.test(command)
 const STDIN_DENY =
   'A heredoc or pipe into an interpreter hangs on Windows (the python Store stub waits on stdin) and leaves a process nobody can kill. ' +
