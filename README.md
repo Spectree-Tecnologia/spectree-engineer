@@ -45,13 +45,17 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 | | |
 |---|---|
 | O que você dá | o resultado que quer; na entrevista, o roadmap de objetivos; para tela nova, a aprovação do protótipo |
-| O que desce para quem constrói | um contrato: objetivo, de três a sete critérios de sucesso com a prova de cada um, limites e orçamento de rodadas. Nenhum plano |
+| O que desce para quem constrói | um contrato e mais nada: objetivo, **contexto** (atores e cenários, o que já foi decidido e por quê, o que existe hoje, fatos externos com fonte, o que não se sabe, prioridades), de três a sete critérios de sucesso com a prova de cada um, limites e orçamento de rodadas. Nenhum plano |
 | Quem escreve o contrato | só o Engineer, pela skill `to-goal`; o painel recusa a skill e a escrita em `docs/goals/` a qualquer subagente |
-| Quem decide o como | o dono do objetivo (`full-stack-developer`), olhando o código, dentro de `docs/architecture.md`; o plano dele fica em `.scratch/<slug>/plan.md` |
-| Como se sabe que acabou | cada critério verificado por quem não construiu: roda a prova, julga se ela prova, tenta refutar. Os achados voltam ao mesmo dono até cumprir; orçamento esgotado sobe a você |
-| Quando você é perguntado | pedido fora do roadmap, critério que cria regra de negócio nova, e os quatro gates |
+| Quem decide o como | o dono do objetivo (`full-stack-developer`), olhando o código; o plano dele fica em `.scratch/<slug>/plan.md` |
+| Gate de arquitetura | do Engineer, **antes do código**: o plano do dono é julgado contra as regras numeradas de `docs/architecture.md`. Só regra escrita reprova; preferência não. Critério que só se cumpre violando uma regra sobe a você |
+| Loop | checkpoint por fatia: gate barato por exit code, e qualidade e segurança revisando a fatia enquanto o dono constrói a seguinte |
+| Gate adversário | o pipeline de qualidade e segurança, antes do PR: camada determinística por exit code, `quality-engineer` (roda a prova, julga se prova, tenta refutar, mutantes) e `security-engineer` (atacante), sem ver o plano nem o relato do dono. O Engineer não rebaixa severidade nem dispensa camada |
+| Quando você é perguntado | pedido fora do roadmap, critério que cria regra de negócio nova, orçamento de rodadas esgotado, e os quatro gates |
 
-O que não se negocia no como: as regras do monólito modular, cobradas por `check-boundaries`, e prova por exit code.
+**O que substituiu o quê.** O contrato substitui a spec (`to-spec`); o plano do dono, em fatias verticais com tracer bullet primeiro, substitui os tickets (`to-tickets`); o card do dono substitui o `implement`. As três skills continuam instaladas só para redirecionar uma sessão antiga.
+
+**Projeto em andamento.** Um projeto que começou com spec e tickets não quebra nem recomeça. No primeiro `/engineer` depois da atualização, cada item aberto é adotado como objetivo: o contrato nasce da spec e dos tickets, o que já foi construído entra como contexto, a mesma branch continua, e o item retoma do estágio em que estava. Nada é apagado, e você não é perguntado de novo pelo que já aprovou.
 
 ### O painel do Engineer
 
@@ -64,7 +68,7 @@ Abre sozinho uma vez por sessão no app desktop e no VS Code, numa pasta com `sk
 | Agente | Faz | Não faz |
 |---|---|---|
 | `engineer` (comando) | fala com você em pt-BR, transforma o pedido em contrato (`to-goal`), despacha, roda os critérios permanentes e registra os vereditos | código; dizer ao dono como construir |
-| `solutions-architect` | para o Engineer escrever o contrato: o que já existe, seams onde um critério se prova, se cabe num dono, fronteira de perguntas | escrever arquivo; orientar o dono |
+| `solutions-architect` | para o Engineer escrever o contrato: o que já existe, seams onde um critério se prova, se cabe num dono, fronteira de perguntas; em modo gate, julga o plano do dono contra as regras da arquitetura | escrever arquivo; reescrever o plano |
 | `ui-ux-designer` | protótipo das telas no artefato Design antes do contrato, em rodadas com o fundador até a aprovação; design system do projeto; toda referência do fundador passa pelo `to-wireframe` antes do artboard | regra de negócio, código |
 | `full-stack-developer` | dono de um objetivo, no modelo mais capaz: decide módulos, agregados e fatias, constrói test-first com scaffold pelas skills de monólito, entrega a evidência de cada critério | cruzar um limite do contrato ou uma regra da arquitetura; alterar o contrato |
 | `quality-engineer` | verifica cada critério de sucesso (roda a prova, julga se prova, tenta refutar) e revisa padrões e fronteiras do monólito | editar; ver o plano ou o relato do dono |
@@ -104,7 +108,7 @@ Roda todas as skills de monólito a partir deste repo num projeto temporário (`
 node scripts/evals.mjs
 ```
 
-Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` dá `weak proof` ou `not met`, bloqueante e com `arquivo:linha`, a um `UpdateAccount` que zera o saldo num PATCH parcial e cuja prova passa com o defeito, e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; e `/engineer`, diante de um pedido fora do roadmap, grava o contrato pelo `to-goal` e faz exatamente uma pergunta (gate 2).
+Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` dá `weak proof` ou `not met`, bloqueante e com `arquivo:linha`, a um `UpdateAccount` que zera o saldo num PATCH parcial e cuja prova passa com o defeito, e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; o mesmo `solutions-architect`, em modo gate, reprova com a regra numerada um plano em que dois módulos importam o código um do outro e aponta o critério sem fatia; `/engineer`, diante de um pedido fora do roadmap, grava o contrato pelo `to-goal` e faz exatamente uma pergunta (gate 2); e, num projeto com um item em andamento por spec e tickets, adota o item como objetivo sem refazer nada.
 
 ```bash
 node --test tests/engineer-desk.test.mjs
@@ -116,7 +120,7 @@ node scripts/desk-test.mjs
 
 O primeiro guarda a estrutura do painel (módulo nomeado, estado sob o nome do plugin, um desenho por card de `agents/`, arte vetorizada dentro dos limites do engine, nada de rede, sem colidir com `/engineer`). O segundo roda `tests/engineer-desk.test.tsx` com `claude plugin test` a partir de uma cópia só com manifesto, `hooks/` e `tests/`, porque o comando varre todo `*.test.ts` da pasta e os testes Vitest de `templates/shared` não carregam nele.
 
-Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 3 por passada completa (seis casos, uma run cada): uns 5 minutos com `-j 3`, uns 12 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso do `UpdateAccount` contra uma cópia do plugin com o card do `quality-engineer` sem o procedimento de verificação nem a lista de regras e exige que ele **falhe**.
+Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 5 por passada completa (oito casos, uma run cada): uns 4 minutos com `-j 4`, uns 15 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso do `UpdateAccount` contra uma cópia do plugin com o card do `quality-engineer` sem o procedimento de verificação nem a lista de regras e exige que ele **falhe**.
 
 ## Versão
 

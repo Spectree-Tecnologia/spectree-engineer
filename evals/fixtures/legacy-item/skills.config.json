@@ -1,0 +1,4 @@
+{
+  "namespace": "lab",
+  "paths": { "modules": "modules", "backend": "apps/backend", "frontend": "apps/frontend", "shared": "packages/shared" }
+}
