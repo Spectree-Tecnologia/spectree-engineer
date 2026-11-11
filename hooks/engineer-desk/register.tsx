@@ -173,16 +173,17 @@ function planBlocks(Text: any, progress: ReturnType<typeof planProgress>, cells:
 const isBandPlan = (current: Plan) =>
   current.tasks.length > 0 && !(current.isSettled && current.tasks.every(one => one.status === 'completed'))
 
-// The Founder's floor (2026-11-01): no subagent of his runs under Sonnet. A spawn
-// that names Haiku is raised; so is one of a harness agent that would pick Haiku
-// on its own, since a hook sees no agent definition, only the call.
+// The Founder's floor: no subagent of his runs under Opus (2026-11-11; it was Sonnet from 2026-11-01).
+// Every role's card declares Opus, and the Engineer raises a goal to Fable only from its third
+// verification round on. A spawn that names Haiku or Sonnet is raised; so is one of a harness agent
+// that would pick Haiku on its own, since a hook sees no agent definition, only the call.
 // shortcut: the harness agents known to default to Haiku are listed by name; add one when the panel shows Haiku on it.
 const HAIKU_BY_DEFAULT = ['web-fetch', 'Explore', 'claude-code-guide', 'statusline-setup']
-const FLOOR = 'sonnet'
-const isHaiku = (model: string | undefined) => /haiku/i.test(model ?? '')
+const FLOOR = 'opus'
+const isBelowFloor = (model: string | undefined) => /haiku|sonnet/i.test(model ?? '')
 
 export function modelFloor(subagentType: string, model: string | undefined): string | undefined {
-  if (isHaiku(model)) return FLOOR
+  if (isBelowFloor(model)) return FLOOR
   if (model === undefined && HAIKU_BY_DEFAULT.includes(subagentType)) return FLOOR
   return model
 }
@@ -299,7 +300,7 @@ export const register: Register = on => {
     const id = started.agentId
     if (!id) return started
     // A session that forces one model on every subagent outranks the floor: say so, once per spawn.
-    if (isHaiku(started.model)) $.ui.log(`engineer-desk: ${e.subagentType} started on ${started.model} despite the Sonnet floor`)
+    if (isBelowFloor(started.model)) $.ui.log(`engineer-desk: ${e.subagentType} started on ${started.model} despite the Opus floor`)
 
     await recordSpawn($, id, e.description, e.subagentType, started.model).catch(error => logFailure($, error))
 
