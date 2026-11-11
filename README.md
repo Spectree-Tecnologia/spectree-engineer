@@ -55,7 +55,7 @@ Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (
 | Provas executáveis | a prova que um comando decide vai no contrato como ``run: `<comando>` ``, e `npm run goal -- prove <slug>` roda todas, em UTC como o CI. Dono, revisores e Engineer rodam a mesma linha, e o exit code é a evidência |
 | Contrato pronto | `npm run goal -- check --ready` exige o contrato aprovado e todo critério `met`, ou dispensado por emenda. Roda no `check:pr` e no CI: sem isso o PR não abre |
 | Emenda | um critério só muda por uma linha em `## Amendments`, com data, quem decidiu e onde o resto continua. Não existe "cumprido com ressalva" |
-| Tamanho | o contrato tem orçamento de linhas alteradas (2 000 por padrão), medido em todo checkpoint. Estourou, o que está cumprido vai a PR e o resto vira um objetivo de continuação |
+| Tamanho | o contrato tem orçamento de linhas alteradas de código de produto (4 000 por padrão; teste, documento e lockfile não contam), medido em todo checkpoint. Estourou, o que está cumprido vai a PR e o resto vira um objetivo de continuação. Cada parte é um run de CI, então o orçamento não é para fatiar miúdo |
 | Quando você é perguntado | pedido fora do roadmap, critério que cria regra de negócio nova, estreitar ou dispensar um critério, orçamento de rodadas esgotado, e os quatro gates |
 
 **O que substituiu o quê.** O contrato substitui a spec (`to-spec`); o plano do dono, em fatias verticais com tracer bullet primeiro, substitui os tickets (`to-tickets`); o card do dono substitui o `implement`. As três skills continuam instaladas só para redirecionar uma sessão antiga.

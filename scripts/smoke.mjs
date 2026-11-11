@@ -283,7 +283,11 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     run('goal-commit-ready', `${commit} "docs(probe): evidence"`);
     const ready = run('goal-check-pr-ready', `npm run check:pr -- --base ${base}`);
     if (!/ok\s+goal contract/.test(ready)) throw new Error(`check:pr did not check the goal contract:${ready.slice(-400)}`);
-    write({ ...amended, size: 5 });
+    // the budget counts product code: the branch added one line of it (scripts/tz-probe.mjs) and forty of contract
+    write({ ...amended, size: 1 });
+    const sized = run('goal-size-counts-product-code', `npm run goal -- size probe-thing --base ${base}`);
+    if (!/product code\s+1 changed lines in 1 files/.test(sized) || !/documents [1-9]/.test(sized)) throw new Error(`goal size did not leave the contract out of the count:${sized.slice(-300)}`);
+    write({ ...amended, size: 0 });
     refuse('goal-over-size', `npm run goal -- size probe-thing --base ${base}`, /OVER THE SIZE BUDGET/);
     run('goal-restore', 'git checkout -q -- . && git checkout -q - && git branch -q -D feat/probe-thing');
   });

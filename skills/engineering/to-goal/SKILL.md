@@ -42,7 +42,7 @@ The contract has two readers who never talk to each other: the owner, who builds
 
 5. Write the **limits**: what must stay true and what must not be touched while getting there. Public contracts other code or other people depend on, data that already exists, money and external services, and what is out of scope. A limit is a boundary the owner stops at and reports, not a preference.
 
-6. Set the **budget**: how many rounds of independent verification the goal gets before the user is asked again (default 3), and how large the change may grow before it is landed in parts (default 2000 changed lines). A goal that passes its size is not finished later: what is met lands, and the rest continues as its own goal.
+6. Set the **budget**: how many rounds of independent verification the goal gets before the user is asked again (default 3), and how large the change may grow before it is landed in parts (default 4000 changed lines of product code; tests, documents and the lockfile do not count). Set it by what a reviewer can hold, and remember that every part landed is a pull request and a CI run: a budget too small buys runs, not quality. A goal that passes its size is not finished later: what is met lands, and the rest continues as its own goal.
 
 7. Do not restate the project's standing gates (build, tests, boundary checks, latency budgets, review). They hold for every goal and live in the project's own documents. Name one here only when this goal tightens it, as a criterion with its number.
 
@@ -107,7 +107,7 @@ Who gets what, and why it matters now. No solution.
 ## Budget
 
 Verification rounds: 3.
-Size: 2000 changed lines.
+Size: 4000 changed lines of product code.
 
 ## Evidence
 
