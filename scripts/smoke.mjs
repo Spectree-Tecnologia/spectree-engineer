@@ -170,9 +170,9 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   // the smoke's own files stay out of the repo, or every later diff would name them
   fs.appendFileSync(path.join(root, '.gitignore'), ['', 'smoke.log', 'seed-rows.sql', ''].join(String.fromCharCode(10)));
   run('git-init', 'git init -q && git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm "feat: bootstrap"');
-  // the scanners the generated security.yml runs, by the same docker images: a fresh scaffold has no secret in its
+  // the scanners the generated ci.yml runs, by the same docker images: a fresh scaffold has no secret in its
   // history (exit 0), and the lockfile scan reads the packages (0 or 1: a known vulnerability in today's latest is not ours)
-  // the same pinned image as the generated security.yml; a scan of 0 commits is the Windows false pass, not a clean repo
+  // the same pinned image as the generated ci.yml; a scan of 0 commits is the Windows false pass, not a clean repo
   const scanned = run('gitleaks', `docker run --rm -v "${root}:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact --no-banner /repo`);
   await step('gitleaks-scanned-history', () => {
     const commits = Number(scanned.match(/(\d+) commits? scanned/)?.[1] ?? 0);
@@ -183,6 +183,56 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     const out = `${res.stdout ?? ''}${res.stderr ?? ''}`;
     fs.appendFileSync(logFile, `\n===== [osv-scanner]\n${out}`);
     if (![0, 1].includes(res.status) || !/found \d+ packages/.test(out)) throw new Error(`osv-scanner exit ${res.status}: ${out.trim().split(/\r?\n/).slice(-3).join(' | ')}`);
+  });
+  // The generated CI: one workflow, one job, never on push; every npm script it names exists; `cp .env.example .env`
+  // gives the backend the env it runs with here; and actionlint (with shellcheck) accepts the file.
+  await step('ci-workflow-shape', () => {
+    const workflows = fs.readdirSync(path.join(root, '.github', 'workflows'));
+    if (workflows.join() !== 'ci.yml') throw new Error(`expected ci.yml alone, got ${workflows.join(', ')}`);
+    const ci = fs.readFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
+    const live = ci.split(/\r?\n/).filter((line) => !/^\s*#/.test(line)).join(String.fromCharCode(10));
+    const jobs = live.slice(live.indexOf('jobs:')).match(/^  [a-z][\w-]*:$/gm) ?? [];
+    if (jobs.length !== 1) throw new Error(`expected one job, got ${jobs.join(' ')}`);
+    if (/^\s+push:/m.test(live) || /matrix:/.test(live) || /pull_request_target/.test(live)) throw new Error('ci.yml has a push trigger, a matrix or pull_request_target');
+    const timeout = Number(live.match(/timeout-minutes: (\d+)/)?.[1]);
+    if (!(timeout > 0 && timeout <= 20)) throw new Error(`timeout-minutes is ${timeout}`);
+    const rootScripts = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;
+    const backendScripts = JSON.parse(fs.readFileSync(path.join(backendDir, 'package.json'), 'utf8')).scripts;
+    const steps = live.slice(live.indexOf('steps:'));
+    // a step's working-directory decides whose scripts `npm run` reads
+    for (const block of steps.split(/^      - /m).slice(1)) {
+      const inBackend = /working-directory: apps\/backend/.test(block);
+      for (const [, workspace, script] of block.matchAll(/npm (-w apps\/backend )?run ([\w:-]+)/g)) {
+        const scripts = workspace || inBackend ? backendScripts : rootScripts;
+        if (!scripts[script]) throw new Error(`ci.yml runs "${script}", which ${workspace || inBackend ? 'apps/backend' : 'the root'} package.json does not have`);
+      }
+    }
+    const example = fs.readFileSync(path.join(backendDir, '.env.example'), 'utf8').split(/\r?\n/).filter((line) => /^[A-Z_]+=/.test(line)).map((line) => line.split('=')[0]);
+    const used = fs.readFileSync(path.join(backendDir, '.env'), 'utf8').split(/\r?\n/).filter((line) => /^[A-Z_]+=/.test(line)).map((line) => line.split('=')[0]);
+    const missing = used.filter((key) => !example.includes(key));
+    if (missing.length > 0) throw new Error(`apps/backend/.env.example lacks ${missing.join(', ')}: CI copies it to .env`);
+  });
+  run('ci-workflow-actionlint', `docker run --rm -v "${root}:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color`);
+  // the pull-request-only gates, locally: a clean branch passes; a secret in a commit, a bad title and a base that
+  // moved are each refused, by name
+  await step('check-pr', () => {
+    const base = run('check-pr-base', 'git rev-parse HEAD').trim();
+    const commit = 'git -c user.name=smoke -c user.email=smoke@example.com commit -qm';
+    run('check-pr-branch', `git checkout -q -b feat/check-pr && ${commit} "feat: nothing" --allow-empty`);
+    const clean = run('check-pr-clean', `npm run check:pr -- --base ${base} --title "feat(probe): a thing"`);
+    if (!/ok\s+gitleaks/.test(clean) || !/ok\s+squawk/.test(clean) || !/ok\s+title/.test(clean) || !/ok\s+up to date/.test(clean)) throw new Error(`check:pr did not report its checks:${clean.slice(-400)}`);
+    refuse('check-pr-bad-title', `npm run check:pr -- --base ${base} --title "added a thing"`, /FAIL\s+title/);
+    // a token-shaped value, assembled here so this file never holds one
+    fs.writeFileSync(path.join(root, 'leak.txt'), `aws_secret_access_key = ${['wJalrXUtnFEMI', 'K7MDENG', 'bPxRfiCYzEXAMPLEKEY'].join('/')}${String.fromCharCode(10)}github_token = ghp_${'a1B2c3D4e5F6g7H8i9J0'.repeat(2).slice(0, 36)}${String.fromCharCode(10)}`);
+    run('check-pr-leak-commit', `git add leak.txt && ${commit} "feat: leak"`);
+    refuse('check-pr-secret', `npm run check:pr -- --base ${base}`, /FAIL\s+gitleaks/);
+    run('check-pr-drop-branch', 'git checkout -q - && git branch -q -D feat/check-pr');
+    // main moved: a branch cut from the previous tip is behind
+    run('check-pr-main-moves', `git checkout -q -b feat/behind && git checkout -q - && ${commit} "chore: main moves" --allow-empty`);
+    const tip = run('check-pr-tip', 'git rev-parse HEAD').trim();
+    run('check-pr-on-behind', 'git checkout -q feat/behind');
+    refuse('check-pr-behind', `npm run check:pr -- --base ${tip}`, /FAIL\s+up to date with the base/);
+    run('check-pr-restore', 'git checkout -q - && git branch -q -D feat/behind');
   });
   // no offset given: the first worktree takes +100 by itself
   run('worktree-up', 'npm run worktree -- up t1');

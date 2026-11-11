@@ -1,0 +1,158 @@
+# One workflow, one job, on pull requests only. GitHub bills a private repository per job (each one pays its own
+# checkout, install, build and database, and its time is counted on its own), and a run on every push to main repeats
+# what the pull request already proved on the merge commit. So: nothing runs on push, everything shares one runner, a
+# pull request that only touches documentation stops after the secret scan, and the lockfile scanners run when the
+# lockfile changed. Main gets the whole thing once a week (every route's latency budget, the lockfile scanners without
+# condition) and on demand from the Actions tab.
+# Never add a second job, a matrix or a `push:` trigger: extend the steps of this job. `npm run check:pr` runs the
+# pull-request-only gates locally, before the PR exists.
+name: CI
+
+on:
+  pull_request:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# read-only token: no step writes to the repository
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    # a hung job is billed until this limit
+    timeout-minutes: 20
+    defaults:
+      run:
+        # bash -eo pipefail: a failing command before a pipe fails the step
+        shell: bash
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+      # empty outside a pull request; reaches the shell through env, never through ${{ }} inside run
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      # squash merges carry the PR title into main's history. Read from the API, so a re-run sees a title fixed after the
+      # first run. Fails in seconds, before anything is installed.
+      - name: Conventional Commits title
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_API_URL: ${{ github.event.pull_request.url }}
+        run: |
+          title=$(gh api "$PR_API_URL" --jq .title)
+          pattern='^(feat|fix|chore|docs|refactor|test|build|ci|perf|style)(\([a-z0-9-]+\))?!?: .+'
+          if [[ ! "$title" =~ $pattern ]]; then
+            echo "PR title must follow Conventional Commits, <type>(<scope>): <summary>. Got: $title"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          # the secret scan reads the history; the diff against the base decides the rest
+          fetch-depth: 0
+          # nothing after the checkout talks to GitHub
+          persist-credentials: false
+
+      - name: What this run has to prove
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          code=true
+          lockfile=true
+          migrations=
+          if [ -n "$BASE_REF" ]; then
+            changed=$(git diff --name-only "origin/$BASE_REF...HEAD")
+            grep -qvE '(\.md$|^docs/|^\.scratch/)' <<<"$changed" || code=false
+            grep -qx 'package-lock.json' <<<"$changed" || lockfile=false
+            deleted=$(git diff --name-only --diff-filter=D "origin/$BASE_REF...HEAD" -- apps/backend/prisma/migrations | grep '\.sql$' || true)
+            if [ -n "$deleted" ]; then
+              echo "this pull request deletes migrations; an applied migration is never deleted:"
+              echo "$deleted"
+              exit 1
+            fi
+            migrations=$(git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- apps/backend/prisma/migrations | grep '\.sql$' | tr '\n' ' ' || true)
+          elif [ "$EVENT" = schedule ] && [ -z "$(git log -1 --since='8 days ago' --format=%h)" ]; then
+            # a week without a commit: only the scanners have something new to say
+            code=false
+          fi
+          echo "code=$code lockfile=$lockfile migrations=${migrations:-none}"
+          {
+            echo "code=$code"
+            echo "lockfile=$lockfile"
+            echo "migrations=$migrations"
+          } >> "$GITHUB_OUTPUT"
+
+      # .gitleaks.toml (default rules + narrow allowlists) and .gitleaksignore at the root list what was reviewed.
+      # Image pinned by tag and digest; Dependabot does not track it: the platform-engineer bumps it with the stack review.
+      - name: gitleaks (secrets in the git history)
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact --no-banner /repo
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # npm reads the tree from package-lock.json: no install needed. osv-scanner.toml beside the lockfile lists the ids
+      # ignored, each with a reason. Pin as above.
+      - name: npm audit and osv-scanner (the lockfile against the advisory databases)
+        if: steps.scope.outputs.lockfile == 'true'
+        run: |
+          npm audit --audit-level=high
+          docker run --rm -v "$PWD:/repo" ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0 --lockfile=/repo/package-lock.json
+
+      - name: squawk (the Postgres migrations this pull request adds)
+        if: steps.scope.outputs.migrations != ''
+        env:
+          MIGRATIONS: ${{ steps.scope.outputs.migrations }}
+        run: |
+          # shellcheck disable=SC2086
+          npx --yes squawk-cli@2.70.0 --assume-in-transaction $MIGRATIONS
+
+      - if: steps.scope.outputs.code == 'true'
+        run: npm ci
+
+      # the same database as development: the backend's own compose file and the example env (test-only values; CI
+      # never sees a real secret)
+      - name: Postgres
+        if: steps.scope.outputs.code == 'true'
+        working-directory: apps/backend
+        run: |
+          cp .env.example .env
+          docker compose up -d --wait postgres
+
+      # before the seed: the backend prebuild generates the Prisma client the seed imports
+      - if: steps.scope.outputs.code == 'true'
+        run: npm run build
+
+      - name: Migrations, runtime role and seed
+        if: steps.scope.outputs.code == 'true'
+        working-directory: apps/backend
+        run: |
+          npx prisma migrate deploy
+          npm run db:roles
+          npx prisma db seed
+
+      # boundaries, types and unit tests: none of them writes to the database
+      - if: steps.scope.outputs.code == 'true'
+        run: npm test
+
+      # the p95 budget (rule 11) on a database nothing has written to yet, and with nothing else running on the runner.
+      # A pull request measures the routes its diff reaches; the weekly run measures all.
+      - name: Latency budget
+        if: steps.scope.outputs.code == 'true'
+        run: |
+          if [ -n "$BASE_REF" ]; then npm run perf -- --changed "origin/$BASE_REF"; else npm run perf; fi
+
+      - name: Backend e2e
+        if: steps.scope.outputs.code == 'true'
+        run: npm -w apps/backend run test:e2e
+
+      # A Playwright suite goes here, as steps of this job (platform-engineer card): `docker compose down -v` and up
+      # again for a database of its own, migrate, roles, seed, both servers, the browsers from the cache.
