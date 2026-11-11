@@ -1,5 +1,6 @@
 ---
 name: module-query-cqrs
+user-invocable: false
 description: Criar, revisar ou orientar queries de módulo no padrão CQRS de leitura no projeto. Usar quando o pedido envolver interfaces `*Query`, arquivos `*.query.ts`, use cases de leitura (`find-*`), projeções/DTOs para consumo da API/front, paginação/filtros/agregações, separação entre leitura (query) e escrita (repository/comando) ou a skill `module-query-cqrs`.
 ---
 

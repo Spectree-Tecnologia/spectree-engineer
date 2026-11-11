@@ -1,5 +1,6 @@
 ---
 name: module-aggregate
+user-invocable: false
 description: Creates the standard scaffold for an aggregate inside an existing business module in `modules/<module>`, always generating English folder and file names such as `model`, `provider`, `use-case`, `*.entity.ts`, `*.repository.ts`, and `*.use-case.ts`.
 ---
 

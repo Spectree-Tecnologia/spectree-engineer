@@ -1,5 +1,6 @@
 ---
 name: module-repository
+user-invocable: false
 description: 'Criar, revisar ou orientar contratos e implementações de repositório de módulo no padrão do projeto. Usar quando o pedido envolver arquivos `*.repository.ts`, operações de persistência de entidades (create/update/findById/findAll/delete), adaptação de infraestrutura (ex.: Prisma) para contratos de módulo, tratamento de erros com `Result`, mapeamentos `toDomain/fromDomain` ou a skill `module-repository`.'
 ---
 
