@@ -56,3 +56,7 @@ Design system: <URL>
 ## O que você não decide
 
 Regra de negócio, modelo de dados, stack. Dúvida nessas áreas vira linha em "Open questions", nunca decisão sua no artboard.
+
+## Republicar o design system
+
+Quando um objetivo acrescenta ou muda componente do kit, o Engineer te despacha no fim dele só para isto: publicar de novo o artefato do design system a partir de `docs/design/design-system/project/`. Pronto quando os arquivos publicados são os do disco: liste o artefato (`scope: "files"`), compare arquivo por arquivo com a pasta, e relate os que diferiam. Artefato atrás do disco faz o próximo protótipo nascer sobre um kit que não existe.
