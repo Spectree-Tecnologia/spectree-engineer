@@ -247,6 +247,30 @@ test('a heredoc or pipe into an interpreter is refused, a script run from a file
   }
 })
 
+test("the goal contract is the Engineer's: a subagent neither calls to-goal nor writes docs/goals, the main loop does both", async ($, on) => {
+  engine(on, 'd1')
+  await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'goal')
+  const denied = async (call: Record<string, unknown>) => String(((await $.tool.call(call as any)) as any).deny ?? '')
+  for (const call of [
+    { tool: 'Skill', skill: 'spectree-engineer:to-goal', agentId: 'd1' },
+    { tool: 'Skill', skill: 'to-goal', agentId: 'd1' },
+    { tool: 'Write', file_path: '/repo/docs/goals/second-copy.md', content: 'x', agentId: 'd1' },
+    { tool: 'Edit', file_path: 'C:\\repo\\docs\\goals\\second-copy.md', old_string: 'a', new_string: 'b', agentId: 'd1' },
+  ]) {
+    expect(await denied(call)).toContain("the Engineer's")
+  }
+  for (const call of [
+    { tool: 'Skill', skill: 'spectree-engineer:tdd', agentId: 'd1' },
+    { tool: 'Skill', skill: 'spectree-engineer:to-goal-review', agentId: 'd1' },
+    { tool: 'Write', file_path: '/repo/.scratch/second-copy/plan.md', content: 'x', agentId: 'd1' },
+    { tool: 'Read', file_path: '/repo/docs/goals/second-copy.md', agentId: 'd1' },
+    { tool: 'Skill', skill: 'spectree-engineer:to-goal' },
+    { tool: 'Write', file_path: '/repo/docs/goals/second-copy.md', content: 'x' },
+  ]) {
+    expect(await denied(call)).toBe('')
+  }
+})
+
 test('the clock runs only while a subagent runs', async ($, on) => {
   const clock = engine(on, 'c1')
   let ticks = 0

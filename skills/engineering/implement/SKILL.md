@@ -1,16 +1,12 @@
 ---
 name: implement
-description: "Implement a piece of work based on a spec or set of tickets."
+description: "Replaced by Goal Driven Development; do not use for new work. Kept only so that a session that started before the squad became goal driven is sent to the adoption path instead of failing."
 ---
 
-Implement the work described by the user in the spec or tickets.
+The squad no longer implements from a spec or tickets. If you are reading this, you belong to a session that started before Goal Driven Development and reached the step that used to call `implement`.
 
-If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
+Nothing is lost and nothing is redone. Do not start from the spec or a ticket as if it were an order.
 
-Call the Skill tool with "tdd" where possible, at pre-agreed seams.
-
-Run typechecking regularly, single test files regularly, and the full test suite once at the end.
-
-Once done, call the Skill tool with "code-review" to review the work.
-
-Commit your work to the current branch.
+1. The Skill tool printed `Base directory for this skill: ...`. The plugin's root is three folders above it. Read `commands/engineer.md` there, section 3, "Projeto em andamento de antes do Goal Driven".
+2. If you are the orchestrator (you talk to the user and dispatch the others): follow that section. The item you were building continues as a goal, from the stage it is in, on the same branch. Its contract comes from the `to-goal` skill, which knows how to turn a spec and tickets into one.
+3. If you were dispatched with a mission: carry on with it. A ticket counts as your contract, one success criterion per acceptance criterion; your card says the rest.

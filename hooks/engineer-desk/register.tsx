@@ -199,7 +199,23 @@ const STDIN_DENY =
   'A heredoc or pipe into an interpreter hangs on Windows (the python Store stub waits on stdin) and leaves a process nobody can kill. ' +
   'Write the script to a file with the Write tool and run it from there.'
 
-// The panel only watches, except for the two guards above: a failure in its
+// The Founder's third guard (2026-11-10): the squad is goal driven, and the goal contract belongs to the
+// Engineer, the main loop that talks to the Founder. A subagent neither calls the `to-goal` skill nor
+// writes under docs/goals/: the owner of a goal builds from the contract and the verifiers judge against
+// it, so neither may move the criteria or fill in the evidence.
+const GOAL_SKILL = /(?:^|:)to-goal$/
+const GOAL_CONTRACT = /(?:^|[\\/])docs[\\/]goals[\\/][^\\/]+\.md$/
+export const goalContractGuard = (tool: string, input: Record<string, unknown>): string | null => {
+  if (tool === 'Skill' && GOAL_SKILL.test(String(input.skill ?? ''))) {
+    return "The goal contract is the Engineer's: only the main loop calls to-goal. Read docs/goals/<slug>.md and carry on with your mission."
+  }
+  if ((tool === 'Write' || tool === 'Edit') && GOAL_CONTRACT.test(String(input.file_path ?? ''))) {
+    return "The goal contract is the Engineer's: a subagent reads docs/goals/ and never writes it. Put your evidence in your report; the Engineer records the verdicts."
+  }
+  return null
+}
+
+// The panel only watches, except for the three guards above: a failure in its
 // bookkeeping is logged and never stops a spawn, a tool call or a turn.
 function logFailure($: EngineInterface, error: unknown) {
   $.ui.log(`engineer-desk: ${error instanceof Error ? error.message : String(error)}`)
@@ -276,6 +292,8 @@ export const register: Register = on => {
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
     if (e.tool === 'Bash' && stdinInterpreter(String((e as unknown as { command?: unknown }).command ?? ''))) return { deny: STDIN_DENY }
+    const contractDeny = id ? goalContractGuard(String(e.tool), e as unknown as Record<string, unknown>) : null
+    if (contractDeny) return { deny: contractDeny }
     if (e.tool === PLAN_TOOL) {
       if (id) return { deny: 'Only the main loop keeps a plan. Carry on with your task.' }
       const input = (key: string) => (e as unknown as Record<string, unknown>)[key]

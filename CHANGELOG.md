@@ -2,6 +2,38 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.18.0] - 2026-11-10
+
+O squad deixa de ser spec-driven e passa a trabalhar em **Goal Driven Development**. O fundador dá o resultado; o squad decide o como e prova.
+
+### Changed
+- **`/engineer` tem um fluxo só:** entrevista → roadmap de objetivos → protótipo → contrato → dono constrói → verificação independente → PR → merge → próximo objetivo. O que desce para quem constrói é um contrato (`docs/goals/<slug>.md`) com o objetivo, de três a sete critérios de sucesso cada um com a prova que o decide, os limites e o orçamento de rodadas, e nenhum plano. Não há mais spec, tickets, fronteira de tickets nem worktree por ticket.
+- **Menos perguntas ao fundador.** Objetivo do roadmap já está aprovado: o Engineer escreve os critérios a partir do que está decidido, relata e segue. Só para, com uma pergunta e o contrato já gravado, em pedido fora do roadmap e em critério que cria regra de negócio nova. O protótipo de tela nova continua sendo dele.
+- **`full-stack-developer` é o dono do objetivo:** decide módulos, agregados, seams e fatias dentro de `docs/architecture.md`, grava o plano dele em `.scratch/<slug>/plan.md`, constrói test-first com critério primeiro, escreve o model e a migration do módulo. Roda no modelo mais capaz (`fable` pedido pelo Engineer, `opus` no card). Os achados da verificação voltam a ele mesmo, a única continuação de contexto do fluxo.
+- **`quality-engineer` verifica critérios:** `## Criteria` vem antes de `## Standards` e `## Architecture`. Roda a prova de cada critério, julga se ela prova (`weak proof`) e tenta refutá-la; veredito `met`, `not met` ou `weak proof`. Quem preenche a tabela `Evidence` do contrato é o Engineer.
+- `solutions-architect` serve ao Engineer para escrever o contrato e dizer se o objetivo cabe num dono; o handoff dele não vai para quem constrói. `platform-engineer` perde as missões de worktree e merge por ticket: branch e baseline, uma worktree só quando o checkout principal está ocupado, e a prova do merge da main dentro de PR e merge. Bug é um objetivo de um critério; os `confirmed` de uma auditoria viram um objetivo de correção.
+- Roadmap: cada linha é um resultado que alguém de fora percebe, nunca uma tarefa ou camada.
+- Capacidade: no banco descartável, cada URL mantém o seu usuário e troca só o nome do banco. (#60)
+
+### Added
+- **Contexto no contrato.** O contrato é a única coisa que desce, então carrega o que a spec carregava: atores e cenários, o que já foi decidido e por quê, o que existe hoje, fatos externos com fonte, o que já se pensou, o que não se sabe e o que vence quando duas coisas boas se opõem. Descreve, nunca prescreve.
+- **Gate de arquitetura, do Engineer, antes do código.** A primeira volta do dono é só o plano; o `solutions-architect` em modo gate o julga contra as regras numeradas de `docs/architecture.md` (regra, grafo de módulos, shared e eventos, cobertura dos critérios). Só regra escrita reprova. Critério que só se cumpre violando uma regra é gate 2.
+- **Checkpoint por fatia.** O dono volta ao fechar cada fatia; o Engineer roda o gate barato por exit code (fronteiras, build, teste do afetado, format; zero tarefas não prova nada) e despacha qualidade e segurança sobre a fatia enquanto o dono constrói a seguinte. (#52, #61)
+- **Pipeline de qualidade e segurança como gate adversário.** Três camadas obrigatórias antes do PR: determinística por exit code, adversária (`quality-engineer` e `security-engineer`, que nunca veem o plano nem o relato do dono) e o CI. O objetivo só passa com todo critério `met`, zero `blocking`/`should`, zero `confirmed`. O Engineer não rebaixa severidade nem dispensa camada; achado contestado volta a um revisor novo; refutação que passou vira caso da prova.
+- **Adoção de projeto em andamento.** Item que estava a meio caminho com spec e tickets é adotado como objetivo no primeiro `/engineer`: inventário pelo platform-engineer, contrato pelo `to-goal` a partir da spec e dos tickets, mesma branch, e retoma do estágio em que estava. Nada é apagado e o fundador não é perguntado de novo. Os cards atendem missão no formato antigo enquanto houver sessão antiga viva.
+- Duas sessões de item ao mesmo tempo quando os objetivos são independentes; a segunda constrói numa worktree.
+- O dono ganha o que os tickets ensinavam: prefactor primeiro, refactor largo por expandir e contrair, e a leitura do próprio diff antes do relato.
+- Skill `to-goal`, **só do Engineer**: transforma o pedido no contrato, com as regras de um critério (observável de fora do código, decidido por prova, com os casos, nunca adjetivo, com o negativo, fechado na fronteira de confiança), o template, e como transformar uma spec e tickets antigos em contrato.
+- Terceira guarda do painel: um subagente não chama `to-goal` nem escreve em `docs/goals/`. O dono constrói a partir do contrato e os revisores julgam contra ele; nenhum dos dois move critério ou preenche evidência.
+
+### Replaced
+- `to-spec`, `to-tickets` e `implement` deixam de existir como processo. O contrato substitui a spec, o plano do dono substitui os tickets e o card do dono substitui o `implement`. As três continuam instaladas só para redirecionar à adoção uma sessão que começou antes; saem numa versão futura.
+- Eval `engineer-gate2-one-question`, substituído por `goal-engineer-contract`: diante de um pedido fora do roadmap o Engineer grava o contrato e faz uma pergunta só.
+- Evals novos: `engineer-adopts-legacy-item` (um item com spec e tickets, um mergeado e dois abertos, vira contrato pelo `to-goal`) e `sa-plan-gate-refuses-cycle` (o gate reprova, com a regra, um plano em que dois módulos importam o código um do outro, e aponta o critério sem fatia).
+
+### Evals
+- Os casos do `quality-engineer` e do `security-engineer` passam a entregar um contrato no lugar do ticket. `qe-update-account-zeroes-balance` ganha a prova fraca do dono e exige o veredito por critério. `scripts/evals.mjs` concede `Write`, que o runner trata como ferramenta restrita, e o controle corta o card do `quality-engineer` a partir de `## Criteria`.
+
 ## [0.17.0] - 2026-11-10
 
 Minutos de Actions como orçamento. O PILOT gastou 1 308 minutos cobrados em oito dias (16 PRs mergeados, 82 por PR) contra perto de 2 000 por mês do plano Free: 57% em runs de push na main que repetiam o PR, e cada run de PR pagando oito jobs.
@@ -193,6 +225,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.18.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.14.0...v0.15.0
