@@ -1,5 +1,6 @@
 ---
 name: module-domain-service
+user-invocable: false
 description: Criar, revisar ou orientar a implementação de serviços de domínio de módulo no padrão do projeto, restritos ao núcleo de domínio (`modules/*`). Usar quando o pedido envolver "domain service", "serviço de domínio", arquivos `*.service.ts` em `modules/*/src/**`, políticas de domínio, cálculos/regras puras entre entidades e VOs, criação/ajuste de testes desses serviços ou a skill `module-domain-service`.
 ---
 

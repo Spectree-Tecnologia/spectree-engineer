@@ -1,5 +1,6 @@
 ---
 name: backend-prisma-data
+user-invocable: false
 description: 'Criar, revisar ou orientar a camada Prisma do backend no padrão do projeto. Usar quando o pedido envolver schema Prisma (`schema.prisma`, `models/*.model.prisma`), migrações SQL, geração de client, seeds (`prisma/seed/*`) e adapters `*.prisma.ts` que mapeiam banco para domínio/DTO.'
 ---
 

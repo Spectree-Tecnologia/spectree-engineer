@@ -1,5 +1,6 @@
 ---
 name: config-shared-backend
+user-invocable: false
 description: Reconstrói deterministicamente a camada compartilhada do backend NestJS em `apps/backend/src/shared/` — autenticação JWT (passport) como guard global, rotas públicas por `@Public()`, `@CurrentUser()`, filtro global de exceções, rate limit, helmet, `ValidationPipe` estrita, log JSON (pino) com `requestId`/`userId`, validação do `.env` no boot (zod), `GET /health` e `GET /ready`, graceful shutdown — compatível com `packages/shared`. Também adiciona `AuthenticatedUser` ao pacote compartilhado.
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: module-dto
+user-invocable: false
 description: 'Criar, revisar ou orientar Data Transfer Objects de módulo no padrão do projeto. Usar quando o pedido envolver arquivos `dto/*.ts`, contratos de entrada (`InDTO`), saída (`OutDTO`), DTOs de query CQRS para leitura, paginação/filtros/metadados, adaptação de tipagem para consumo da API/front sem vazar detalhes de entidade/ORM ou a skill `module-dto`.'
 ---
 

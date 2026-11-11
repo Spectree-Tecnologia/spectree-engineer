@@ -1,5 +1,6 @@
 ---
 name: to-wireframe
+user-invocable: false
 description: >-
   Cria um wireframe tipado e aninhado de uma imagem ou brief de tela, em ASCII
   ou SVG conforme format=ascii|svg informado pelo usuário. Use when the user
