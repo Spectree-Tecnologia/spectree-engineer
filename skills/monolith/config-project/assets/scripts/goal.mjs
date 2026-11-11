@@ -5,7 +5,7 @@
 //   npm run goal -- check --ready <slug>           also: approved, and every criterion's latest verdict is met or waived
 //   npm run goal -- check --ready --changed <ref>  the contracts this branch changed since <ref> (what CI and check:pr run)
 //   npm run goal -- prove <slug> [--criterion <n>] runs every `run:` proof and prints the exit code of each
-//   npm run goal -- size <slug> --base <ref>       the diff since <ref> against the contract's size budget
+//   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
 //
 // A proof a command decides is written in the Proof cell as run: `<command>`. `prove` runs each from the project
 // root, in UTC as CI does, one after the other, and exits 1 if any exits non-zero. A proof with no `run:` is an
@@ -79,7 +79,18 @@ const isRow = (line) => /^\s*\|/.test(line) && !/^\s*\|[\s:|-]+\|\s*$/.test(line
 const VERDICTS = ['met', 'not met', 'weak proof', 'waived'];
 const CHANGES = ['narrowed', 'reworded', 'waived', 'added', 'moved'];
 const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2}|met on \d{4}-\d{2}-\d{2}|stopped on \d{4}-\d{2}-\d{2}: .+)$/;
-const DEFAULT_SIZE = 2000;
+const DEFAULT_SIZE = 4000;
+// The size budget is about what a reader has to hold to review the change: the product code. Tests, documents and
+// working files grow with a goal without making it harder to review (in the goal that set this rule they were 62% of
+// 27 thousand lines), and the lockfile is generated. None of them counts, and each is reported.
+const NOT_PRODUCT = [
+  [/(^|\/)package-lock\.json$/, 'lockfile'],
+  [/(^|\/)(test|tests|e2e|__tests__)\//, 'tests'],
+  [/\.(test|spec|e2e-spec)\.[cm]?[jt]sx?$/, 'tests'],
+  [/^(docs|\.scratch)\//, 'documents'],
+  [/\.md$/, 'documents'],
+];
+const kindOf = (file) => NOT_PRODUCT.find(([pattern]) => pattern.test(file))?.[1] ?? 'product';
 
 function slugFile(slug) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) fail(`"${slug}" is not a goal slug (letters, digits and dashes)`, 2);
@@ -234,14 +245,18 @@ function size() {
   if (flags.positional.length !== 1 || !flags['--base']) usage();
   const goal = parse(slugFile(flags.positional[0]));
   const base = commitOf(flags['--base'], '--base');
-  // The lockfile is generated: its lines are not what a reader has to hold.
-  const stats = git(['diff', '--numstat', '--end-of-options', `${base}...HEAD`]).map((line) => line.split('\t')).filter(([, , file]) => !/(^|\/)package-lock\.json$/.test(file));
-  const lines = stats.reduce((sum, [added, deleted]) => sum + (Number(added) || 0) + (Number(deleted) || 0), 0);
+  const totals = { product: 0, tests: 0, documents: 0, lockfile: 0 };
+  let files = 0;
+  for (const [added, deleted, file] of git(['diff', '--numstat', '--end-of-options', `${base}...HEAD`]).map((line) => line.split('\t'))) {
+    const kind = kindOf(file);
+    totals[kind] += (Number(added) || 0) + (Number(deleted) || 0);
+    if (kind === 'product') files++;
+  }
   const commits = Number(git(['rev-list', '--count', `${base}..HEAD`])[0]);
-  const over = lines > goal.sizeBudget;
+  const over = totals.product > goal.sizeBudget;
   console.log(`goal size: docs/goals/${goal.slug}.md since ${flags['--base']}`);
-  console.log(`  changed lines  ${lines}  (budget ${goal.sizeBudget})`);
-  console.log(`  files          ${stats.length}`);
+  console.log(`  product code   ${totals.product} changed lines in ${files} files  (budget ${goal.sizeBudget})`);
+  console.log(`  not counted    tests ${totals.tests}, documents ${totals.documents}, lockfile ${totals.lockfile}`);
   console.log(`  commits        ${commits}`);
   if (over) console.log('  OVER THE SIZE BUDGET: land the criteria that are met, and move the rest to a continuation goal (an amendment of kind "moved").');
   return over ? 1 : 0;
