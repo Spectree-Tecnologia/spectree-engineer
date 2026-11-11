@@ -1,5 +1,6 @@
 ---
 name: config-new-module
+user-invocable: false
 description: Criar um novo módulo de forma determinística no padrão do projeto Workspace, gerando scaffold em `modules/*`, `apps/backend/src/modules/*` e `apps/frontend/src/modules/*`. Usar quando o pedido envolver criação de módulo full-stack no monorepo com package TypeScript, módulo NestJS e dashboard inicial no web.
 ---
 

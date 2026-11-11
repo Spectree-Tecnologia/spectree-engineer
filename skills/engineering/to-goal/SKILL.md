@@ -1,5 +1,6 @@
 ---
 name: to-goal
+user-invocable: false
 description: "For the orchestrator only (the Engineer, the one agent that talks to the user): turn a request into a goal contract for Goal Driven Development, with the objective, the context the builder needs, the success criteria and the proof that decides each one, the limits and the budget. Never the solution. Also turns a spec and tickets from before Goal Driven Development into a contract. A subagent never calls this skill."
 ---
 

@@ -97,6 +97,7 @@ commands/engineer.md       o orquestrador
 agents/*.md                os sete especialistas
 hooks/engineer-desk/       o painel do Engineer (módulo de hooks do Claude Code); hooks/hooks.json o nomeia
 tests/                     os testes do painel: guarda estrutural (node --test) e kit do Claude Code (claude plugin test)
+skills/                    ferramentas dos agentes: toda skill declara `user-invocable: false` e fica fora do menu de comandos
 skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
 skills/monolith/           skills de monólito modular (config-*, module-*, backend-*, frontend-*)
 skills/security/           security-audit da Cloudflare (MIT, vendorizada): review por mudança e auditoria completa

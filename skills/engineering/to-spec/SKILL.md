@@ -1,5 +1,6 @@
 ---
 name: to-spec
+user-invocable: false
 description: "Replaced by Goal Driven Development; do not use for new work. Kept only so that a session that started before the squad became goal driven is sent to the adoption path instead of failing."
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: module-entity
+user-invocable: false
 description: Criar, revisar ou orientar a implementação de entidades. Usar quando o pedido envolver "entidade", "entity", "module-entity", arquivos `*.entity.ts`, modelagem de regras de negócio com `Entity`, validação com `Result`, composição com Value Objects/Entidades aninhadas, ou criação/ajuste de testes de entidade.
 ---
 
