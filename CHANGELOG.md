@@ -2,6 +2,23 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.17.0] - 2026-11-10
+
+Minutos de Actions como orçamento. O PILOT gastou 1 308 minutos cobrados em oito dias (16 PRs mergeados, 82 por PR) contra perto de 2 000 por mês do plano Free: 57% em runs de push na main que repetiam o PR, e cada run de PR pagando oito jobs.
+
+### Changed
+- O `config-project` grava o CI inteiro, `.github/workflows/ci.yml`: **um workflow, um job, só em `pull_request`**, mais um run completo por semana na main e `workflow_dispatch`. Nada roda em push. Os scanners deixam de ser um workflow à parte (`security.yml` sai): gitleaks sempre, `npm audit` e osv-scanner só quando o PR toca o lockfile (e toda semana), squawk nas migrations do PR. PR só de documentação para depois do gitleaks. Título do PR é o primeiro passo, lido da API. Perf roda antes do e2e, no banco em que ninguém escreveu. `timeout-minutes: 20`.
+- `dependabot.yml`: um PR agrupado por mês por ecossistema (era semanal, e o de actions sem grupo); o platform-engineer liga alertas e security updates do Dependabot, que não esperam o mês.
+- Card do platform-engineer: missão **CI** própria, com o porquê dos minutos, o que nunca entra no arquivo (segundo job, matrix, shard, `push:`), Playwright como passos do mesmo job com banco recriado, e a migração de projeto anterior à 0.17. **PR e merge:** um PR por item, um push, um run; só mergeia branch que contém a ponta da main, porque nada roda depois do merge.
+- `/engineer`: passo 8 roda `npm run check:pr` antes de abrir o PR; o run semanal vermelho é ticket de correção antes de qualquer item.
+
+### Added
+- `npm run check:pr` no scaffold (`scripts/check-pr.mjs`, do PILOT): título, branch contendo a ponta da base, gitleaks nos commits da branch (binário local da versão pinada ou a imagem, com prova de que o scan leu a branch), squawk nas migrations dela e `format:check` quando existe; os pins vêm do `ci.yml`. (#51, #53)
+- Smoke: forma do `ci.yml` (um job, sem push, sem matrix, todo script que ele chama existe, `.env.example` cobre o `.env`), actionlint pela imagem pinada, e o `check:pr` passando limpo e recusando segredo, título e base que andou.
+
+### Fixed
+- O painel recusava `cat > fix.py <<'EOF'` como se fosse heredoc para o interpretador: o nome de um arquivo não é o `py`.
+
 ## [0.16.0] - 2026-11-06
 
 Retro dos itens `ci-hardening`, `deps-upgrade` e `tx-rollback` (PILOT): #42 #43 #44 #45 #46 #47. Os scripts endurecidos que o PILOT revisou (pilot-agent-system#9) voltam ao template.
@@ -176,6 +193,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.17.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.13.0...v0.14.0

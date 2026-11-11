@@ -1088,6 +1088,7 @@ async function patchRootPackageJson(rootDir, scope) {
   pkg.scripts.worktree = 'node scripts/worktree.mjs';
   // mutation testing per module (StrykerJS, Apache 2.0): the quality-engineer runs it on the modules a diff touched
   pkg.scripts.mutation = 'node scripts/mutation.mjs';
+  pkg.scripts['check:pr'] = pkg.scripts['check:pr'] ?? 'node scripts/check-pr.mjs';
   pkg.devDependencies = pkg.devDependencies ?? {};
   // "*": the lockfile pins what npm install resolved, Dependabot moves it; nothing is pinned by hand
   pkg.devDependencies['@stryker-mutator/core'] = pkg.devDependencies['@stryker-mutator/core'] ?? '*';
@@ -1127,6 +1128,12 @@ async function patchRootPackageJson(rootDir, scope) {
     ensureNewline: false,
     markRiskOnOverwrite: false,
     note: 'mutation testing of one module, run by npm run mutation -- <module>',
+  });
+  const checkPrScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'check-pr.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'check-pr.mjs'), await fs.readFile(checkPrScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'the pull-request-only gates of ci.yml, run locally before the PR',
   });
   // Stryker's scratch and incremental report stay out of git
   const rootGitignore = path.join(rootDir, '.gitignore');
@@ -1636,70 +1643,19 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     if (!(await pathExists(dependabotPath))) {
       await activeRunOps.writeTextFile(
         dependabotPath,
-        'version: 2\nupdates:\n  - package-ecosystem: npm\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 3\n    commit-message:\n      prefix: "chore(deps)"\n    groups:\n      all:\n        patterns: ["*"]\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: weekly\n    commit-message:\n      prefix: "chore(ci)"\n',
-        { note: 'weekly dependency PRs with the same cooldown' },
+        '# One grouped pull request a month per ecosystem: every PR is a CI run, and Actions minutes are a budget.\n# A security fix does not wait for the month: Dependabot security updates open it when the advisory lands.\nversion: 2\nupdates:\n  - package-ecosystem: npm\n    directory: /\n    schedule:\n      interval: monthly\n    cooldown:\n      default-days: 3\n    commit-message:\n      prefix: "chore(deps)"\n    groups:\n      all:\n        patterns: ["*"]\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: monthly\n    commit-message:\n      prefix: "chore(ci)"\n    groups:\n      all:\n        patterns: ["*"]\n',
+        { note: 'one grouped dependency PR a month per ecosystem, with the same cooldown' },
       );
     }
-    // the open-source scanners, as a workflow of their own so ci.yml stays the project's: gitleaks (MIT) on the git
-    // history, osv-scanner (Apache 2.0) on the lockfile, squawk (GPL 3) on the migrations a PR adds. Written once.
-    const securityPath = path.join(rootDir, '.github', 'workflows', 'security.yml');
-    if (!(await pathExists(securityPath))) {
-      await activeRunOps.writeTextFile(
-        securityPath,
-        [
-          'name: Security',
-          'on:',
-          '  push:',
-          '    branches: [main]',
-          '  pull_request:',
-          '# read-only token for the whole workflow: no job writes to the repository',
-          'permissions:',
-          '  contents: read',
-          'jobs:',
-          '  secrets:',
-          '    name: gitleaks (secrets in the git history)',
-          '    runs-on: ubuntu-latest',
-          '    steps:',
-          '      - uses: actions/checkout@v5',
-          '        with:',
-          '          fetch-depth: 0',
-          '          persist-credentials: false',
-          '      # .gitleaks.toml (default rules + narrow allowlists) and .gitleaksignore at the root list what was reviewed.',
-          '      # Image pinned by tag and digest; Dependabot does not track it: the platform-engineer bumps it with the stack review.',
-          '      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact --no-banner /repo',
-          '  dependencies:',
-          '    name: osv-scanner (lockfile against the OSV database)',
-          '    runs-on: ubuntu-latest',
-          '    steps:',
-          '      - uses: actions/checkout@v5',
-          '        with:',
-          '          persist-credentials: false',
-          '      # osv-scanner.toml beside the lockfile lists the ids ignored, each with a reason. Pin as above.',
-          '      - run: docker run --rm -v "$PWD:/repo" ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0 --lockfile=/repo/package-lock.json',
-          '  migrations:',
-          '    name: squawk (Postgres migrations this PR adds)',
-          "    if: github.event_name == 'pull_request'",
-          '    runs-on: ubuntu-latest',
-          '    steps:',
-          '      - uses: actions/checkout@v5',
-          '        with:',
-          '          fetch-depth: 0',
-          '          persist-credentials: false',
-          '      - uses: actions/setup-node@v5',
-          '        with:',
-          '          node-version-file: .nvmrc',
-          '      # the base ref reaches the shell through env, never through ${{ }} inside run',
-          '      - env:',
-          '          BASE_REF: ${{ github.base_ref }}',
-          '        run: |',
-          '          files=$(git diff --name-only "origin/$BASE_REF...HEAD" -- apps/backend/prisma/migrations | grep \'\\.sql$\' || true)',
-          '          if [ -z "$files" ]; then echo "no new migration in this PR"; exit 0; fi',
-          '          # shellcheck disable=SC2086',
-          '          npx --yes squawk-cli@2.70.0 --assume-in-transaction $files',
-          '',
-        ].join('\n'),
-        { note: 'open-source scanners: gitleaks, osv-scanner, squawk' },
-      );
+    // The whole CI, written once: one workflow, one job, pull requests only (a private repository pays Actions by the
+    // job-minute). The open-source scanners are steps of it: gitleaks (MIT) on the git history, osv-scanner (Apache 2.0)
+    // and npm audit on the lockfile when it changed, squawk (GPL 3) on the migrations a PR adds.
+    const ciPath = path.join(rootDir, '.github', 'workflows', 'ci.yml');
+    if (!(await pathExists(ciPath))) {
+      const ciAsset = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'workflows', 'ci.yml');
+      await activeRunOps.writeTextFile(ciPath, await fs.readFile(ciAsset, 'utf8'), {
+        note: 'CI: one job on pull requests, scanners included, the full run weekly on main',
+      });
     }
     // root typescript follows the backend scaffold: create-turbo's TS 7 breaks typescript-eslint in the frontend
     const rootPkgPath = path.join(rootDir, 'package.json');
