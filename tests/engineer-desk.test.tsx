@@ -242,7 +242,7 @@ test('a heredoc or pipe into an interpreter is refused, a script run from a file
   for (const command of ["python - <<'EOF'\nprint(1)\nEOF", 'python3 -<<EOF\nx\nEOF', 'node - <<EOF\nx\nEOF', 'node <<EOF\nx\nEOF', 'cat patch.py | python -', 'python3 -']) {
     expect(await denied(command)).toContain('Write tool')
   }
-  for (const command of ['python scripts/fix.py', 'python -I scripts/fix.py', 'node scripts/worktree.mjs up t1', 'node -e "console.log(1)"', 'npm run build', 'grep -n "python -" notes.md']) {
+  for (const command of ['python scripts/fix.py', 'python -I scripts/fix.py', 'node scripts/worktree.mjs up t1', 'node -e "console.log(1)"', 'npm run build', 'grep -n "python -" notes.md', "cat > scratch/fix.py <<'EOF'\nprint(1)\nEOF", "cat > scratch/run-node <<'EOF'\nx\nEOF"]) {
     expect(await denied(command)).toBe('')
   }
 })
