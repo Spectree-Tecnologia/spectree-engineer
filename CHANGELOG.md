@@ -2,6 +2,28 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.19.0] - 2026-11-11
+
+O que a primeira rodada real do Goal Driven Development mostrou (PILOT, `manager-registry`: 407 arquivos, 27 mil linhas, 100 commits, as três rodadas gastas, um critério fechado como "met, narrowed") e as issues abertas.
+
+### Added
+- **Provas executáveis.** A prova que um comando decide vai no contrato como ``run: `<comando>` ``. `npm run goal -- prove <slug>` roda todas da raiz, em UTC como o CI, e imprime o exit code de cada uma; prova sem `run:` aparece como manual. O dono confere com ela antes de cada relato, quem verifica roda a mesma linha, e o exit code é a evidência. (#57)
+- **`npm run goal -- check`.** A forma do contrato por script: título, status, seções, de um a sete critérios numerados, cada um com prova, vereditos válidos. Com `--ready` exige o contrato aprovado e o último veredito de cada critério `met` ou `waived`; `--changed <ref>` olha só os contratos que a branch mexeu. Roda no `check:pr` e como passo do `ci.yml`: um PR não abre com contrato por cumprir.
+- **Emenda de contrato.** Seção `## Amendments`: um critério só muda por uma linha com data, critério, tipo (`narrowed`, `waived`, `moved`, `added`, `reworded`), quem decidiu e onde o resto continua. Veredito novo `waived`, aceito só com a emenda. "Cumprido com ressalva" não existe mais.
+- **Orçamento de tamanho.** `Size: 2000 changed lines` no contrato; `npm run goal -- size <slug> --base <sha>` mede o diff em todo checkpoint e sai 1 quando estoura. O Engineer então entrega em partes: os critérios cumpridos vão a PR, os outros saem por emenda `moved` para um objetivo de continuação.
+- **Banco descartável por comando.** `npm run db:scratch -- <nome> -- <comando>` cria `<db>_scratch_<nome>`, migra, aplica os papéis, semeia, entrega ao comando pelas duas URLs (cada uma com o seu usuário) e dropa no fim, qualquer que seja o exit code. Substitui os seis passos em prosa do perf e dá a cada revisor, ao perf e a cada suíte um banco próprio. (#60, #68)
+- Guardas do painel: um interpretador sozinho, sem script (`python`, `node`), e `python - <arquivo>` passam a ser recusados; a recusa vale só em posição de comando, então uma mensagem de commit que cita `python -` passa. Um subagente não usa `git stash`. (#67)
+- `perf.mjs` recusa medir com a máquina acima de 50% de CPU (exit 3, `PERF_MAX_CPU` ajusta) e mede uma segunda vez a rota acima do orçamento que respondeu certo: a segunda medida decide. (#49, #55)
+- `worktree.mjs` reserva o offset de portas (pasta no git common dir, criada de forma atômica): dois `up` ao mesmo tempo nunca recebem as mesmas portas. (#56)
+
+### Changed
+- `/engineer`: o contrato passa pelo `goal check`; o checkpoint mede o tamanho; a verificação final roda as provas, o e2e e o perf cada um no seu banco; revisores não dividem banco; o Engineer não commita na branch enquanto uma missão roda nela; scripts e logs de cada agente em `.scratch/<slug>/<papel>/`; critério de tela cita o artboard e a geometria dele, nunca uma paráfrase; exemplo de fornecedor troca valor com cara de token por placeholder antes do primeiro commit; objetivo que mexe no design system republica o artefato. (#50, #58, #62, #63, #69)
+- Cards: o dono confere as provas com `goal prove`, troca a própria porta em vez de matar quem a segura, para servidor no Windows com `taskkill /PID <pid> /T /F`, conta watcher como processo rodando e roda e2e em UTC com os limites do CI; o platform-engineer mergeia do checkout principal, nunca de uma worktree. (#56, #59, #62, #64)
+- `config-new-module` lê a faixa do Vitest de um módulo que já existe, em vez de fixar a do template. (#54)
+
+### Fixed
+- A quarentena de versões (`min-release-age=3`) passa a valer desde a primeira instalação do bootstrap. O `.npmrc` só era gravado depois do `create-turbo` e do Nest CLI instalarem, e uma versão publicada horas antes entrava no lockfile: em 2026-11-11 foi um binário nativo tão novo que o Windows se recusou a carregá-lo, e o `npm test` do projeto recém-criado falhou.
+
 ## [0.18.0] - 2026-11-10
 
 O squad deixa de ser spec-driven e passa a trabalhar em **Goal Driven Development**. O fundador dá o resultado; o squad decide o como e prova.
@@ -225,6 +247,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.19.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.15.0...v0.16.0

@@ -8,6 +8,9 @@
 // `"setup": "scripts/perf.setup.mjs"` names a module whose default export runs once the server is up —
 // `async ({ env, baseUrl, signJwt }) => ({ claims?: { sub, sid, ... }, headers?: { ... } })` — seeding what it
 // needs and returning the claims the token must carry (or complete headers). A 404/401 under perf is never a budget.
+//   PERF_MAX_CPU=<percent>     the machine load above which nothing is measured (default 50; 100 measures anyway)
+// A route over budget whose responses were all fine is measured once more, after the others, and the second
+// measurement decides: one spike on a shared machine is not a regression. A wrong status is never re-measured.
 //   --changed <ref>   only the routes the diff since <ref> can slow down (committed, working tree and untracked files).
 //                     A file under modules/<m>/ or apps/backend/src/modules/<m>/ selects the routes that list <m>. Any
 //                     other file of apps/backend runs every route (main.ts, db/, shared/, prisma/, nest-cli.json,
@@ -22,6 +25,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -90,6 +94,28 @@ const selected = changedRef ? routesChangedSince(changedRef) : { routes: config.
 console.log(`perf: ${selected.routes.length} of ${config.routes.length} routes selected (${selected.why})`);
 if (changedRef) for (const r of selected.routes) console.log(`  ${r.method ?? 'GET'} ${r.path}`);
 if (selected.routes.length === 0) process.exit(0);
+
+// A latency taken while something else holds the CPU is not a number (a game, a sync client, another agent's build
+// moved one route from 581 ms to 3140 ms between two runs). Sampled before the server starts; exit 3 says "not measured".
+async function cpuBusy(ms = 1500) {
+  const snapshot = () => os.cpus().reduce((acc, cpu) => {
+    const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+    return { idle: acc.idle + cpu.times.idle, total: acc.total + total };
+  }, { idle: 0, total: 0 });
+  const before = snapshot();
+  await new Promise((resolve) => setTimeout(resolve, ms));
+  const after = snapshot();
+  const total = after.total - before.total;
+  return total <= 0 ? 0 : Math.round((1 - (after.idle - before.idle) / total) * 100);
+}
+const maxCpu = Number(process.env.PERF_MAX_CPU ?? 50);
+if (Number.isFinite(maxCpu) && maxCpu < 100) {
+  const busy = await cpuBusy();
+  if (busy > maxCpu) {
+    console.error(`perf: the machine is at ${busy}% CPU before anything started (limit ${maxCpu}%). Nothing was measured: a number taken now would not be a number. Stop what is running and try again, or let the pull request's CI run decide.`);
+    process.exit(3);
+  }
+}
 
 function parseEnv(file) {
   if (!fs.existsSync(file)) return {};
@@ -169,6 +195,7 @@ async function measure(route) {
     budget: route.p95Ms,
     non2xx: non2xx.map(([s, n]) => `${n}x ${s}`).join(' '),
     ok: pct(95) <= route.p95Ms && non2xx.length === 0 && latencies.length > 0,
+    route,
   };
 }
 
@@ -191,12 +218,22 @@ try {
     if (result.claims) token = signJwt(env.JWT_SECRET, result.claims);
     if (result.headers) authHeaders = result.headers;
   }
+  const measured = [];
+  for (const route of selected.routes) measured.push(await measure(route));
+  // the second look at a route over budget with clean statuses, after every other route had its turn
   const rows = [];
-  for (const route of selected.routes) rows.push(await measure(route));
+  for (const first of measured) {
+    if (first.ok || first.non2xx || first.requests === 0) {
+      rows.push(first);
+      continue;
+    }
+    rows.push({ ...first, label: `${first.path} (1st)`, verdict: 'RE-MEASURED', ok: true });
+    rows.push({ ...(await measure(first.route)), label: `${first.path} (2nd)` });
+  }
   const ms = (n) => `${n.toFixed(1)}ms`;
   console.table(
     rows.map((r) => ({
-      route: r.path,
+      route: r.label ?? r.path,
       requests: r.requests,
       'req/s': r.rps,
       p50: ms(r.p50),
@@ -205,7 +242,7 @@ try {
       max: ms(r.max),
       'p95 budget': `${r.budget}ms`,
       'non-2xx': r.non2xx || '-',
-      result: r.ok ? 'OK' : 'OVER BUDGET',
+      result: r.verdict ?? (r.ok ? 'OK' : 'OVER BUDGET'),
     })),
   );
   for (const r of rows.filter((r) => !r.ok)) {

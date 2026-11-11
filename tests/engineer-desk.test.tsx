@@ -239,10 +239,10 @@ test("no subagent runs under Sonnet: Haiku named or defaulted is raised, a role'
 test('a heredoc or pipe into an interpreter is refused, a script run from a file is not', async ($, on) => {
   engine(on, 'd1')
   const denied = async (command: string) => String(((await $.tool.call({ tool: 'Bash', command } as any)) as any).deny ?? '')
-  for (const command of ["python - <<'EOF'\nprint(1)\nEOF", 'python3 -<<EOF\nx\nEOF', 'node - <<EOF\nx\nEOF', 'node <<EOF\nx\nEOF', 'cat patch.py | python -', 'python3 -']) {
+  for (const command of ["python - <<'EOF'\nprint(1)\nEOF", 'python3 -<<EOF\nx\nEOF', 'node - <<EOF\nx\nEOF', 'node <<EOF\nx\nEOF', 'cat patch.py | python -', 'python3 -', 'python - notes.txt', 'node', 'cd apps/backend && python', 'TZ=UTC node -', '(node)']) {
     expect(await denied(command)).toContain('Write tool')
   }
-  for (const command of ['python scripts/fix.py', 'python -I scripts/fix.py', 'node scripts/worktree.mjs up t1', 'node -e "console.log(1)"', 'npm run build', 'grep -n "python -" notes.md', "cat > scratch/fix.py <<'EOF'\nprint(1)\nEOF", "cat > scratch/run-node <<'EOF'\nx\nEOF"]) {
+  for (const command of ['python scripts/fix.py', 'python -I scripts/fix.py', 'node scripts/worktree.mjs up t1', 'node -e "console.log(1)"', 'npm run build', 'grep -n "python -" notes.md', "cat > scratch/fix.py <<'EOF'\nprint(1)\nEOF", "cat > scratch/run-node <<'EOF'\nx\nEOF", 'echo 1 | node', 'which node', 'command -v python', 'git commit -m "fix: python - handle the stub"', 'nvm use node']) {
     expect(await denied(command)).toBe('')
   }
 })
@@ -269,6 +269,19 @@ test("the goal contract is the Engineer's: a subagent neither calls to-goal nor 
   ]) {
     expect(await denied(call)).toBe('')
   }
+})
+
+test('a subagent never touches the shared stash; the main loop may, and reading the list is free', async ($, on) => {
+  engine(on, 'd1')
+  await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'goal')
+  const denied = async (command: string, agentId?: string) => String(((await $.tool.call({ tool: 'Bash', command, ...(agentId ? { agentId } : {}) } as any)) as any).deny ?? '')
+  for (const command of ['git stash', 'git stash pop', 'git add -A && git stash push -m wip', 'git -C ../repo stash apply']) {
+    expect(await denied(command, 'd1')).toContain('shared by every worktree')
+  }
+  for (const command of ['git stash list', 'git stash show -p', 'git status', 'git commit -m "chore: stash the idea"']) {
+    expect(await denied(command, 'd1')).toBe('')
+  }
+  expect(await denied('git stash')).toBe('')
 })
 
 test('the clock runs only while a subagent runs', async ($, on) => {

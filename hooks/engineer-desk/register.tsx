@@ -193,11 +193,28 @@ export function modelFloor(subagentType: string, model: string | undefined): str
 // The script goes to a file with the Write tool and runs from there. `node -e "..."`, `python
 // file.py` and `python -I file.py` are not stdin and pass, and so does `cat > fix.py <<EOF`: the name
 // of a file is not the interpreter (the lookbehind refuses a `.`, `/`, `-` or word character before it).
-const STDIN_INTERPRETER = /(?<![\w./\\-])(?:python3?|py|node)\b[^\n|;&]*?(?:\s-\s*(?:<<|$|[|;&)])|\s<<)/m
-export const stdinInterpreter = (command: string) => STDIN_INTERPRETER.test(command)
+// At command position only (the start of a line, or after ; & | or an opening parenthesis, with any VAR=value in
+// front): `grep "python -" notes.md` and a commit message that says "node - " are text, not a command.
+const AT_COMMAND = String.raw`(?:^|[;&|(])[ \t]*(?:[A-Za-z_]\w*=\S*[ \t]+)*`
+// `python -`, `python - notes.txt`, `node - <<EOF`, `node <<EOF`: the script comes from stdin.
+const STDIN_INTERPRETER = new RegExp(AT_COMMAND + String.raw`(?:python3?|py|node)\b[^\n|;&]*?(?:\s-(?=\s|$|[|;&)<])|\s<<)`, 'm')
+// A bare interpreter opens a prompt that waits on stdin (PILOT, 2026-11-11: five subagents did it). A pipe in front
+// of it feeds it, so `echo 1 | node` passes.
+const BARE_INTERPRETER = new RegExp(String.raw`(?:^|[;&(]|\|\|)[ \t]*(?:[A-Za-z_]\w*=\S*[ \t]+)*(?:python3?|py|node)[ \t]*(?:$|[;&)])`, 'm')
+export const stdinInterpreter = (command: string) => STDIN_INTERPRETER.test(command) || BARE_INTERPRETER.test(command)
 const STDIN_DENY =
   'A heredoc or pipe into an interpreter hangs on Windows (the python Store stub waits on stdin) and leaves a process nobody can kill. ' +
   'Write the script to a file with the Write tool and run it from there.'
+
+// The stash list belongs to the repository, not to a worktree: a subagent's `git stash pop` applied another
+// branch's stash over four files (PILOT, 2026-11-11). Reading the list is harmless.
+// `stash` as the git subcommand, after any global option (-C <dir>, -c <k=v>, --no-pager): a commit message that says
+// stash is not one.
+const GIT_STASH = /(?:^|[;&|(])[ \t]*git(?:[ \t]+(?:-[Cc][ \t]+\S+|--?[\w-]+(?:=\S+)?))*[ \t]+stash\b(?![ \t]+(?:list|show)\b)/m
+export const sharedStash = (command: string) => GIT_STASH.test(command)
+const STASH_DENY =
+  'The stash list is shared by every worktree of the repository: a pop here can apply the work of another branch. ' +
+  'Commit to your own branch instead (a wip commit you amend later).'
 
 // The Founder's third guard (2026-11-10): the squad is goal driven, and the goal contract belongs to the
 // Engineer, the main loop that talks to the Founder. A subagent neither calls the `to-goal` skill nor
@@ -291,7 +308,9 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
-    if (e.tool === 'Bash' && stdinInterpreter(String((e as unknown as { command?: unknown }).command ?? ''))) return { deny: STDIN_DENY }
+    const shell = e.tool === 'Bash' ? String((e as unknown as { command?: unknown }).command ?? '') : ''
+    if (shell && stdinInterpreter(shell)) return { deny: STDIN_DENY }
+    if (id && shell && sharedStash(shell)) return { deny: STASH_DENY }
     const contractDeny = id ? goalContractGuard(String(e.tool), e as unknown as Record<string, unknown>) : null
     if (contractDeny) return { deny: contractDeny }
     if (e.tool === PLAN_TOOL) {

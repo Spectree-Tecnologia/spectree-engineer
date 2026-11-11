@@ -1,7 +1,8 @@
 // What CI runs only on a pull request, run here before opening one, so a run in Actions is never the first to say it:
 // the PR title, the branch holding the tip of its base (nothing runs on push to main: the PR's run is the proof of the
 // merged tree, and only for the base it was cut from), gitleaks over the commits this branch adds and squawk over the
-// migrations it adds; Prettier too when the project has `format:check`. Each check runs even when an earlier one
+// migrations it adds; the goal contract it delivers (approved, every criterion met or waived); Prettier too when the
+// project has `format:check`. Each check runs even when an earlier one
 // failed; the summary lists every exit code and the script exits 1 if any check failed.
 //
 //   npm run check:pr                              # against origin/main (never fetched here: `git fetch origin` first)
@@ -88,11 +89,17 @@ const behind = git(['merge-base', '--is-ancestor', baseTip, 'HEAD']).status !== 
 if (behind) console.error(`\ncheck:pr: ${base} moved (tip ${baseTip.slice(0, 7)} is not in this branch): merge it in and prove the result again`);
 results.push(['up to date with the base', behind ? 1 : 0]);
 
-// 3. Prettier, when the project checks it. A constant string through the shell: npm is a .cmd shim on Windows.
+// 3. The goal contract this branch delivers: approved, and every criterion's latest verdict met, or waived by an
+// amendment. A branch with no contract (a bug fix, a dependency bump) has nothing to check.
+if (fs.existsSync(path.join(root, 'scripts', 'goal.mjs'))) {
+  results.push(['goal contract', run(process.execPath, ['scripts/goal.mjs', 'check', '--ready', '--changed', base])]);
+}
+
+// 4. Prettier, when the project checks it. A constant string through the shell: npm is a .cmd shim on Windows.
 const scripts = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts ?? {};
 if (scripts['format:check']) results.push(['format:check', run('npm run format:check', [], { shell: true })]);
 
-// 4. gitleaks over the commits this branch adds; main's history is scanned by the weekly run.
+// 5. gitleaks over the commits this branch adds; main's history is scanned by the weekly run.
 // gitleaks exits 0 even when git fails under it ("fatal: not a git repository", "0 commits scanned"), and its own count
 // skips merge, empty and delete-only commits, so neither its exit nor its count proves the scan read the branch. The
 // proof is git itself, run with the same repository view first (same mounts and GIT_DIR in Docker): it must count the
@@ -178,7 +185,7 @@ function gitleaks() {
 }
 results.push(['gitleaks', gitleaks()]);
 
-// 5. squawk over the migrations this branch adds or changes: the CI diff. A deleted migration fails here as it fails
+// 6. squawk over the migrations this branch adds or changes: the CI diff. A deleted migration fails here as it fails
 // CI (squawk cannot find the file), and is named: an applied migration is never deleted.
 function squawk() {
   const deleted = gitOut(
