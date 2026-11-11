@@ -6,7 +6,7 @@
 //   node scripts/evals.mjs                 a suíte inteira (1 run por caso; --runs 3 para medir variância)
 //   node scripts/evals.mjs --case 'qe-*'   qualquer flag extra vai direto para o `claude plugin eval`
 //   node scripts/evals.mjs --control       prova que a suíte mede: copia o plugin com o card do
-//                                          quality-engineer SEM as regras (do `## Architecture` em diante) e exige que o caso 1 FALHE
+//                                          quality-engineer SEM o procedimento nem as regras (do `## Criteria` em diante) e exige que o caso do UpdateAccount FALHE
 //
 // Precisa do Claude Code logado (o eval roda como você, na sua credencial); não roda em CI sem chave.
 import fs from 'node:fs';
@@ -32,13 +32,13 @@ if (control) {
   });
   const card = path.join(target, 'agents', 'quality-engineer.md');
   const original = fs.readFileSync(card, 'utf8');
-  // corta do bloco `## Architecture` até o fim: somem as regras do monólito, a lista do que a leitura pega e
-  // o vocabulário de achado (severidade, arquivo:linha); fica só o processo (code-review em dois eixos)
-  const stripped = original.replace(/\nAo eixo \*\*Standards\*\*, some o terceiro bloco[\s\S]*$/, '\n');
+  // corta do bloco `## Criteria` até o fim: somem o procedimento por critério e os vereditos, as regras do monólito,
+  // a lista do que a leitura pega e o vocabulário de achado (severidade, arquivo:linha); fica só o nome dos três blocos
+  const stripped = original.replace(/\n## Criteria — o contrato, critério por critério[\s\S]*$/, '\n');
   if (stripped === original) throw new Error('control: a âncora do card do quality-engineer mudou; ajuste o corte');
   fs.writeFileSync(card, stripped);
   if (!extra.includes('--case')) extra.push('--case', CONTROL_CASE);
-  console.log(`control plugin: ${target} (card do quality-engineer sem regras)`);
+  console.log(`control plugin: ${target} (card do quality-engineer sem o procedimento nem as regras)`);
 }
 
 fs.mkdirSync(outDir, { recursive: true });

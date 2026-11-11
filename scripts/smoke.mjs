@@ -166,7 +166,7 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   // generated e2e as is: GET / is 401, GET /probe is 401 without token and within the query budget with one
   run('test-e2e', 'npm --workspace apps/backend run test:e2e');
 
-  // a ticket's worktree from one command: branch, env, ports, own database, install, generate, migrate, roles, build; then gone
+  // an isolated worktree for a goal's owner from one command: branch, env, ports, own database, install, generate, migrate, roles, build; then gone
   // the smoke's own files stay out of the repo, or every later diff would name them
   fs.appendFileSync(path.join(root, '.gitignore'), ['', 'smoke.log', 'seed-rows.sql', ''].join(String.fromCharCode(10)));
   run('git-init', 'git init -q && git add -A && git -c user.name=smoke -c user.email=smoke@example.com commit -qm "feat: bootstrap"');

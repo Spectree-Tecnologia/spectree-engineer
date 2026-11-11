@@ -4,14 +4,27 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [
 
 ## [0.18.0] - 2026-11-10
 
-### Added
-- **Goal Driven Development**, a segunda modalidade de construção: `/engineer goal <objetivo>`, ou item `[goal]` no roadmap. Desce um contrato (`docs/goals/<slug>.md`) com o objetivo, os critérios de sucesso cada um com a prova que o decide, os limites e o orçamento de rodadas; o **como** (módulos, agregados, seams, fatias) é do dono do objetivo, um `full-stack-developer` em modo goal no modelo mais capaz (`fable`, ou `opus`), que decide dentro de `docs/architecture.md` e grava o plano dele em `.scratch/<slug>/plan.md`. Sem spec, tickets ou worktree por ticket.
-- Verificação por quem não construiu: o `quality-engineer` em modo goal roda a prova de cada critério, julga se ela prova o critério (`weak proof`) e tenta refutá-la; o Engineer roda os critérios permanentes por exit code e é quem preenche a tabela `Evidence`. Os achados voltam ao mesmo dono (a única continuação de contexto do fluxo) até cumprir ou o orçamento acabar, que é gate 4.
-- Skill `to-goal`: transforma o pedido no contrato, com as regras de um critério (observável de fora do código, decidido por prova, nunca adjetivo, com o negativo) e o template.
-- Dois evals: `goal-engineer-contract` (o objetivo vira contrato pelo `to-goal` e uma pergunta só de aprovação) e `goal-qe-weak-proof` (o `quality-engineer` em modo goal recusa a prova que passa com o defeito). `scripts/evals.mjs` passa a conceder `Write`, que o runner trata como ferramenta restrita.
+O squad deixa de ser spec-driven e passa a trabalhar em **Goal Driven Development**. O fundador dá o resultado; o squad decide o como e prova.
 
 ### Changed
-- `/engineer`: o roadmap marca a modalidade de cada item; o contrato de despacho ganha as exceções do dono (modelo, teto, continuação).
+- **`/engineer` tem um fluxo só:** entrevista → roadmap de objetivos → protótipo → contrato → dono constrói → verificação independente → PR → merge → próximo objetivo. O que desce para quem constrói é um contrato (`docs/goals/<slug>.md`) com o objetivo, de três a sete critérios de sucesso cada um com a prova que o decide, os limites e o orçamento de rodadas, e nenhum plano. Não há mais spec, tickets, fronteira de tickets nem worktree por ticket.
+- **Menos perguntas ao fundador.** Objetivo do roadmap já está aprovado: o Engineer escreve os critérios a partir do que está decidido, relata e segue. Só para, com uma pergunta e o contrato já gravado, em pedido fora do roadmap e em critério que cria regra de negócio nova. O protótipo de tela nova continua sendo dele.
+- **`full-stack-developer` é o dono do objetivo:** decide módulos, agregados, seams e fatias dentro de `docs/architecture.md`, grava o plano dele em `.scratch/<slug>/plan.md`, constrói test-first com critério primeiro, escreve o model e a migration do módulo. Roda no modelo mais capaz (`fable` pedido pelo Engineer, `opus` no card). Os achados da verificação voltam a ele mesmo, a única continuação de contexto do fluxo.
+- **`quality-engineer` verifica critérios:** `## Criteria` vem antes de `## Standards` e `## Architecture`. Roda a prova de cada critério, julga se ela prova (`weak proof`) e tenta refutá-la; veredito `met`, `not met` ou `weak proof`. Quem preenche a tabela `Evidence` do contrato é o Engineer.
+- `solutions-architect` serve ao Engineer para escrever o contrato e dizer se o objetivo cabe num dono; o handoff dele não vai para quem constrói. `platform-engineer` perde as missões de worktree e merge por ticket: branch e baseline, uma worktree só quando o checkout principal está ocupado, e a prova do merge da main dentro de PR e merge. Bug é um objetivo de um critério; os `confirmed` de uma auditoria viram um objetivo de correção.
+- Roadmap: cada linha é um resultado que alguém de fora percebe, nunca uma tarefa ou camada.
+- Capacidade: no banco descartável, cada URL mantém o seu usuário e troca só o nome do banco. (#60)
+
+### Added
+- Skill `to-goal`, **só do Engineer**: transforma o pedido no contrato, com as regras de um critério (observável de fora do código, decidido por prova, nunca adjetivo, com o negativo) e o template.
+- Terceira guarda do painel: um subagente não chama `to-goal` nem escreve em `docs/goals/`. O dono constrói a partir do contrato e os revisores julgam contra ele; nenhum dos dois move critério ou preenche evidência.
+
+### Removed
+- Skills `to-spec`, `to-tickets` e `implement`.
+- Eval `engineer-gate2-one-question`, substituído por `goal-engineer-contract`: diante de um pedido fora do roadmap o Engineer grava o contrato e faz uma pergunta só.
+
+### Evals
+- Os casos do `quality-engineer` e do `security-engineer` passam a entregar um contrato no lugar do ticket. `qe-update-account-zeroes-balance` ganha a prova fraca do dono e exige o veredito por critério. `scripts/evals.mjs` concede `Write`, que o runner trata como ferramenta restrita, e o controle corta o card do `quality-engineer` a partir de `## Criteria`.
 
 ## [0.17.0] - 2026-11-10
 

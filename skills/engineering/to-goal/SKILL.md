@@ -1,7 +1,9 @@
 ---
 name: to-goal
-description: "Turn a request into a goal contract for Goal Driven Development: the objective, the success criteria with the proof that decides each one, the limits and the budget. Never the solution. Use when the user wants an outcome delivered and leaves the how to the agent that will own it."
+description: "For the orchestrator only (the Engineer, the one agent that talks to the user): turn a request into a goal contract for Goal Driven Development, with the objective, the success criteria and the proof that decides each one, the limits and the budget. Never the solution. A subagent never calls this skill."
 ---
+
+Only the orchestrator uses this skill: the agent that talks to the user and dispatches the others. If you were dispatched with a mission (you build, review, explore or operate), stop: the contract is not yours to write or change. Read it and carry on.
 
 A goal contract says what must be true when the work is done and how anyone can check it. It says nothing about how to get there. Modules, aggregates, files, libraries and the order of the work belong to the agent that will own the goal, and a contract that names them has taken the decision away from the one who will be able to see the code.
 
@@ -28,7 +30,7 @@ The contract has two readers who never talk to each other: the owner, who builds
 
 6. Do not restate the project's standing gates (build, tests, boundary checks, latency budgets, review). They hold for every goal and live in the project's own documents. Name one here only when this goal tightens it, as a criterion with its number.
 
-7. The objective and the criteria are the user's. Show them once, with your recommendation for anything you had to choose, and record the approval in the contract. Never ask the user how to build it.
+7. The objective is the user's; the criteria are yours to write. When the objective is already approved scope (an item of the roadmap), derive the criteria from what is already decided, record the approval and report the contract without waiting. Ask the user, once, only when the goal is new scope or a criterion makes a product rule nobody decided: show the contract, with your recommendation. Never ask the user how to build it.
 
 8. Write the contract to `docs/goals/<slug>.md` with the template below. The slug is the branch's slug.
 
