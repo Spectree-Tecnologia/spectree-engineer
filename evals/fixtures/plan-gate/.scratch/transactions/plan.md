@@ -1,9 +1,9 @@
 # Plan — transactions
 
-## Slices
+## Tickets
 
-1. **Record a transaction (tracer bullet).** New module `transactions`, aggregate `transaction`. `RecordTransaction.execute()` imports `Account` and `AccountRepository` from `@lab/accounts` to load the account, checks `account.props.userId === input.userId` and saves the transaction. Proves criterion 1.
-2. **Current balance in the list of accounts.** `ListAccounts` in `modules/accounts` imports `TransactionQuery` from `@lab/transactions` and sums the transactions of each account into `currentBalance`. Proves criterion 2.
+1. `issues/01-record-a-transaction.md` — Record a transaction (tracer bullet). Advances criterion 1.
+2. `issues/02-current-balance.md` — Current balance in the list of accounts. Advances criterion 2. Blocked by 01.
 
 ## Modules and aggregates
 

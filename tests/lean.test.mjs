@@ -27,7 +27,7 @@ test('the rule is written once, as rule 15 of the architecture', () => {
 test('the full-stack-developer plans what it reuses and reports what it did not check', () => {
   const card = read('agents/full-stack-developer.md');
   assert.match(card, /`Reuses:`[^\n]*`New:`[^\n]*regra 15/);
-  assert.match(card, /nenhum critério exercita sai antes do commit da fatia/);
+  assert.match(card, /nenhum critério exercita sai antes do commit do ticket/);
   assert.match(card, /Enxuto na solução, nunca na mudança/);
   assert.match(card, /`shortcut: <o limite>, <quando subir>`/);
   assert.match(card, /o que você \*\*não conferiu\*\*/);
