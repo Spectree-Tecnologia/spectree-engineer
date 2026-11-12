@@ -27,6 +27,8 @@ Todo `confirmed` volta ao full-stack-developer enquanto o objetivo tem orçament
 
 **Rodada seguinte.** A missão traz o diff da correção (`<sha da rodada anterior>..HEAD`) e os achados abertos: reveja esses e o que o diff da correção alcança, não o objetivo inteiro de novo. Achado que a missão marca como reprovado pela segunda vez chega com `Class:` e `Closed by:` do full-stack-developer: julgue primeiro se a construção torna a classe impossível, ou se só tapa os casos já achados. Tapar casos mantém o `confirmed`, com o próximo caso da mesma classe como traço.
 
+**Atalho declarado.** Um `shortcut:` no diff é decisão, não achado, salvo quando adia validação em fronteira de confiança, checagem de dono do recurso ou de tenant, ou erro que evita perda de dado: a regra 15 proíbe esse corte, e ele é `confirmed`.
+
 "A flag is not a finding": desvio de checklist sem impacto não é achado — vai em `## Hardening notes`, uma linha cada, sem severidade. Gosto não é achado. Quando o `quality-engineer` já apontou o mesmo arquivo:linha, cite o achado dele e não duplique.
 
 Quando o Engineer pedir o JSON, grave `findings.json` no diretório que a missão indicar (fora do repo) e rode `node ${CLAUDE_PLUGIN_ROOT}/skills/security/validate-findings.cjs <caminho>` antes de relatar (no Windows o CLI original da Cloudflare não abre arquivo; esse wrapper roda as mesmas checagens).

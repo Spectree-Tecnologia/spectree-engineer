@@ -40,6 +40,12 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 Vendored at commit 82fe5ed (2026-10-30), adapted: `disable-model-invocation` removed so the `ui-ux-designer` agent can call it. **The source repository carries no license file** at that commit: the author keeps copyright, and this copy rests on the founder's own use of the skill and his request to ship it with the plugin. Before redistributing the plugin beyond Spectree, get the author's written permission or a license in the repository, and record it here.
 
+## Rule 15 of ARCHITECTURE.md and the lean parts of the cards — Dietrich Gebert, https://github.com/DietrichGebert/ponytail (MIT)
+
+Not vendored: no file of ponytail ships with this plugin. Read as pushed on 2026-10-29, and adapted in our own words for a goal driven squad: the order in which existing code is preferred to new code, the list of what is never cut, the `shortcut: <limit>, <when to upgrade>` comment, the review that reads the callers a diff did not touch, and a finding told as what it is, the problem, the fix and what happens if it is skipped. What differs: "nobody asked for it" is decided by the goal contract, a proof per criterion replaces "one small test", and there is no persona, level or command.
+
+Copyright (c) 2026 DietrichGebert. MIT License, the text is the one above.
+
 ## Demais skills e templates
 
 `skills/monolith/**`, `templates/**`, `agents/**`, `commands/**`, `scripts/**`: Spectree Tecnologia.

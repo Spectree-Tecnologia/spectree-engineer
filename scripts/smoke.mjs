@@ -339,6 +339,19 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     fs.writeFileSync(path.join(root, 'scripts', 'worktree.mjs'), asset('worktree.mjs'));
     fs.writeFileSync(stampFile, before);
     run('tooling-restored', sync('--check'));
+    // a project bootstrapped before the plugin gained a rule gets the rule, below the ones it has, which stay as they are
+    const architectureFile = path.join(root, 'docs', 'architecture.md');
+    const architecture = fs.readFileSync(architectureFile, 'utf8');
+    const older = architecture.replace(/^\|\s*15\s*\|.*\r?\n/m, '').replace(/^(\|\s*14\s*\|\s*)\*\*Identity/m, '$1**The project reworded this: identity');
+    if (!/The project reworded this/.test(older) || /^\|\s*15\s*\|/m.test(older)) throw new Error('the smoke could not take rule 15 out of docs/architecture.md');
+    fs.writeFileSync(architectureFile, older);
+    refuse('tooling-rule-behind', sync('--check'), /missing\s+docs\/architecture\.md rule 15/);
+    run('tooling-rule-apply', sync('--apply'));
+    const synced = fs.readFileSync(architectureFile, 'utf8');
+    if (!/^\|\s*14\s*\|\s*\*\*The project reworded this[^\n]*\n\|\s*15\s*\|\s*\*\*Nothing exists that the goal does not need/m.test(synced)) throw new Error('tooling-sync --apply did not append rule 15 below the rules the project has');
+    run('tooling-rule-in-step', sync('--check'));
+    run('tooling-rule-formatted', 'npx prettier --check docs/architecture.md');
+    fs.writeFileSync(architectureFile, architecture);
   });
   // A throwaway database for one command: the command sees it under both URLs, as the runtime role; it is dropped
   // whatever the exit code; a name in use is never reused; the backend e2e passes on one.
