@@ -2,7 +2,7 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
-## [0.23.0] - 2026-11-11
+## [0.23.0] - 2026-11-12
 
 Tokens por objetivo. Medido nos dois objetivos reais do PILOT: o `manager-registry` ficou 61,6 das suas 82,4 horas parado no limite semanal do plano, e 85% dos tokens dele foram um `full-stack-developer` relendo um contexto que segurava o objetivo inteiro, 259 mil tokens por turno em 2.899 turnos.
 
