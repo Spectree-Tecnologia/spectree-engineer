@@ -1,0 +1,73 @@
+diff --git a/modules/billing/src/charge/dto/charge.dto.ts b/modules/billing/src/charge/dto/charge.dto.ts
+index 3b1c0aa..9d4e7f2 100644
+--- a/modules/billing/src/charge/dto/charge.dto.ts
++++ b/modules/billing/src/charge/dto/charge.dto.ts
+@@ -4,7 +4,8 @@ export interface ChargeDto {
+   id: string
+   unitId: string
+   description: string
+-  amount: number
++  /** Decimal string with four places (architecture rule 12). */
++  amount: string
+   status: ChargeStatus
+   dueDate: string
+ }
+@@ -13,7 +14,7 @@ export const toChargeDto = (charge: Charge): ChargeDto => ({
+   id: charge.props.id,
+   unitId: charge.props.unitId,
+   description: charge.props.description,
+-  amount: charge.props.amount,
++  amount: charge.props.amount.toFixed(4),
+   status: charge.props.status,
+   dueDate: charge.props.dueDate,
+ })
+diff --git a/modules/billing/src/charge/use-case/archive-charge.use-case.ts b/modules/billing/src/charge/use-case/archive-charge.use-case.ts
+new file mode 100644
+index 0000000..5a2b9c1
+--- /dev/null
++++ b/modules/billing/src/charge/use-case/archive-charge.use-case.ts
+@@ -0,0 +1,18 @@
++import { Result, UseCase } from '@lab/shared'
++import { ChargeRepository } from '../provider'
++
++export interface ArchiveChargeInput {
++  unitId: string
++  id: string
++}
++
++export class ArchiveCharge implements UseCase<ArchiveChargeInput, void> {
++  constructor(private readonly chargeRepository: ChargeRepository) {}
++
++  async execute(input: ArchiveChargeInput): Promise<Result<void>> {
++    const found = await this.chargeRepository.findCharge(input.unitId, input.id)
++    if (found.isFailure) return found.withFail
++    if (found.instance.props.status === 'open') return Result.fail('CHARGE_OPEN_NOT_ARCHIVABLE')
++    return this.chargeRepository.update(found.instance.cloneWith({ status: 'cancelled' }).instance)
++  }
++}
+diff --git a/modules/billing/test/charge/charge-dto.test.ts b/modules/billing/test/charge/charge-dto.test.ts
+new file mode 100644
+index 0000000..c7d1e40
+--- /dev/null
++++ b/modules/billing/test/charge/charge-dto.test.ts
+@@ -0,0 +1,20 @@
++import { describe, expect, it } from 'vitest'
++import { toChargeDto } from '../../src/charge/dto/charge.dto'
++import { Charge } from '../../src/charge/model'
++
++const id = '0c9d8e7f-6a5b-4c3d-8e2f-1a0b9c8d7e6f'
++const unitId = '7b0f4a1e-5c1d-4a57-9f0a-1f2e3d4c5b6a'
++
++const charge = (amount: number) =>
++  Charge.create({ id, unitId, description: 'Condominium fee', amount, status: 'open', dueDate: '2026-12-10' })
++
++describe('toChargeDto', () => {
++  it('carries the amount as a decimal string with four places', () => {
++    expect(toChargeDto(charge(150)).amount).toBe('150.0000')
++    expect(toChargeDto(charge(0.1 + 0.2)).amount).toBe('0.3000')
++  })
++
++  it('carries zero as 0.0000', () => {
++    expect(toChargeDto(charge(0)).amount).toBe('0.0000')
++  })
++})

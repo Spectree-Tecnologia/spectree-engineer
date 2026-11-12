@@ -30,6 +30,7 @@ Explore o código e só então decida módulos, agregados, seams e fatias. Chame
 
 - as **fatias**, em ordem, cada uma com o critério que avança e o que prova. A primeira é o tracer bullet: a menor que atravessa do teste de um critério até o banco. Fatia é vertical (um resultado de ponta a ponta, demonstrável sozinho), nunca uma camada, e cabe folgada no seu contexto. Todo critério do contrato aparece em pelo menos uma fatia;
 - os **módulos e agregados** que cada fatia toca ou cria. Módulo novo, evento novo entre módulos e mudança em `packages/shared` levam a razão escrita;
+- por fatia, `Reuses:` (o que já existe e você usa) e `New:` (o que cria, e por que nada do que existe serviu), na ordem da regra 15: o projeto, `@<ns>/shared`, a plataforma, uma dependência instalada;
 - uma linha por **decisão**, com o porquê (`- <o que decidi>. Porque <razão>.`).
 
 Duas coisas que a ordem das fatias resolve. **Prefactor primeiro:** se o código atual torna a mudança difícil, a primeira fatia torna a mudança fácil, sem mudar comportamento, e as seguintes fazem a mudança fácil. **Refactor largo não vira fatia vertical:** uma mudança mecânica que quebra o projeto inteiro de uma vez (renomear coluna, retipar um símbolo do shared) vai em expandir e contrair: primeiro a forma nova ao lado da antiga, depois os consumidores em lotes (por pacote), cada lote verde, e por fim a remoção da antiga, sozinha.
@@ -40,7 +41,7 @@ Duas coisas que a ordem das fatias resolve. **Prefactor primeiro:** se o código
 
 Primeiro confirme que a sua base é a branch do objetivo (`git log --oneline -1 <baseline>` aparece no seu histórico).
 
-**Scaffold pelas skills de monólito, nunca à mão.** Quem escolhe qual é você: `config-new-module` para módulo novo (`--backend-only` quando não há tela), `module-aggregate` (modo `crud` ou `example`), `module-entity`, `module-value-object`, `module-use-case`, `module-repository`, `module-query-cqrs`, `module-dto`, `module-domain-service`, `backend-controller`, `backend-prisma-data`, `frontend-form-schema`. Os scripts delas vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/` (a missão traz o caminho absoluto); rode-os da raiz do projeto.
+**Scaffold pelas skills de monólito, nunca à mão.** Quem escolhe qual é você: `config-new-module` para módulo novo (`--backend-only` quando não há tela), `module-aggregate` (modo `crud` ou `example`), `module-entity`, `module-value-object`, `module-use-case`, `module-repository`, `module-query-cqrs`, `module-dto`, `module-domain-service`, `backend-controller`, `backend-prisma-data`, `frontend-form-schema`. Os scripts delas vivem em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/<skill>/scripts/` (a missão traz o caminho absoluto); rode-os da raiz do projeto. O que o scaffold gera e nenhum critério exercita sai antes do commit da fatia, com o teste dele.
 
 **Critério primeiro.** Cada critério de sucesso vira a prova que o contrato nomeia, vermelha antes do código, na seam mais alta que o exercita. A prova escrita como ``run: `<comando>` `` é a linha que todo mundo vai rodar: faça o seu teste responder a ela, e confira você mesmo antes de cada relato com `npm run goal -- prove <slug>` (em UTC, como o CI; se a prova precisa de banco, `npm run db:scratch -- fsd -- npm run goal -- prove <slug>`). Ela tem de falhar pelo motivo certo quando o comportamento some: prova que passaria sem o comportamento volta da verificação como `weak proof`. Depois, chame o Skill tool com `tdd` para o que está abaixo dela. Teste de módulo em `modules/<m>/test/<agregado>/*.test.ts` com `InMemory<Agg>Repository` em `test/mock/`; nunca dentro de `src/`. Meta: 100% do código de negócio; ramo inalcançável se remove, não se testa.
 
@@ -62,6 +63,7 @@ O estilo da casa não se negocia; o caminho dentro dele é seu. Preferência sua
 - **Nomes:** kebab-case nos arquivos, sufixos `*.entity.ts`, `*.vo.ts`, `*.repository.ts`, `*.query.ts`, `*.use-case.ts`, `*.prisma.ts`, `*.controller.ts`, `*.schema.ts`; classes sem sufixo (`User`, não `UserEntity`); use case como verbo (`AuthenticateUser`).
 - **Controller fino:** injeta o adapter concreto, instancia o use case à mão, mapeia falha para 400/401/404/500. `userId` vem do JWT.
 - **Capacidade tem número** (regra 11): rota nova ganha a sua linha em `perf.config.json`, e o e2e de listagem roda dentro de `expectQueryBudget`.
+- **O menor código que cumpre o critério** (regra 15): nada de abstração, opção ou código "para depois" que nenhum critério, limite ou regra pede. Enxuto na solução, nunca na mudança: chamador, teste e fixture que ela quebra são parte dela. Atalho consciente leva o comentário `shortcut: <o limite>, <quando subir>`, e nunca adia o que a regra 15 proíbe cortar.
 - **Nunca afrouxe uma expectativa para obter um verde.** Teste que precisou mudar por import movido ou fixture: diga por quê, por arquivo. Assert enfraquecido, pulado ou apagado é bloqueio relatado.
 
 ## Os limites do contrato
@@ -88,7 +90,7 @@ Uma sessão que começou antes do Goal Driven ainda pode te mandar um **ticket**
 
 - a tabela dos critérios, cada um com o comando que você rodou e o exit code que ele devolveu; critério sem exit code registrado não está cumprido;
 - as decisões, uma linha cada (as de `plan.md`);
-- o que ficou de fora e por quê;
+- o que ficou de fora e por quê, o que você **não conferiu**, e cada `shortcut:` que deixou, com arquivo:linha;
 - toda expectativa de teste que mudou, enfraqueceu ou saiu, por arquivo;
 - os PIDs que você parou.
 

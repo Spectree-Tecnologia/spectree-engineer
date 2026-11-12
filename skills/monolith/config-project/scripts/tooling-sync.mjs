@@ -10,6 +10,9 @@
 // A script the project changed is never overwritten: it is listed as `differs`, someone reads the two versions,
 // brings over what the plugin added, and records the decision with --keep. The record lives in
 // scripts/.squad-tooling.json, with the hash each script had when the plugin installed it.
+//
+// The same run appends to docs/architecture.md the numbered rules the plugin has and the project lacks.
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -70,6 +73,18 @@ const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
 pkg.scripts ??= {};
 const missingScripts = Object.keys(NPM_SCRIPTS).filter((name) => !(name in pkg.scripts));
 
+// The numbered rules of docs/architecture.md: a rule the plugin gained after the project was bootstrapped is appended
+// below the last one. A row the project has is never rewritten, whatever it says.
+// shortcut: a project that gave its own rule a number the plugin uses keeps it and never gets the plugin's rule;
+// compare the rows by title when a project does that.
+// The project's formatter pads the cells (`| 14  |`), so a row is told by its number, whatever the spacing.
+const rulesOf = (text) => new Map([...text.matchAll(/^\|\s*(\d+)\s*\|.*$/gm)].map((row) => [Number(row[1]), row[0].trimEnd()]));
+const architectureFile = path.join(root, 'docs', 'architecture.md');
+const architecture = fs.existsSync(architectureFile) ? fs.readFileSync(architectureFile, 'utf8') : '';
+const projectRules = rulesOf(architecture);
+const missingRules =
+  projectRules.size === 0 ? [] : [...rulesOf(fs.readFileSync(path.join(here, '..', '..', '..', '..', 'ARCHITECTURE.md'), 'utf8'))].filter(([number]) => !projectRules.has(number));
+
 const writeStamp = () => {
   stamp.plugin = plugin;
   fs.mkdirSync(path.dirname(stampFile), { recursive: true });
@@ -103,14 +118,23 @@ if (mode === '--apply') {
     for (const name of missingScripts) pkg.scripts[name] = NPM_SCRIPTS[name];
     fs.writeFileSync(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
   }
+  if (missingRules.length > 0) {
+    const eol = architecture.includes('\r\n') ? '\r\n' : '\n';
+    const last = [...projectRules.values()].at(-1);
+    const at = architecture.indexOf(last) + last.length;
+    fs.writeFileSync(architectureFile, architecture.slice(0, at) + missingRules.map(([, row]) => eol + row).join('') + architecture.slice(at));
+    // the project formats its markdown: leave the table the way its formatter wants it
+    if (pkg.devDependencies?.prettier) spawnSync('npx prettier --write docs/architecture.md', { cwd: root, shell: true, stdio: 'ignore' });
+  }
   writeStamp();
 }
 
 const behind = files.filter((file) => ['missing', 'outdated', 'differs'].includes(file.state));
-const scriptsBehind = mode === '--check' ? missingScripts : [];
+const scriptsBehind = mode === '--check' ? [...missingScripts, ...missingRules] : [];
 console.log(`tooling-sync ${mode.slice(2)}: plugin ${plugin}, project stamped ${stamp.plugin ?? 'never'}`);
 for (const file of files) console.log(`  ${(file.done ?? file.state).padEnd(8)}  ${file.rel}`);
 for (const name of missingScripts) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  package.json script "${name}"`);
+for (const [number] of missingRules) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  docs/architecture.md rule ${number}`);
 const differs = files.filter((file) => file.state === 'differs');
 if (differs.length > 0) {
   console.log('\n  differs: the project changed this script, so it was not touched. Read both versions, bring over what the');
