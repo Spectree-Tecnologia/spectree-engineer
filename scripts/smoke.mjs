@@ -312,6 +312,37 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     run('goal-narrowed-by-the-risk-policy', 'npm run goal -- check --ready probe-thing');
     const stats = run('goal-stats', 'npm run goal -- stats');
     if (!/probe-thing\s+approved\s+3\s+1\/3\s+1\s+1\s+1\s/.test(stats)) throw new Error(`goal stats did not count the round, the reproof, the user decision and the policy one:${stats.slice(-500)}`);
+    // what the goal cost, read from a session's transcript: the wall-clock, the stop at the usage limit, the wait for
+    // a reply, and the tokens of the orchestrator and of each subagent, a response written twice counted once
+    const transcripts = fs.mkdtempSync(path.join(os.tmpdir(), 'spectree-transcripts-'));
+    const sessionDir = path.join(transcripts, root.replace(/[^A-Za-z0-9]/g, '-'));
+    fs.mkdirSync(path.join(sessionDir, 'session-1', 'subagents'), { recursive: true });
+    const at = (minutes) => new Date(Date.UTC(2026, 10, 1, 10, minutes)).toISOString();
+    const usage = (fresh, cached, out) => ({ input_tokens: fresh, cache_read_input_tokens: cached, output_tokens: out });
+    const jsonl = (rows) => rows.map((row) => JSON.stringify(row)).join(NL) + NL;
+    fs.writeFileSync(path.join(sessionDir, 'session-1.jsonl'), jsonl([
+      { type: 'user', timestamp: at(0), message: { content: `The project in one line.${NL}${NL}Task:${NL}/engineer item probe-thing — a user sees their things` } },
+      { type: 'assistant', timestamp: at(1), message: { id: 'm1', usage: usage(1000, 50000, 500), content: [{ type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'spectree-engineer:full-stack-developer' } }] } },
+      { type: 'user', timestamp: at(1), toolUseResult: { isAsync: true, agentId: 'a1' }, message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: 'Async agent launched' }] } },
+      { type: 'queue-operation', timestamp: at(31), content: '<task-notification><task-id>a1</task-id><status>completed</status></task-notification>' },
+      { type: 'assistant', timestamp: at(32), message: { id: 'm2', usage: usage(1000, 60000, 300), content: [{ type: 'text', text: 'The slice is in.' }] } },
+      { type: 'assistant', timestamp: at(33), isApiErrorMessage: true, message: { content: [{ type: 'text', text: "You've hit your 5-hour limit · resets 3pm" }] } },
+      { type: 'user', timestamp: at(213), message: { content: 'continue' } },
+      { type: 'assistant', timestamp: at(214), message: { id: 'm3', usage: usage(500, 70000, 200), content: [{ type: 'text', text: 'One question.' }] } },
+      { type: 'user', timestamp: at(274), message: { content: 'yes' } },
+      { type: 'assistant', timestamp: at(275), message: { id: 'm4', usage: usage(500, 80000, 100), content: [{ type: 'text', text: 'Done.' }] } },
+    ]));
+    const built = { type: 'assistant', isSidechain: true, timestamp: at(10), message: { id: 's1', usage: usage(2000, 1000000, 4000), content: [{ type: 'text', text: 'building' }] } };
+    fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.jsonl'), jsonl([built, built, { ...built, timestamp: at(20), message: { ...built.message, id: 's2', usage: usage(1000, 1500000, 2000) } }]));
+    fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.meta.json'), JSON.stringify({ agentType: 'spectree-engineer:full-stack-developer' }));
+    const spent = run('goal-spent', `npm run goal -- spent probe-thing --write --transcripts "${transcripts}"`);
+    if (!/Spent: 4\.6 h wall, 3\.0 h at the usage limit, 1\.0 h waiting for the founder, 2\.8M tokens in, 0\.0M out, 6 turns/.test(spent)) throw new Error(`goal spent did not measure the session:${spent.slice(-900)}`);
+    if (!/an agent running 0\.5 h, x1\.00 in parallel/.test(spent) || !/full-stack-developer\s+2\s+2\.5M/.test(spent)) throw new Error(`goal spent did not count the subagent once per response:${spent.slice(-900)}`);
+    run('goal-check-with-the-spent-line', 'npm run goal -- check --ready probe-thing');
+    const measured = run('goal-stats-with-tokens', 'npm run goal -- stats');
+    if (!/probe-thing\s.*\s4\.6\s+3\.0\s+2\.8\s*$/m.test(measured)) throw new Error(`goal stats did not read the Spent line:${measured.slice(-500)}`);
+    refuse('goal-spent-without-a-session', `npm run goal -- spent probe-thing --transcripts "${path.join(transcripts, 'nowhere')}"`, /no session of this project opened with "\/engineer item probe-thing"/);
+    fs.rmSync(transcripts, { recursive: true, force: true });
     run('goal-restore', 'git checkout -q -- . && git checkout -q - && git branch -q -D feat/probe-thing');
   });
   // The squad's scripts follow the plugin: a fresh project is in step with it, a missing script is copied, one the

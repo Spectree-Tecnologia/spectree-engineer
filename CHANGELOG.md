@@ -2,6 +2,21 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.23.0] - 2026-11-11
+
+Tokens por objetivo. Medido nos dois objetivos reais do PILOT: o `manager-registry` ficou 61,6 das suas 82,4 horas parado no limite semanal do plano, e 85% dos tokens dele foram um `full-stack-developer` relendo um contexto que segurava o objetivo inteiro, 259 mil tokens por turno em 2.899 turnos.
+
+### Added
+- **`npm run goal -- spent <slug>`.** Lê os transcripts do Claude Code desta máquina, pela sessão aberta com `/engineer item <slug>`: relógio, horas no limite de uso do plano, horas esperando resposta, quanto tempo um agente rodou e com que paralelismo, e tokens e turnos por papel. `--write` grava a linha `Spent:` no contrato. `--session` nomeia a sessão quando ela não abriu por item. Só lê os transcripts.
+- `goal stats` ganha as colunas `wall h`, `limit h` e `tokens M`, e os totais de tokens por objetivo e de horas no limite.
+- `tests/tokens.test.mjs`.
+
+### Changed
+- **O plano é em tickets, e cada ticket é de um `full-stack-developer` novo.** A skill `to-tickets`, de Matt Pocock, volta adaptada ao Goal Driven: quem escreve os tickets é o `full-stack-developer` que planeja, a partir do contrato e olhando o código, nunca o Engineer. Um ticket é uma fatia vertical que cabe num contexto novo, com os tickets que o bloqueiam, num arquivo em `.scratch/<slug>/issues/<NN>-<nome>.md`; o `plan.md` é o índice. Quem planeja constrói o primeiro ticket; cada ticket seguinte e cada correção de verificação é de um agente novo, e o ticket fechado ganha `Status: done`, `Done: <sha>` e `Next needs:`. Antes, um agente só segurava o objetivo inteiro e recebia os achados por SendMessage.
+- "Fatia" sai do vocabulário do comando e dos cards: a unidade de trabalho se chama ticket.
+- O card do `full-stack-developer` manda ler e rodar em lote e mandar saída longa para arquivo: cada turno relê o contexto inteiro.
+- O que um script ou o painel já impõe saiu da prosa: a regra do interpretador lendo a stdin ficou em uma frase, e o veredito com ressalva ficou só no `goal check`. As regras de como cortar o trabalho saíram do card para a skill, que só quem planeja carrega. O comando e os cards somados têm 93 palavras a menos que na 0.22.0.
+
 ## [0.22.0] - 2026-11-11
 
 Código enxuto num squad goal driven, a partir da leitura do [ponytail](https://github.com/DietrichGebert/ponytail) de Dietrich Gebert (MIT). Lá o agente adivinha o que ninguém pediu; aqui o contrato decide: é o código que nenhum critério, limite ou regra exige.
@@ -299,6 +314,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.23.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.20.0...v0.21.0
