@@ -175,7 +175,7 @@ A project that started with a spec and tickets carries the same knowledge in ano
 - **Actors and scenarios** come from the user stories, grouped by actor.
 - **Success criteria** come from the acceptance criteria of the tickets and from the user stories: group them by outcome into three to seven, keep every case, and give each the proof (the spec's testing decisions name the seam). A criterion already built is still a criterion: the verifier decides it like any other.
 - **Decided already** comes from the decisions recorded beside the spec.
-- **Prior thinking** takes the spec's implementation decisions and the tickets still open, labelled as the earlier plan: a suggestion of slices to the full-stack-developer, not an order.
+- **Prior thinking** takes the spec's implementation decisions and the tickets still open, labelled as the earlier plan: a suggestion of tickets to the full-stack-developer, not an order.
 - **What exists today** says what is already built: which tickets were merged, on which branch, at which commit, and which branches hold work that was never merged.
 - **Limits** come from the spec's out of scope.
 
