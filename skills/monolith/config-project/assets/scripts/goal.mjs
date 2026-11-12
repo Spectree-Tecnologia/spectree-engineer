@@ -7,7 +7,8 @@
 //   npm run goal -- prove <slug> [--criterion <n>] runs every `run:` proof and prints the exit code of each
 //   npm run goal -- prove <slug> --after-merge     runs only the proofs written `after merge:`, on the merged main
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
-//   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI
+//   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
+//   npm run goal -- spent <slug> [--write]         what the goal cost, read from this machine's Claude Code transcripts
 //
 // A proof a command decides is written in the Proof cell as run: `<command>`. `prove` runs each from the project
 // root, in UTC as CI does, one after the other, and exits 1 if any exits non-zero. A proof with no `run:` is an
@@ -18,6 +19,7 @@
 // It is not run before the pull request; its verdict is `pending` until then, and the contract is `landed`, not
 // `met`, while one is pending.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 
@@ -30,7 +32,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--session <id,id>] [--transcripts <dir>]',
     2,
   );
 
@@ -135,6 +137,9 @@ function parse(file) {
   const roundsLine = (sections.budget ?? []).join('\n').match(/^Verification rounds:\s*(\d+)/im);
   // "Landed: PR #23, 1842 product lines, CI 27 min", written by the orchestrator when the pull request merges
   const landed = lines.find((line) => /^Landed:/.test(line)) ?? '';
+  // "Spent: 15.2 h wall, 0.0 h at the usage limit, 1.3 h waiting for the founder, 212.4M tokens in, 0.9M out, 1104 turns",
+  // written by `goal spent --write`
+  const spentLine = lines.find((line) => /^Spent:/.test(line)) ?? '';
   return {
     slug,
     file,
@@ -150,6 +155,11 @@ function parse(file) {
       pr: landed.match(/PR\s*#?(\d+)/i)?.[1] ?? null,
       lines: landed.match(/(\d[\d\s.]*)\s*product lines/i)?.[1].replace(/[\s.]/g, '') ?? null,
       ci: landed.match(/CI\s*(\d+)\s*min/i)?.[1] ?? null,
+    },
+    spent: {
+      wall: spentLine.match(/([\d.]+) h wall/)?.[1] ?? null,
+      limit: spentLine.match(/([\d.]+) h at the usage limit/)?.[1] ?? null,
+      tokens: spentLine.match(/([\d.]+)M tokens in/)?.[1] ?? null,
     },
   };
 }
@@ -338,10 +348,11 @@ function stats() {
       fable: fs.existsSync(decisions) && /escalated to fable/i.test(fs.readFileSync(decisions, 'utf8')),
       lines: goal.landed.lines,
       ci: goal.landed.ci,
+      ...goal.spent,
     };
   });
-  const head = ['goal', 'status', 'criteria', 'rounds', 'reproved', 'user', 'policy', 'fable', 'lines', 'ci min'];
-  const table = rows.map((r) => [r.slug, r.status, String(r.criteria), `${r.rounds}/${r.budget}`, String(r.reproved), String(r.user), String(r.policy), r.fable ? 'yes' : '-', r.lines ?? '-', r.ci ?? '-']);
+  const head = ['goal', 'status', 'criteria', 'rounds', 'reproved', 'user', 'policy', 'fable', 'lines', 'ci min', 'wall h', 'limit h', 'tokens M'];
+  const table = rows.map((r) => [r.slug, r.status, String(r.criteria), `${r.rounds}/${r.budget}`, String(r.reproved), String(r.user), String(r.policy), r.fable ? 'yes' : '-', r.lines ?? '-', r.ci ?? '-', r.wall ?? '-', r.limit ?? '-', r.tokens ?? '-']);
   const width = head.map((title, i) => Math.max(title.length, ...table.map((row) => row[i].length)));
   const print = (row) => console.log(`  ${row.map((cell, i) => cell.padEnd(width[i])).join('  ')}`.trimEnd());
   console.log('goal stats: docs/goals');
@@ -358,6 +369,163 @@ function stats() {
     console.log(`  user decisions per goal  ${mean((r) => r.user)}  (amendments the user decided; "policy" counts the ones the risk policy decided)`);
     console.log(`  raised to fable          ${done.filter((r) => r.fable).length} of ${done.length}`);
     if (ci > 0) console.log(`  CI minutes recorded      ${ci}`);
+    const measured = done.filter((r) => r.tokens);
+    if (measured.length > 0) {
+      const sum = (pick) => measured.reduce((total, r) => total + Number(pick(r) ?? 0), 0);
+      console.log(`  tokens in per goal       ${(sum((r) => r.tokens) / measured.length).toFixed(1)}M  (${measured.length} measured with "goal spent")`);
+      console.log(`  hours at the usage limit ${sum((r) => r.limit).toFixed(1)} of ${sum((r) => r.wall).toFixed(1)} h of wall-clock`);
+    }
+  }
+  return 0;
+}
+
+// What a goal cost, read from the Claude Code transcripts of this project on this machine: the sessions opened with
+// "/engineer item <slug>", their subagents, and where the wall-clock went. The speed of the squad is bounded by the
+// plan's usage limit, so the number to watch is tokens per goal, role by role.
+function spent() {
+  const flags = parseArgs(args, ['--session', '--transcripts'], ['--write']);
+  if (flags.positional.length !== 1) usage();
+  const goal = parse(slugFile(flags.positional[0]));
+  const projects = flags['--transcripts'] ?? path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude'), 'projects');
+  // Claude Code names a project's folder after its path, every character that is not a letter or a digit as a dash;
+  // a worktree of the project is a folder that starts with the same name.
+  const mine = root.replace(/[^A-Za-z0-9]/g, '-').toLowerCase();
+  const dirs = fs.existsSync(projects) ? fs.readdirSync(projects).filter((name) => name.toLowerCase() === mine || name.toLowerCase().startsWith(`${mine}-`)) : [];
+  const head = (file) => {
+    const buffer = Buffer.alloc(400_000);
+    const fd = fs.openSync(file, 'r');
+    const read = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    fs.closeSync(fd);
+    return buffer.toString('utf8', 0, read);
+  };
+  const named = flags['--session']?.split(',').filter(Boolean);
+  const opening = new RegExp(`/engineer item ${goal.slug}(?![a-z0-9-])`);
+  const sessions = dirs.flatMap((dir) =>
+    fs.readdirSync(path.join(projects, dir)).filter((name) => name.endsWith('.jsonl')).map((name) => path.join(projects, dir, name)).filter((file) => (named ? named.some((id) => path.basename(file).startsWith(id)) : opening.test(head(file)))),
+  );
+  if (sessions.length === 0) fail(`no session of this project opened with "/engineer item ${goal.slug}" under ${projects}: name it with --session <id>`);
+
+  const rowsOf = (file) =>
+    fs.readFileSync(file, 'utf8').split('\n').flatMap((line) => {
+      try {
+        return line ? [JSON.parse(line)] : [];
+      } catch {
+        return [];
+      }
+    });
+  const roles = {};
+  const count = (role, rows) => {
+    const one = (roles[role] ??= { turns: 0, cached: 0, fresh: 0, out: 0 });
+    const seen = new Set();
+    for (const row of rows) {
+      const used = row.message?.usage;
+      // one response is written once per content block: count it once
+      if (row.type !== 'assistant' || !used || seen.has(row.message.id ?? row.uuid)) continue;
+      seen.add(row.message.id ?? row.uuid);
+      one.turns += 1;
+      one.cached += used.cache_read_input_tokens ?? 0;
+      one.fresh += (used.input_tokens ?? 0) + (used.cache_creation_input_tokens ?? 0);
+      one.out += used.output_tokens ?? 0;
+    }
+  };
+  const total = { wall: 0, limit: 0, waiting: 0, waits: 0, agents: 0, union: 0, from: Infinity, to: 0 };
+  for (const file of sessions) {
+    const rows = rowsOf(file);
+    count('Engineer', rows.filter((row) => !row.isSidechain));
+    const sub = path.join(file.replace(/\.jsonl$/, ''), 'subagents');
+    for (const name of fs.existsSync(sub) ? fs.readdirSync(sub).filter((one) => one.endsWith('.jsonl')) : []) {
+      const meta = path.join(sub, name.replace(/\.jsonl$/, '.meta.json'));
+      const type = fs.existsSync(meta) ? JSON.parse(fs.readFileSync(meta, 'utf8')).agentType : null;
+      count(String(type ?? 'subagent').split(':').pop(), rowsOf(path.join(sub, name)));
+    }
+    // the wall-clock: a background agent runs from its launch, or from a message to it, until the next notice with
+    // its id; a wait before a message from outside counts only while nothing runs, and as the usage limit when that
+    // is what stopped the session
+    const calls = new Map();
+    const known = new Set();
+    const running = new Map();
+    const intervals = [];
+    let first = null;
+    let prev = null;
+    let limitedAt = null;
+    for (const row of rows) {
+      if (row.isSidechain || !row.timestamp) continue;
+      const ts = Date.parse(row.timestamp);
+      if (row.type === 'queue-operation') {
+        const id = /<task-id>([^<]+)<\/task-id>/.exec(String(row.content ?? ''))?.[1];
+        if (id && running.has(id)) {
+          intervals.push([running.get(id), ts]);
+          running.delete(id);
+        }
+        continue;
+      }
+      if (!row.message) continue;
+      first ??= ts;
+      const content = Array.isArray(row.message.content) ? row.message.content : [{ type: 'text', text: String(row.message.content ?? '') }];
+      if (row.type === 'assistant') {
+        if (row.isApiErrorMessage && /hit your .*limit/i.test(JSON.stringify(content))) limitedAt ??= ts;
+        for (const part of content) if (part.type === 'tool_use') calls.set(part.id, { name: part.name, to: part.input?.to, ts });
+      }
+      if (row.type === 'user') {
+        let outside = false;
+        for (const part of content) {
+          const call = part.type === 'tool_result' ? calls.get(part.tool_use_id) : null;
+          if (call && row.toolUseResult?.isAsync && row.toolUseResult.agentId) {
+            known.add(row.toolUseResult.agentId);
+            running.set(row.toolUseResult.agentId, call.ts);
+          } else if (call && call.name === 'SendMessage' && known.has(call.to) && !running.has(call.to)) running.set(call.to, call.ts);
+          else if (call && (call.name === 'Agent' || call.name === 'Task')) intervals.push([call.ts, ts]);
+          const said = part.type === 'text' ? (part.text ?? '') : '';
+          if (said && !row.isMeta && !/^\s*<[a-z-]+>/.test(said) && !/SYSTEM NOTIFICATION|hand-back|Handback/.test(said)) outside = true;
+        }
+        if (outside && limitedAt !== null) {
+          total.limit += ts - limitedAt;
+          limitedAt = null;
+        } else if (outside && prev !== null && running.size === 0 && ts - prev > 60_000) {
+          total.waiting += ts - prev;
+          total.waits += 1;
+        }
+      }
+      prev = ts;
+    }
+    if (first === null) continue;
+    total.wall += prev - first;
+    total.from = Math.min(total.from, first);
+    total.to = Math.max(total.to, prev);
+    intervals.sort((a, b) => a[0] - b[0]);
+    let end = 0;
+    for (const [from, to] of intervals) {
+      total.agents += to - from;
+      if (to > end) total.union += to - Math.max(from, end);
+      end = Math.max(end, to);
+    }
+  }
+  const h = (ms) => (ms / 3_600_000).toFixed(1);
+  const M = (n) => `${(n / 1e6).toFixed(1)}M`;
+  const all = Object.values(roles).reduce((sum, one) => ({ turns: sum.turns + one.turns, cached: sum.cached + one.cached, fresh: sum.fresh + one.fresh, out: sum.out + one.out }), { turns: 0, cached: 0, fresh: 0, out: 0 });
+  const tokensIn = all.cached + all.fresh;
+  const day = (ms) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
+  console.log(`goal spent: docs/goals/${goal.slug}.md, ${sessions.length} session${sessions.length === 1 ? '' : 's'} of this project on this machine (${day(total.from)} to ${day(total.to)} UTC)`);
+  console.log(`  wall                 ${h(total.wall).padStart(7)} h`);
+  console.log(`  at the usage limit   ${h(total.limit).padStart(7)} h`);
+  console.log(`  waiting for a reply  ${h(total.waiting).padStart(7)} h   ${total.waits} waits with nothing running`);
+  console.log(`  working              ${h(total.wall - total.limit - total.waiting).padStart(7)} h   an agent running ${h(total.union)} h, x${(total.agents / Math.max(total.union, 1)).toFixed(2)} in parallel`);
+  console.log(`  tokens in            ${M(tokensIn).padStart(8)}    ${M(all.cached)} read from the cache, ${M(all.fresh)} new`);
+  console.log(`  tokens out           ${M(all.out).padStart(8)}    in ${all.turns} turns`);
+  console.log('  by role                    turns   tokens in   per turn     out');
+  for (const [role, one] of Object.entries(roles).sort((a, b) => b[1].cached + b[1].fresh - a[1].cached - a[1].fresh)) {
+    const input = one.cached + one.fresh;
+    console.log(`    ${role.padEnd(22)} ${String(one.turns).padStart(7)}  ${M(input).padStart(10)}  ${`${Math.round(input / Math.max(one.turns, 1) / 1000)}k`.padStart(9)}  ${M(one.out).padStart(6)}  ${Math.round((100 * input) / Math.max(tokensIn, 1))}%`);
+  }
+  const line = `Spent: ${h(total.wall)} h wall, ${h(total.limit)} h at the usage limit, ${h(total.waiting)} h waiting for the founder, ${M(tokensIn)} tokens in, ${M(all.out)} out, ${all.turns} turns`;
+  console.log(`\n${line}`);
+  if (flags['--write']) {
+    const lines = fs.readFileSync(goal.file, 'utf8').split(/\r?\n/);
+    const at = lines.findIndex((one) => /^Spent:/.test(one));
+    if (at >= 0) lines[at] = line;
+    else lines.splice(Math.max(lines.findIndex((one) => /^Landed:/.test(one)), lines.findIndex((one) => /^Status:/.test(one))) + 1, 0, line);
+    fs.writeFileSync(goal.file, lines.join('\n'));
+    console.log(`  written to docs/goals/${goal.slug}.md`);
   }
   return 0;
 }
@@ -366,4 +534,5 @@ if (command === 'check') process.exit(check());
 else if (command === 'prove') process.exit(prove());
 else if (command === 'size') process.exit(size());
 else if (command === 'stats') process.exit(stats());
+else if (command === 'spent') process.exit(spent());
 else usage();

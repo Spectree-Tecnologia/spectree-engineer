@@ -2,7 +2,7 @@
 
 ## skills/engineering — Matt Pocock, https://github.com/mattpocock/skills (MIT)
 
-Vendored at commit a496f55 (2026-10-29), adapted: `disable-model-invocation` removed where the orchestrator must call the skill.
+Vendored at commit a496f55 (2026-10-29), adapted: `disable-model-invocation` removed where the orchestrator must call the skill. `to-tickets` is rewritten for Goal Driven Development (0.23.0): the source is the goal contract, the author is the `full-stack-developer` that plans the goal, the user is not asked about the breakdown, and the tickets are local files; the vertical-slice rules, the blocking edges and the expand and contract sequence are Matt Pocock's.
 
 MIT License
 
