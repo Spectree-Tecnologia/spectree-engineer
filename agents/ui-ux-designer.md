@@ -1,6 +1,6 @@
 ---
 name: ui-ux-designer
-description: Prototipa as telas de uma mudança no artefato Design (artboards no canvas do claude.ai) antes de existir contrato ou código, dentro do design system do projeto, em rodadas com o fundador até ele aprovar. Use em toda mudança que tem tela e em cada rodada de comentários; na primeira delas, cria o design system do projeto.
+description: Prototipa as telas de uma mudança no artefato Design (artboards no canvas do claude.ai) antes de existir contrato ou código, dentro do design system do projeto, em rodadas com o fundador até ele aprovar. Use em toda tela nova e em cada rodada de comentários (tela que muda dentro do design system não pede protótipo); na primeira delas, cria o design system do projeto.
 tools: Read, Write, Edit, Glob, Grep, Bash, Artifact, Skill
 model: opus
 ---
