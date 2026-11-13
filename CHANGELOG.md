@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.24.0] - 2026-11-12
+
+Três achados das retros de ferramental do PILOT, nos scripts que o `config-project` grava no projeto.
+
+### Added
+- **`perf.config.json` mede rota de criação.** Em `path` e `body`, `{{uuid}}` vira um UUID novo por requisição (o mesmo em toda a requisição) e `{{n}}` um contador da rota: `{ "name": "perf-{{uuid}}" }` mede o caminho real do create, e não o 409 de chave duplicada que toda requisição depois da primeira recebia. `accept: [409]` lista os status além de 2xx que a rota pode responder sem falhar; status fora da lista continua falhando, e a segunda medição volta a valer para a rota. (#77)
+- `scripts/clean-next.mjs` e `prebuild: node scripts/clean-next.mjs` na raiz: antes do `npm run build`, todo `apps/*/.next` é esvaziado, menos o `.next/cache`. (#78)
+- `tests/dev-tooling.test.mjs`: roda o `perf.mjs` contra um servidor local, o `clean-next.mjs` e o `tooling-sync.mjs` num projeto antigo.
+
+### Fixed
+- **O `worktree.mjs` não entrega mais uma porta que o browser recusa.** Offset cuja porta de backend ou frontend cai na lista que Chromium e Firefox bloqueiam (`ERR_UNSAFE_PORT`: 6000, 6566, 6665-6669, 6697, 10080...) é pulado, com uma linha dizendo por quê; offset forçado nessa lista é recusado. No PILOT, o frontend em 6000 parecia bug do objetivo. (#76)
+- **O restore do cache do turbo não mistura dois builds.** O `turbo.json` gerado tira o `.next/cache/**` dos outputs do build, e o `prebuild` limpa o `.next` que um build anterior deixou ao lado do restaurado. O `tooling-sync --apply` leva os dois a projeto existente: acrescenta `!.next/cache/**` ao `turbo.json` e o script `prebuild` quando o projeto não tem um (projeto com `prebuild` próprio encadeia `node scripts/clean-next.mjs` à mão). (#78)
+
 ## [0.23.0] - 2026-11-12
 
 Tokens por objetivo. Medido nos dois objetivos reais do PILOT: o `manager-registry` ficou 61,6 das suas 82,4 horas parado no limite semanal do plano, e 85% dos tokens dele foram um `full-stack-developer` relendo um contexto que segurava o objetivo inteiro, 259 mil tokens por turno em 2.899 turnos.

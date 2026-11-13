@@ -8,6 +8,10 @@
 // `"setup": "scripts/perf.setup.mjs"` names a module whose default export runs once the server is up —
 // `async ({ env, baseUrl, signJwt }) => ({ claims?: { sub, sid, ... }, headers?: { ... } })` — seeding what it
 // needs and returning the claims the token must carry (or complete headers). A 404/401 under perf is never a budget.
+// A create route sends the same body twice and gets the duplicate-key 409 from the second request on: in `path` and
+// `body`, `{{uuid}}` is a new UUID per request (the same one everywhere in that request) and `{{n}}` a per-route
+// counter, so `{ "name": "perf-{{uuid}}" }` measures the real create. `accept: [409]` lists the statuses besides 2xx
+// that the route may answer under load without failing; use it only when the status is the expected answer.
 //   PERF_MAX_CPU=<percent>     the machine load above which nothing is measured (default 50; 100 measures anyway)
 // A route over budget whose responses were all fine is measured once more, after the others, and the second
 // measurement decides: one spike on a shared machine is not a regression. A wrong status is never re-measured.
@@ -23,7 +27,7 @@
 //                     verified as a commit first, and a bad one is one line and exit 1.
 // ponytail: fetch + workers instead of autocannon; good enough for a budget, swap when you need histograms
 import { execFileSync, spawn } from 'node:child_process';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -162,19 +166,28 @@ async function measure(route) {
   const url = `${baseUrl}${route.path}`;
   if (route.auth && !token && !authHeaders) throw new Error(`${route.path} needs a token, but JWT_SECRET is not set`);
   const headers = { ...(route.auth ? (authHeaders ?? { authorization: `Bearer ${token}` }) : {}), ...(route.headers ?? {}) };
-  const init = { method: route.method ?? 'GET', headers };
-  if (route.body !== undefined) {
-    init.body = JSON.stringify(route.body);
-    headers['content-type'] ??= 'application/json';
-  }
+  if (route.body !== undefined) headers['content-type'] ??= 'application/json';
+  const bodyTemplate = route.body === undefined ? undefined : JSON.stringify(route.body);
+  const placeholder = /\{\{(uuid|n)\}\}/g;
+  let n = 0;
+  // one request's url and init: placeholders filled per request, the rest shared
+  const request = () => {
+    const values = { uuid: randomUUID(), n: String(++n) };
+    const fill = (text) => text.replace(placeholder, (_, key) => values[key]);
+    const init = { method: route.method ?? 'GET', headers };
+    if (bodyTemplate !== undefined) init.body = fill(bodyTemplate);
+    return [fill(url), init];
+  };
+  const accepted = new Set((route.accept ?? []).map(Number));
   const latencies = [];
   const statuses = {};
   const stop = Date.now() + (config.durationSeconds ?? 10) * 1000;
   await Promise.all(
     Array.from({ length: config.connections ?? 20 }, async () => {
       while (Date.now() < stop) {
+        const [target, init] = request();
         const t0 = performance.now();
-        const res = await fetch(url, init).catch(() => ({ status: 0, arrayBuffer: async () => null }));
+        const res = await fetch(target, init).catch(() => ({ status: 0, arrayBuffer: async () => null }));
         await res.arrayBuffer();
         latencies.push(performance.now() - t0);
         statuses[res.status] = (statuses[res.status] ?? 0) + 1;
@@ -183,7 +196,7 @@ async function measure(route) {
   );
   latencies.sort((a, b) => a - b);
   const pct = (p) => latencies[Math.min(latencies.length - 1, Math.floor((p / 100) * latencies.length))] ?? NaN;
-  const non2xx = Object.entries(statuses).filter(([s]) => s < 200 || s >= 300);
+  const non2xx = Object.entries(statuses).filter(([s]) => (s < 200 || s >= 300) && !accepted.has(Number(s)));
   return {
     path: route.path,
     requests: latencies.length,

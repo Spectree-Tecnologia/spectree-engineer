@@ -75,6 +75,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-project/scripts/project-init.m
 
 - `scripts/project-init.mjs`: script principal de bootstrap.
 - `assets/scripts/check-boundaries.mjs`: copiado para `scripts/` do projeto; `npm test` e o CI o rodam antes das suítes.
+- `assets/scripts/clean-next.mjs`: copiado para `scripts/`; o `prebuild` da raiz esvazia `apps/*/.next` (menos `.next/cache`) antes do `npm run build`, porque o restore do cache do turbo não apaga nada.
 - `references/bootstrap-contract.md`: contrato dos arquivos e alterações que o bootstrap aplica.
 - Log local de execução: `.log/skills.log` (não versionado; `.log/` é adicionado ao `.gitignore` automaticamente, sem metadados extras).
 
