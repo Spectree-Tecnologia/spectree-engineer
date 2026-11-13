@@ -8,6 +8,8 @@
 // `"setup": "scripts/perf.setup.mjs"` names a module whose default export runs once the server is up —
 // `async ({ env, baseUrl, signJwt }) => ({ claims?: { sub, sid, ... }, headers?: { ... } })` — seeding what it
 // needs and returning the claims the token must carry (or complete headers). A 404/401 under perf is never a budget.
+// `actors: [{ claims } | { headers }, ...]` gives each connection its own person (connection i is actor i mod n):
+// twenty connections as one person measure that person's lock, twenty people measure the route.
 // A create route sends the same body twice and gets the duplicate-key 409 from the second request on: in `path` and
 // `body`, `{{uuid}}` is a new UUID per request (the same one everywhere in that request) and `{{n}}` a per-route
 // counter, so `{ "name": "perf-{{uuid}}" }` measures the real create. `accept: [409]` lists the statuses besides 2xx
@@ -15,6 +17,16 @@
 //   PERF_MAX_CPU=<percent>     the machine load above which nothing is measured (default 50; 100 measures anyway)
 // A route over budget whose responses were all fine is measured once more, after the others, and the second
 // measurement decides: one spike on a shared machine is not a regression. A wrong status is never re-measured.
+// A route over budget twice that the base already had is then measured on the BASE's code, on this machine, now:
+// the budget says "too slow here", only the base says "this change made it slower". The base is the --changed ref.
+// The script checks it out in a git worktree, runs `npm ci` and `baseBuild` (default `npm run build`) there, and
+// measures the same routes twice on a database of their own (scripts/db-scratch.mjs, when the project has it).
+//   slower than the base by more than `regressionRatio` (default 1.25, best p95 of each side)   exit 1
+//   not slower                                         exit 0, one line per route (a warning on the pull request):
+//                                                      the route has no slack on this machine, and this diff is not why
+//   a new route, no --changed ref, or a base that cannot be built or measured: the budget alone decides, as before
+//   PERF_BASE_URL=http://host:port  a base server that is already up, measured instead of building one
+//   PERF_COMPARE=0                  never compare
 //   --changed <ref>   only the routes the diff since <ref> can slow down (committed, working tree and untracked files).
 //                     A file under modules/<m>/ or apps/backend/src/modules/<m>/ selects the routes that list <m>. Any
 //                     other file of apps/backend runs every route (main.ts, db/, shared/, prisma/, nest-cli.json,
@@ -26,11 +38,12 @@
 //                     the module is its first path segment. The ref is user input: git runs without a shell, the ref is
 //                     verified as a commit first, and a bad one is one line and exit 1.
 // ponytail: fetch + workers instead of autocannon; good enough for a budget, swap when you need histograms
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHmac, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
 const config = JSON.parse(fs.readFileSync(path.join(root, 'perf.config.json'), 'utf8'));
@@ -40,6 +53,7 @@ const port = env.PORT ?? '4000';
 const baseUrl = (process.env.PERF_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
 let token = signJwt(env.JWT_SECRET);
 let authHeaders = null;
+let actorHeaders = null; // one per person, when the setup names them
 
 const changedAt = process.argv.indexOf('--changed');
 const changedRef = changedAt > -1 ? process.argv[changedAt + 1] : null;
@@ -61,8 +75,27 @@ function git(args, failure) {
 
 const modulesOf = (route) => route.modules ?? (route.module ? [route.module] : [route.path.split('/')[1]]);
 
+// What a route asks, without its budget: the same key in the base's config is the same route. Rows that ask the
+// same thing twice are told apart by their order.
+function keysOf(routes) {
+  const seen = new Map();
+  return routes.map((route) => {
+    const what = JSON.stringify([route.method ?? 'GET', route.path, route.body ?? null, Boolean(route.auth), route.headers ?? null, route.multipart ?? null, route.accept ?? null]);
+    const nth = seen.get(what) ?? 0;
+    seen.set(what, nth + 1);
+    return `${what}#${nth}`;
+  });
+}
+
+// The base's run of this same script: only the routes the parent names, each measured twice, the result in a file.
+const flag = (name) => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : null);
+const matchFile = flag('--match');
+const jsonFile = flag('--json');
+
+let baseSha = null;
 function routesChangedSince(ref) {
   const [sha] = git(['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`], `--changed ${JSON.stringify(ref)} is not a commit`);
+  baseSha = sha;
   const files = new Set([
     ...git(['diff', '--name-only', '--end-of-options', `${sha}...HEAD`]),
     ...git(['diff', '--name-only', '--end-of-options', 'HEAD']),
@@ -94,7 +127,13 @@ function routesChangedSince(ref) {
   return { routes, why: 'no backend change found' };
 }
 
-const selected = changedRef ? routesChangedSince(changedRef) : { routes: config.routes, why: 'every route' };
+const configKeys = keysOf(config.routes);
+const keyOf = (route) => configKeys[config.routes.indexOf(route)];
+function routesNamedIn(file) {
+  const wanted = new Set(JSON.parse(fs.readFileSync(file, 'utf8')));
+  return { routes: config.routes.filter((route) => wanted.has(keyOf(route))), why: 'the routes the comparison asked for' };
+}
+const selected = matchFile ? routesNamedIn(matchFile) : changedRef ? routesChangedSince(changedRef) : { routes: config.routes, why: 'every route' };
 console.log(`perf: ${selected.routes.length} of ${config.routes.length} routes selected (${selected.why})`);
 if (changedRef) for (const r of selected.routes) console.log(`  ${r.method ?? 'GET'} ${r.path}`);
 if (selected.routes.length === 0) process.exit(0);
@@ -171,10 +210,11 @@ async function measure(route) {
   const placeholder = /\{\{(uuid|n)\}\}/g;
   let n = 0;
   // one request's url and init: placeholders filled per request, the rest shared
-  const request = () => {
+  const request = (connection) => {
     const values = { uuid: randomUUID(), n: String(++n) };
     const fill = (text) => text.replace(placeholder, (_, key) => values[key]);
-    const init = { method: route.method ?? 'GET', headers };
+    const own = route.auth && actorHeaders ? { ...headers, ...actorHeaders[connection % actorHeaders.length], ...(route.headers ?? {}) } : headers;
+    const init = { method: route.method ?? 'GET', headers: own };
     if (bodyTemplate !== undefined) init.body = fill(bodyTemplate);
     return [fill(url), init];
   };
@@ -183,9 +223,9 @@ async function measure(route) {
   const statuses = {};
   const stop = Date.now() + (config.durationSeconds ?? 10) * 1000;
   await Promise.all(
-    Array.from({ length: config.connections ?? 20 }, async () => {
+    Array.from({ length: config.connections ?? 20 }, async (_, connection) => {
       while (Date.now() < stop) {
-        const [target, init] = request();
+        const [target, init] = request(connection);
         const t0 = performance.now();
         const res = await fetch(target, init).catch(() => ({ status: 0, arrayBuffer: async () => null }));
         await res.arrayBuffer();
@@ -212,6 +252,69 @@ async function measure(route) {
   };
 }
 
+const regressionRatio = Number(config.regressionRatio ?? 1.25);
+const stopChild = () =>
+  new Promise((resolve) => {
+    if (!child || child.exitCode !== null) return resolve();
+    child.once('exit', resolve);
+    child.kill();
+  });
+
+// The same routes on the base's code, on this machine: `{ results: Map(key -> measurement) }`, or `{ why }` when
+// there is nothing to compare with. Never throws: a base that cannot be measured leaves the budget to decide.
+async function measureBase(routes) {
+  if (!baseSha) return { why: 'no base ref: run with --changed <ref>' };
+  let baseRoutes;
+  try {
+    baseRoutes = JSON.parse(execFileSync('git', ['show', `${baseSha}:perf.config.json`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })).routes;
+  } catch {
+    return { why: 'the base has no perf.config.json' };
+  }
+  const inBase = new Set(keysOf(baseRoutes ?? []));
+  const wanted = routes.map(keyOf).filter((key) => inBase.has(key));
+  if (wanted.length === 0) return { why: 'the routes over budget are new in this change' };
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'perf-base-'));
+  const out = path.join(work, 'base.json');
+  fs.writeFileSync(path.join(work, 'match.json'), JSON.stringify(wanted));
+  const self = [fileURLToPath(import.meta.url), '--match', path.join(work, 'match.json'), '--json', out];
+  const quiet = { PERF_MAX_CPU: '100', PERF_COMPARE: '0' };
+  const lastLine = (r) => String(r.stderr || r.stdout || r.error?.message || '').trim().split(/\r?\n/).filter(Boolean).at(-1) ?? `exit ${r.status}`;
+  const capture = { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 };
+  let checkout = null;
+  try {
+    if (process.env.PERF_BASE_URL) {
+      const r = spawnSync(process.execPath, self, { ...capture, cwd: root, env: { ...process.env, ...quiet, PERF_URL: process.env.PERF_BASE_URL } });
+      if (r.status !== 0) return { why: `the base at PERF_BASE_URL was not measured: ${lastLine(r)}` };
+    } else {
+      if (process.env.PERF_URL) return { why: 'PERF_URL names a server this script did not start: name the base server in PERF_BASE_URL' };
+      console.log(`perf: ${wanted.length} of ${routes.length} route(s) over budget twice existed on the base: building ${baseSha.slice(0, 8)} to measure them on this machine`);
+      await stopChild(); // the two servers want the same port
+      checkout = path.join(work, 'base');
+      const added = spawnSync('git', ['worktree', 'add', '--detach', checkout, baseSha], { ...capture, cwd: root });
+      if (added.status !== 0) {
+        checkout = null;
+        return { why: `git worktree add failed: ${lastLine(added)}` };
+      }
+      const envFile = path.join(backendDir, '.env');
+      if (fs.existsSync(envFile)) fs.copyFileSync(envFile, path.join(checkout, path.relative(root, backendDir), '.env'));
+      for (const line of ['npm ci --no-audit --no-fund', config.baseBuild ?? 'npm run build']) {
+        const r = spawnSync(line, { ...capture, cwd: checkout, shell: true });
+        if (r.status !== 0) return { why: `"${line}" failed on the base: ${lastLine(r)}` };
+      }
+      // a database of the base's own: its migrations, its seed, nothing this change's run wrote
+      const scratch = path.join(root, 'scripts', 'db-scratch.mjs');
+      const args = fs.existsSync(scratch) ? [scratch, `perf-base-${process.pid}`, '--', process.execPath, ...self] : self;
+      const r = spawnSync(process.execPath, args, { ...capture, cwd: checkout, env: { ...process.env, ...quiet } });
+      if (r.status !== 0 || !fs.existsSync(out)) return { why: `the base was not measured: ${lastLine(r)}` };
+    }
+    return { results: new Map(JSON.parse(fs.readFileSync(out, 'utf8')).map((one) => [one.key, one])) };
+  } finally {
+    if (checkout) spawnSync('git', ['worktree', 'remove', '--force', checkout], { cwd: root, stdio: 'ignore' });
+    fs.rmSync(work, { recursive: true, force: true });
+    if (checkout) spawnSync('git', ['worktree', 'prune'], { cwd: root, stdio: 'ignore' });
+  }
+}
+
 let child = null;
 if (!process.env.PERF_URL) {
   // THROTTLE_LIMIT lifts the global rate limit (100/min) for the run; the budget is about the handler, not the throttler
@@ -230,20 +333,62 @@ try {
     const result = (await setup({ env, baseUrl, signJwt: (claims) => signJwt(env.JWT_SECRET, claims) })) ?? {};
     if (result.claims) token = signJwt(env.JWT_SECRET, result.claims);
     if (result.headers) authHeaders = result.headers;
+    if (Array.isArray(result.actors) && result.actors.length > 0) {
+      actorHeaders = result.actors.map((actor) => actor.headers ?? { authorization: `Bearer ${signJwt(env.JWT_SECRET, actor.claims)}` });
+    }
   }
   const measured = [];
   for (const route of selected.routes) measured.push(await measure(route));
+  const ms = (n) => `${n.toFixed(1)}ms`;
+  if (matchFile) {
+    // the base's side of a comparison: the better of two measurements per route, and no verdict of its own
+    const out = [];
+    for (const first of measured) {
+      const second = await measure(first.route);
+      const best = second.p95 < first.p95 ? second : first;
+      out.push({ key: keyOf(first.route), path: best.path, requests: best.requests, rps: best.rps, p50: best.p50, p95: best.p95, p99: best.p99, max: best.max, non2xx: first.non2xx || second.non2xx });
+    }
+    fs.writeFileSync(jsonFile, JSON.stringify(out));
+    child?.kill();
+    process.exit(0);
+  }
   // the second look at a route over budget with clean statuses, after every other route had its turn
   const rows = [];
+  const twice = [];
   for (const first of measured) {
     if (first.ok || first.non2xx || first.requests === 0) {
       rows.push(first);
       continue;
     }
     rows.push({ ...first, label: `${first.path} (1st)`, verdict: 'RE-MEASURED', ok: true });
-    rows.push({ ...(await measure(first.route)), label: `${first.path} (2nd)` });
+    const second = { ...(await measure(first.route)), label: `${first.path} (2nd)` };
+    rows.push(second);
+    if (!second.ok && !second.non2xx && second.requests > 0) twice.push({ row: second, best: Math.min(first.p95, second.p95) });
   }
-  const ms = (n) => `${n.toFixed(1)}ms`;
+  // over budget twice: was it this change? Only the base, on this machine, can say.
+  const notes = [];
+  if (twice.length > 0 && process.env.PERF_COMPARE !== '0') {
+    const base = await measureBase(twice.map((one) => one.row.route));
+    if (base.why) console.error(`perf: not compared with the base (${base.why}): the budget decides`);
+    for (const { row, best } of twice) {
+      const was = base.results?.get(keyOf(row.route));
+      if (!was) continue;
+      rows.splice(rows.indexOf(row) + 1, 0, { ...was, path: row.path, label: `${row.path} (base)`, budget: row.budget, verdict: 'BASE', ok: true });
+      if (was.non2xx || was.requests === 0 || !Number.isFinite(was.p95)) {
+        console.error(`perf: ${row.path} could not be measured on the base (${was.non2xx || 'no response'}): the budget decides`);
+        continue;
+      }
+      const ratio = best / was.p95;
+      if (ratio > regressionRatio) {
+        row.verdict = 'SLOWER THAN BASE';
+        row.why = `${ratio.toFixed(2)}x the base's ${ms(was.p95)} on this machine: this change made it slower`;
+      } else {
+        row.ok = true;
+        row.verdict = 'OVER, AS THE BASE';
+        notes.push(`${row.path} p95 ${ms(best)} > ${row.budget}ms, and the base measures ${ms(was.p95)} on this machine (${ratio.toFixed(2)}x): not this change. The route has no slack here: a line for the roadmap, not a round.`);
+      }
+    }
+  }
   console.table(
     rows.map((r) => ({
       route: r.label ?? r.path,
@@ -260,7 +405,11 @@ try {
   );
   for (const r of rows.filter((r) => !r.ok)) {
     failed = true;
-    console.error(`perf: ${r.path} p95 ${ms(r.p95)} > ${r.budget}ms${r.non2xx ? ` (${r.non2xx})` : ''}`);
+    console.error(`perf: ${r.path} p95 ${ms(r.p95)} > ${r.budget}ms${r.non2xx ? ` (${r.non2xx})` : ''}${r.why ? `, ${r.why}` : ''}`);
+  }
+  for (const note of notes) {
+    console.error(`perf: ${note}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::warning title=Latency budget::${note}`);
   }
 } finally {
   child?.kill();
