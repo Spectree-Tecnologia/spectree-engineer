@@ -14,7 +14,7 @@ If you are the orchestrator (you talk to the user and dispatch the others), stop
 
 ## Why tickets
 
-Each ticket is built by a **new** `full-stack-developer`, in a fresh context. An agent that holds a whole goal re-reads its whole context on every turn, and that is where a goal's tokens go. A ticket is the unit that keeps the context small. So write each one for a reader who has the contract, the plan, the ticket and the code, and nothing else.
+Each ticket is built by a **new** `full-stack-developer`, in a fresh context; only the first is built by the one that wrote the plan. An agent that holds a whole goal re-reads its whole context on every turn, and that is where a goal's tokens go. A ticket is the unit that keeps the context small. So write each one for a reader who has the contract, the plan, the ticket and the code, and nothing else.
 
 ## Process
 
@@ -67,7 +67,7 @@ One file per ticket, `.scratch/<slug>/issues/<NN>-<name>.md`, numbered from `01`
 
 </ticket-template>
 
-The tickets are a **graph**, and a script reads it: `Blocked by` is the edge, `Touches` says where a ticket writes, `Proof` closes it. Two tickets with no order between them may be built at the same time, so they never touch the same folder: if they do, one waits for the other, and you write that edge. Keep the graph wide where the work is truly independent, and never add an edge only to keep an order you like.
+The tickets are a **graph**, and a script reads it: `Blocked by` is the edge, `Touches` says where a ticket writes, `Proof` closes it. Two tickets with no order between them are free to be built at the same time (today the squad still builds one at a time; the graph is what lets that change), so they never touch the same folder: if they do, one waits for the other, and you write that edge. The script reads each field on the line of its label, so `Criteria` opens with the numbers (`1, 3: an e2e test at the HTTP seam`) and nothing goes in a list below a label. Keep the graph wide where the work is truly independent, and never add an edge only to keep an order you like.
 
 Outside `Reuses`, avoid file paths and code snippets: they go stale. The exception is a snippet that encodes a decision more precisely than prose can (a state machine, a schema, a type shape).
 

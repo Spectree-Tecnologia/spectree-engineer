@@ -229,6 +229,8 @@ function lint(goal, ready) {
   if (ready) {
     if (!/^(approved|landed|met)\b/.test(goal.status)) errors.push(`not ready: Status is "${goal.status}"`);
     for (const criterion of goal.criteria) {
+      // moved to a continuation goal: the row stays so the numbers never change, and the verdict is given there
+      if (goal.amendments.some((a) => a.n === criterion.n && a.change === 'moved')) continue;
       const verdict = latestVerdict(goal, criterion.n);
       // a proof that only the pull request's run or the merged main can give is ready while it waits
       const accepted = criterion.deferred ? ['met', 'waived', 'pending'] : ['met', 'waived'];
@@ -594,7 +596,7 @@ function readTickets(slug) {
     .sort()
     .map((name) => {
       const text = fs.readFileSync(path.join(dir, name), 'utf8');
-      const field = (label) => text.match(new RegExp(`^\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, 'im'))?.[1].trim() ?? null;
+      const field = (label) => text.match(new RegExp(`^(?:\\*\\*)?${label}:(?:\\*\\*)?[ \\t]*(.*)$`, 'im'))?.[1].trim() ?? null;
       const numbers = (value) => [...(value ?? '').matchAll(/\d+/g)].map((m) => Number(m[0]));
       const touches = field('Touches');
       return {
@@ -602,7 +604,8 @@ function readTickets(slug) {
         file: `.scratch/${slug}/issues/${name}`,
         name: name.replace(/^\d+-/, '').replace(/\.md$/, ''),
         // the numbers that open the field: "1 and 3, proved by 2 e2e tests" advances 1 and 3
-        criteria: numbers((field('Criteria') ?? '').match(/^\d+(?:\s*(?:,|and|e|&)\s*\d+)*/)?.[0]),
+        legacy: field('Criteria') === null,
+        criteria: numbers((field('Criteria') ?? '').match(/^\d+(?:\s*\([^)]*\))?(?:\s*(?:,|;|and|e|&)\s*\d+(?:\s*\([^)]*\))?)*/)?.[0].replace(/\([^)]*\)/g, '')),
         blockedBy: numbers(field('Blocked by')),
         touches: touches === null ? null : touches.split(',').map(cleanPath).filter(Boolean),
         proof: [...(field('Proof') ?? '').matchAll(/run:\s*`([^`]+)`/g)].map((m) => m[1].trim()),
@@ -616,10 +619,11 @@ function graph() {
   if (flags.positional.length !== 1) usage();
   const slug = flags.positional[0];
   const goal = parse(slugFile(slug));
-  const tickets = readTickets(slug);
+  const every = readTickets(slug);
+  const tickets = every.filter((ticket) => !ticket.legacy);
   const byNumber = new Map(tickets.map((ticket) => [ticket.n, ticket]));
   const errors = [];
-  const notes = [];
+  const notes = every.filter((ticket) => ticket.legacy).map((ticket) => `${ticket.file} has no "Criteria": a ticket from before Goal Driven, left out of the graph`);
   if (tickets.length === 0) errors.push('no ticket file (<NN>-<name>.md) in the folder');
   if (byNumber.size !== tickets.length) errors.push('two ticket files share a number');
 
@@ -679,7 +683,10 @@ function graph() {
   if (flags['--prove'] !== undefined) {
     const ticket = byNumber.get(Number(flags['--prove']));
     if (!ticket) fail(`.scratch/${slug}/issues has no ticket ${flags['--prove']}`);
-    if (ticket.proof.length === 0) fail(`ticket ${pad(ticket.n)} has no "Proof" with a run: command`);
+    if (ticket.proof.length === 0) {
+      console.log(`goal graph: ticket ${pad(ticket.n)} has no "Proof" with a run: command (planned before the graph): nothing to run`);
+      return 0;
+    }
     let failed = 0;
     for (const line of ticket.proof) {
       console.log(`\n=== ticket ${pad(ticket.n)}\n$ ${line}`);

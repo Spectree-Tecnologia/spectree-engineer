@@ -4,6 +4,8 @@ user-invocable: false
 description: "Conduct a retrospective on a coding session."
 ---
 
+**In this squad** the Engineer runs this when a goal lands, and no candidate is presented to the user: each one goes where step 11 of `commands/engineer.md` sends it (a line applied in the project, an item in `docs/roadmap.md`, or an issue on the plugin). Name every agent by its role.
+
 The user has asked for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.
 
 ## Steps

@@ -16,10 +16,26 @@ Os tickets de um objetivo viram um **grafo que um script lê**. É a primeira de
 - **Passo 6 do `/engineer`:** antes do `solutions-architect`, o grafo dos tickets passa por `goal graph --plan`. "Critério sem ticket" deixa de ser lido a olho.
 - **Passo 7:** o gate do checkpoint roda a prova do ticket, e a missão seguinte nomeia o primeiro ticket da frontier que o script imprime. A frase sobre gate que rodou zero tarefas saiu: a prova do ticket roda sempre.
 - O `full-stack-developer` grava `Touches` e `Proof` e roda o `goal graph --plan` antes de relatar o plano.
-- O comando e os cards somados têm 16 palavras a menos que na 0.28.0.
+- O comando e os cards somados têm 25 palavras a menos que na 0.28.0.
+
+### Fixed
+Pente fino do projeto inteiro em 2026-11-13, a pedido do fundador: o comando, os sete cards, as 32 skills, os scripts, o painel, os testes, os evals e o README lidos uns contra os outros.
+- **O grafo lê o que o squad escreve.** `goal graph` aceita o campo em negrito ou em texto puro (o card diz `Status: done`, a skill diz `**Status:** done`), lê `Criteria` com parênteses (`1 (e2e), 3 (unit)`), deixa fora do grafo, com uma nota, o ticket de antes do Goal Driven que a adoção mantém na pasta, e `--prove` de um ticket sem `Proof` sai 0 dizendo que não havia o que rodar.
+- **Critério `moved`.** A skill `to-goal` mandava tirar a linha da tabela, e o `goal check` recusava a tabela fora de sequência; com a linha mantida, o `check --ready` cobrava um veredito que não existe. A linha fica, e o `check --ready` não pede veredito dela. Era o que travava o "entregue em partes" do passo 7.
+- **Skills que mandavam perguntar ao usuário.** `tdd` (confirmar as seams), `diagnosing-bugs` (script com humano no loop, teste de regressão opcional), `code-review` (procurar a spec em `.scratch/`, onde ficam o plano e os tickets que o `quality-engineer` não pode ver), `retro`, `grilling`, `module-aggregate` e `setup-matt-pocock-skills` (GitHub Issues como tracker padrão) dizem agora como o squad as usa. O tracker local aponta para o formato de ticket da `to-tickets` e não fala mais em spec.
+- **Leitura é query, em `query/`.** A regra 4 e o `check-boundaries` diziam `query/`; o card do `full-stack-developer`, o do `solutions-architect`, o do `quality-engineer`, o README e a skill `module-query-cqrs` diziam `provider/`, e duas referências ensinavam use case de leitura e classe `XxxUseCase`, que o `check-boundaries` e o `quality-engineer` reprovam.
+- **`check:pr` saiu da camada determinística do passo 8:** ele exige a tabela `Evidence` preenchida, que só existe depois da verificação. Continua no passo 10, antes de abrir o PR.
+- `config-prisma` não manda mais rodar `prisma migrate reset`, que o comando proíbe.
+- O `security-engineer` dizia que só `high` e `critical` bloqueiam; o comando diz que nenhum `confirmed` passa. Vale o comando. Saiu do card a frase que o mandava citar o achado do `quality-engineer`, que ele nunca vê.
+- A skill `pr` abre o corpo do PR de um objetivo com o objetivo e a tabela de critérios, como o passo 10 pede.
+- O `solutions-architect` confere `Touches` contra as pastas que o ticket vai escrever; o `quality-engineer`, em modo prova, ataca também o `Proof` do ticket; o `full-stack-developer` roda a prova do ticket ao fechá-lo.
+- A raiz do plugin fica três níveis acima da pasta da skill, não dois. `to-tickets` não é mais descrita como skill que só redireciona. `goal spent` fora de uma sessão de item pede `--session`.
+- README: seis recusas do painel (eram quatro no texto), onze casos de eval, `tests/graph.test.mjs`, e a frase "ninguém quebra o trabalho em tickets", de antes da 0.23.0. Descrição do plugin e do marketplace.
+- Os tickets de exemplo dos evals `plan-gate` e `proof-gate` ganharam `Touches` e `Proof`.
 
 ### O que não foi provado
 - Nenhum objetivo real foi planejado com os campos novos: se o `full-stack-developer` escreve `Touches` estreito o bastante para o grafo ficar largo só se vê no primeiro.
+- O pente fino deixou achados abertos, que pedem decisão ou trabalho próprio: o checkpoint verifica um checkout que o próximo `full-stack-developer` já está mudando; prova `in ci:` que nenhum passo do CI roda; `tooling-sync` que não leva o `ci.yml` novo a um projeto antigo; o validador do ledger da auditoria, que recusa toda entrada no Windows; o contador do aviso de handoff, que soma o plano e o primeiro ticket; graders de eval que não conseguem falhar; e referências das skills de monólito que citam arquivos que o shared não tem.
 - As entregas 2 (ticket com defeito volta a quem o construiu, a segunda conferência só olha os achados) e 3 (tickets da frontier ao mesmo tempo, cada um na sua pasta) não estão aqui.
 
 ## [0.28.0] - 2026-11-13

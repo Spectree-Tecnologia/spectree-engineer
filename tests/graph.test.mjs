@@ -147,6 +147,77 @@ test('a ticket closes on its own proof, by exit code', () => {
   assert.equal(run(dir, '--prove', '9').code, 1);
 });
 
+// Found by the audit of 2026-11-13, after the graph was written: the cards say `Status: done` in plain text, an adopted
+// item keeps its tickets from before Goal Driven in the same folder, a goal planned before the graph has no Proof, and
+// a criterion moved to a continuation goal could not pass `check --ready`.
+test('the graph reads what the squad really writes', () => {
+  const plain = (text) => text.replace(/\*\*(Status|Blocked by|Criteria):\*\*/g, '$1:');
+  const dir = project({ ...good, '01-create': { ...good['01-create'], status: 'done' } });
+  const first = path.join(dir, '.scratch', 'things', 'issues', '01-create.md');
+  fs.writeFileSync(first, plain(fs.readFileSync(first, 'utf8')));
+  assert.match(run(dir).out, /frontier: 02, 03$/m, 'a plain `Status: done` closes the ticket');
+
+  const mixed = run(project({ ...good, '02-list': { ...good['02-list'], criteria: '2 (e2e), 3 (unit): the list' }, '03-archive': { ...good['03-archive'], blockedBy: '01, 02' } }), '--json');
+  assert.deepEqual(JSON.parse(mixed.out).tickets[1].criteria, [2, 3]);
+});
+
+test('a ticket from before Goal Driven stays in the folder and out of the graph', () => {
+  const dir = project(good);
+  fs.writeFileSync(path.join(dir, '.scratch', 'things', 'issues', '01-old-create.md'), '# 01: old\n\n**Blocked by:** None\n\n**Status:** ready-for-agent\n\n- [ ] an acceptance criterion\n');
+  const res = run(dir, '--plan');
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /note: {2}\.scratch\/things\/issues\/01-old-create\.md has no "Criteria": a ticket from before Goal Driven, left out of the graph/);
+  assert.match(res.out, /3 tickets, 0 done/);
+});
+
+test('a ticket planned before the graph has no proof to run, and that is not a failure', () => {
+  const res = run(project({ ...good, '02-list': { criteria: '2', blockedBy: '01', proof: null } }), '--prove', '2');
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /ticket 02 has no "Proof" with a run: command \(planned before the graph\): nothing to run/);
+});
+
+test('a criterion moved to a continuation goal keeps its row and asks no verdict here', () => {
+  const evidence = '| 1 | 1 | met | exit 0 |\n| 2 | 1 | met | exit 0 |\n';
+  const check = (text) => {
+    const dir = project({}, text);
+    const res = spawnSync(process.execPath, [goal, 'check', '--ready', 'things'], { cwd: dir, encoding: 'utf8' });
+    return { code: res.status, out: res.stdout + res.stderr };
+  };
+  const waiting = check(contract(evidence));
+  assert.equal(waiting.code, 1);
+  assert.match(waiting.out, /not ready: criterion 3 is not verified yet/);
+  const moved = check(contract(`${evidence}\n## Amendments\n\n| Date | # | Change | By | Follows |\n|---|---|---|---|---|\n| 2026-11-13 | 3 | moved | Engineer | \`things-2\` |\n`));
+  assert.equal(moved.code, 0, moved.out);
+  assert.match(read('skills/engineering/to-goal/SKILL.md'), /`moved`[^\n]*the row stays in this contract's criteria table/);
+});
+
+test('the ticket fixtures of the evals are in the shape the gate reads', () => {
+  const gate = (fixture, slug) => spawnSync(process.execPath, [goal, 'graph', slug, '--plan'], { cwd: path.join(plugin, 'evals', 'fixtures', fixture), encoding: 'utf8' });
+  const proof = gate('proof-gate', 'ci-gate');
+  assert.equal(proof.status, 0, proof.stdout + proof.stderr);
+  // the plan-gate fixture is a wrong plan on purpose: the script names the same hole the solutions-architect must find
+  const plan = gate('plan-gate', 'transactions');
+  assert.equal(plan.status, 1);
+  assert.deepEqual(plan.stdout.match(/error: .+/g), ['error: criterion 3 has no ticket']);
+});
+
+test('no skill sends an agent to a user it cannot reach, or to a command the flow forbids', () => {
+  assert.match(read('skills/engineering/tdd/SKILL.md'), /In this squad nobody confirms them with the user/);
+  assert.doesNotMatch(read('skills/engineering/tdd/SKILL.md'), /confirm them with the user\. No test/);
+  for (const skill of ['diagnosing-bugs', 'code-review', 'retro', 'grilling']) assert.match(read(`skills/engineering/${skill}/SKILL.md`), /\*\*In this squad\*\*/, `${skill} does not say how the squad uses it`);
+  assert.match(read('skills/engineering/code-review/SKILL.md'), /never open `\.scratch\/`/);
+  assert.doesNotMatch(read('skills/monolith/module-aggregate/SKILL.md'), /Do not execute the skill without that answer/);
+  assert.doesNotMatch(read('skills/monolith/config-prisma/SKILL.md'), /`npx prisma migrate reset/);
+  // a read is a query, in query/, never a use case: the rule, the cards and the skills say the same folder
+  assert.match(read('ARCHITECTURE.md'), /`modules\/<m>\/src\/<aggregate>\/query\/`/);
+  assert.match(read('agents/full-stack-developer.md'), /`query\/` \(`\*\.query\.ts`\)/);
+  assert.match(read('skills/monolith/module-query-cqrs/SKILL.md'), /src\/<feature>\/query\//);
+  assert.doesNotMatch(read('skills/monolith/module-query-cqrs/SKILL.md'), /use case de leitura/);
+  assert.doesNotMatch(read('skills/monolith/module-use-case/references/use-case-pattern.md'), /class \w+UseCase implements/);
+  // check:pr needs the Evidence table filled: it runs before the pull request, not in the deterministic layer
+  assert.doesNotMatch(read('commands/engineer.md'), /test:e2e`\); `npm run check:pr`/);
+});
+
 test('the squad plans, gates and walks by the graph', () => {
   const skill = read('skills/engineering/to-tickets/SKILL.md');
   assert.match(skill, /^\*\*Touches:\*\*/m);

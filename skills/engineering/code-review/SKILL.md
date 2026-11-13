@@ -13,6 +13,8 @@ Both axes run as **parallel sub-agents** so they don't pollute each other's cont
 
 The issue tracker should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.
 
+**In this squad** the `quality-engineer` calls this skill for the **Standards** axis only, without sub-agents and without asking anyone. The fixed point is the baseline of its mission. The Spec axis is its own `## Criteria`, against the goal contract in `docs/goals/`: skip the step that looks for a spec, and never open `.scratch/`, because the plan and the tickets are not for whoever verifies.
+
 ## Process
 
 ### 1. Pin the fixed point

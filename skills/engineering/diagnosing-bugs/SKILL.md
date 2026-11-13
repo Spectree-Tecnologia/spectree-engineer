@@ -8,6 +8,8 @@ description: Diagnosis loop for hard bugs and performance regressions. Use when 
 
 A discipline for hard bugs. Skip phases only when explicitly justified.
 
+**In this squad** you are a `full-stack-developer` and you cannot reach the user. Where this skill says to ask or show the user, put it in your report to the Engineer instead, and never start a human-in-the-loop script: nobody is at your stdin. The regression test is not optional here: a bug is a goal of one criterion, the test that reproduces it. With no seam for that test, stop and report the bug as inconclusive.
+
 When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
 
 ## Redact
