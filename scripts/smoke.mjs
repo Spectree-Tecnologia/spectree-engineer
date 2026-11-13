@@ -325,23 +325,34 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
       { type: 'assistant', timestamp: at(1), message: { id: 'm1', usage: usage(1000, 50000, 500), content: [{ type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'spectree-engineer:full-stack-developer' } }] } },
       { type: 'user', timestamp: at(1), toolUseResult: { isAsync: true, agentId: 'a1' }, message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: 'Async agent launched' }] } },
       { type: 'queue-operation', timestamp: at(31), content: '<task-notification><task-id>a1</task-id><status>completed</status></task-notification>' },
+      { type: 'assistant', timestamp: at(32), isApiErrorMessage: true, message: { content: [{ type: 'text', text: 'API Error: Overloaded' }] } },
       { type: 'assistant', timestamp: at(32), message: { id: 'm2', usage: usage(1000, 60000, 300), content: [{ type: 'text', text: 'The slice is in.' }] } },
       { type: 'assistant', timestamp: at(33), isApiErrorMessage: true, message: { content: [{ type: 'text', text: "You've hit your 5-hour limit · resets 3pm" }] } },
       { type: 'user', timestamp: at(213), message: { content: 'continue' } },
       { type: 'assistant', timestamp: at(214), message: { id: 'm3', usage: usage(500, 70000, 200), content: [{ type: 'text', text: 'One question.' }] } },
       { type: 'user', timestamp: at(274), message: { content: 'yes' } },
       { type: 'assistant', timestamp: at(275), message: { id: 'm4', usage: usage(500, 80000, 100), content: [{ type: 'text', text: 'Done.' }] } },
+      { type: 'user', timestamp: at(276), message: { content: 'next' } },
+      { type: 'assistant', timestamp: at(277), message: { id: 'm5', usage: usage(500, 50000, 100), content: [{ type: 'text', text: 'Working.' }] } },
+      { type: 'assistant', timestamp: at(278), isApiErrorMessage: true, message: { content: [{ type: 'text', text: "API Error: Can't reach the API server" }] } },
+      { type: 'user', timestamp: at(338), message: { content: 'continue' } },
+      { type: 'assistant', timestamp: at(339), message: { id: 'm6', usage: usage(500, 50000, 100), content: [{ type: 'text', text: 'Back.' }] } },
     ]));
     const built = { type: 'assistant', isSidechain: true, timestamp: at(10), message: { id: 's1', usage: usage(2000, 1000000, 4000), content: [{ type: 'text', text: 'building' }] } };
     fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.jsonl'), jsonl([built, built, { ...built, timestamp: at(20), message: { ...built.message, id: 's2', usage: usage(1000, 1500000, 2000) } }]));
     fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.meta.json'), JSON.stringify({ agentType: 'spectree-engineer:full-stack-developer', description: 'Build ticket 01' }));
+    // a fix the checkpoint sent back, named so by the orchestrator
+    fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a2.jsonl'), jsonl([{ ...built, timestamp: at(40), message: { ...built.message, id: 's3', usage: usage(1000, 500000, 10) } }]));
+    fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a2.meta.json'), JSON.stringify({ agentType: 'spectree-engineer:full-stack-developer', description: 'Fix ticket 01 findings' }));
     const spent = run('goal-spent', `npm run goal -- spent probe-thing --write --agents --transcripts "${transcripts}"`);
-    if (!/missions over 60 turns\s+0 of 1 full-stack-developer missions/.test(spent) || !/full-stack-developer\s+2\s+1002k -> 1501k\s+2\.5M\s.*Build ticket 01/.test(spent)) throw new Error(`goal spent --agents did not print the agent's line:${spent.slice(-900)}`);
-    if (!/Spent: 4\.6 h wall, 3\.0 h at the usage limit, 1\.0 h waiting for the founder, 2\.8M tokens in, 0\.0M out, 6 turns/.test(spent)) throw new Error(`goal spent did not measure the session:${spent.slice(-900)}`);
-    if (!/an agent running 0\.5 h, x1\.00 in parallel/.test(spent) || !/full-stack-developer\s+2\s+2\.5M/.test(spent)) throw new Error(`goal spent did not count the subagent once per response:${spent.slice(-900)}`);
+    if (!/missions over 60 turns\s+0 of 2 full-stack-developer missions/.test(spent) || !/full-stack-developer\s+2\s+1002k -> 1501k\s+2\.5M\s.*Build ticket 01/.test(spent)) throw new Error(`goal spent --agents did not print the agent's line:${spent.slice(-900)}`);
+    if (!/Spent: 5\.7 h wall, 3\.0 h at the usage limit, 1\.0 h waiting for the founder, 1\.0 h stopped by an error, 3\.4M tokens in, 0\.0M out, 9 turns/.test(spent)) throw new Error(`goal spent did not measure the session:${spent.slice(-900)}`);
+    // an error the turn got past is no stop; the fix is told apart from the build by its name
+    if (!/stopped by an error\s+1\.0 h\s+1 turn an API error ended/.test(spent) || !/fixes after a verification\s+1 of 2 full-stack-developer missions, 17% of its tokens/.test(spent)) throw new Error(`goal spent did not tell the stop or the fix apart:${spent.slice(-900)}`);
+    if (!/an agent running 0\.5 h, x1\.00 in parallel/.test(spent) || !/full-stack-developer\s+3\s+3\.0M/.test(spent)) throw new Error(`goal spent did not count the subagent once per response:${spent.slice(-900)}`);
     run('goal-check-with-the-spent-line', 'npm run goal -- check --ready probe-thing');
     const measured = run('goal-stats-with-tokens', 'npm run goal -- stats');
-    if (!/probe-thing\s.*\s4\.6\s+3\.0\s+2\.8\s*$/m.test(measured)) throw new Error(`goal stats did not read the Spent line:${measured.slice(-500)}`);
+    if (!/probe-thing\s.*\s5\.7\s+3\.0\s+3\.4\s*$/m.test(measured)) throw new Error(`goal stats did not read the Spent line:${measured.slice(-500)}`);
     // a session that does not open with the command is still found by the title the app gave it: the slug
     const titled = path.join(transcripts, 'titled', root.replace(/[^A-Za-z0-9]/g, '-'));
     fs.mkdirSync(titled, { recursive: true });
@@ -351,7 +362,7 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
       { type: 'assistant', timestamp: at(30), message: { id: 'n1', usage: usage(1000, 99000, 10), content: [{ type: 'text', text: 'On it.' }] } },
     ]));
     const byTitle = run('goal-spent-finds-the-session-by-its-title', `npm run goal -- spent probe-thing --transcripts "${path.join(transcripts, 'titled')}"`);
-    if (!/Spent: 0\.5 h wall, 0\.0 h at the usage limit, 0\.0 h waiting for the founder, 0\.1M tokens in, 0\.0M out, 1 turns/.test(byTitle)) throw new Error(`goal spent did not find the session by its title:${byTitle.slice(-600)}`);
+    if (!/Spent: 0\.5 h wall, 0\.0 h at the usage limit, 0\.0 h waiting for the founder, 0\.0 h stopped by an error, 0\.1M tokens in, 0\.0M out, 1 turns/.test(byTitle)) throw new Error(`goal spent did not find the session by its title:${byTitle.slice(-600)}`);
     refuse('goal-spent-without-a-session', `npm run goal -- spent probe-thing --transcripts "${path.join(transcripts, 'nowhere')}"`, /no session of this project opened with "\/engineer item probe-thing"/);
     fs.rmSync(transcripts, { recursive: true, force: true });
     run('goal-restore', 'git checkout -q -- . && git checkout -q - && git branch -q -D feat/probe-thing');

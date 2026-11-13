@@ -2,6 +2,23 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.26.0] - 2026-11-13
+
+A sessão parada e o retrabalho. Medido no `ci-time` do SYND, já com a verificação final feita: de 29,8 horas de relógio, 12,4 foram a sessão parada sem ninguém para retomar (5,7 horas depois de o limite de 5 horas já ter reaberto, de madrugada, e 6,7 horas depois de um erro de rede da API), e nenhuma foi espera por decisão do fundador. Dos 212 milhões de tokens do `full-stack-developer`, 128 milhões foram correção e diagnóstico depois de checkpoint. O ticket que construiu o script de prova custou 1,0 milhão para construir e 25,6 milhões em três rodadas de checkpoint; o ataque ao contrato, antes de o plano dizer como a prova seria feita, tinha custado 0,2 milhão.
+
+### Added
+- **Retomada automática.** O painel ouve o fim de um turno por erro e, em projeto do Engineer com plano em andamento, envia sozinho o "continue": um minuto depois de a janela de uso reabrir, quando a sessão informa o horário, ou em intervalos de 2, 5, 15, 30 e 60 minutos, até nove tentativas. O horário fica no estado da sessão e é conferido a cada meio minuto, então sobrevive a um reload e a uma máquina que dormiu. Turno que terminou em resposta ou em interrupção nunca é retomado, e uma mensagem do fundador cancela a retomada. Um agente em segundo plano que morre com o Engineer ocioso também acorda a sessão.
+- **Modo prova do `quality-engineer`, no gate do plano.** Em objetivo de mais de um ticket, junto com o gate de arquitetura, ele lê o contrato e os tickets e devolve, por critério, o que a prova planejada deixaria passar. O achado volta ao `full-stack-developer` na mesma mensagem do gate e vira linha de `Criteria` do ticket. É a única missão em que ele lê tickets, e nela não há veredito.
+- **`goal spent` mede o retrabalho.** Linha nova `fixes after a verification`: quantas missões do `full-stack-developer` o Engineer nomeou como correção ou diagnóstico, e a parte dos tokens dele que elas levaram.
+- Caso de eval `qe-proof-mode-open-denylist`: um checador planejado como lista do que recusar, e um que confere o título do teste e não se ele roda.
+
+### Changed
+- A linha `Spent:` do contrato ganha `h stopped by an error`. Contrato com a linha antiga continua lido pelo `goal stats`.
+- Saiu dos cards do `full-stack-developer` e do `quality-engineer` a missão no formato de antes do Goal Driven: o Engineer adota o item antigo como contrato antes de despachar. O comando e os cards somados caíram de 18.749 para 18.739 palavras, e o orçamento em `tests/lean.test.mjs` desce junto.
+
+### Fixed
+- **`goal spent` não conta mais parada por erro da API como espera pelo fundador.** No `ci-time`, 6,7 horas apareciam como espera por resposta quando ninguém tinha sido perguntado. Erro que o turno superou não conta como parada.
+
 ## [0.25.0] - 2026-11-12
 
 Missões curtas. Medido no primeiro objetivo do SYND em tickets, o `ci-time`: todo `full-stack-developer` nasceu com 30 mil tokens de contexto, como desenhado, mas cresceu até 200 a 330 mil dentro de uma missão. Missões de até 60 chamadas custaram 98 mil tokens por chamada; acima de 110, 162 mil. Oito missões longas foram 88% dos tokens do papel.
@@ -343,6 +360,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.26.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.22.0...v0.23.0

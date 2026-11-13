@@ -1,10 +1,11 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, AgentStatus, AgentSteps, DeskUi, Plan } from './state'
+import type { AgentRow, AgentStatus, AgentSteps, DeskUi, Plan, Resume } from './state'
 import { heroMarkup, mascotAvatar, planBarMarkup, planCellColors, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { applyToPlan, planFromTool, planProgress } from './plan'
+import { clockTime, nextResume, NO_RESUME, resumePrompt } from './resume'
 import { artOf, faceOf, labelOf, PALETTE, roleOf } from './roles'
 import type { Art } from './roles'
 
@@ -38,6 +39,7 @@ const ui = atom(
 )
 const plan = atom({ plugin: 'spectree-engineer', key: 'plan' } as const, { tasks: [] }, { shape: 'plan-1' })
 const now = atom({ plugin: 'spectree-engineer', key: 'now' } as const, 0)
+const resume = atom({ plugin: 'spectree-engineer', key: 'resume' } as const, NO_RESUME, { shape: 'resume-1' })
 
 type Agents = Record<string, AgentRow>
 
@@ -253,6 +255,69 @@ function logFailure($: EngineInterface, error: unknown) {
   $.ui.log(`engineer-desk: ${error instanceof Error ? error.message : String(error)}`)
 }
 
+// The stored time is checked every half minute rather than waited for once: a machine that slept wakes
+// past it, and a reload keeps the time and loses the timer.
+const RESUME_TICK_MS = 30_000
+let resumeTick: { cancel: () => void } | null = null
+// A resume never follows a main turn that is alive: its own end decides.
+let isMainTurnRunning = false
+
+function watchResume($: EngineInterface) {
+  if (!resumeTick) resumeTick = $.clock.every(RESUME_TICK_MS, () => void fireResume($).catch(error => logFailure($, error)))
+}
+
+function unwatchResume() {
+  resumeTick?.cancel()
+  resumeTick = null
+}
+
+// An answer, an interruption or the Founder's own words: whatever stopped the session is no longer the panel's to mend.
+async function clearResume($: EngineInterface) {
+  unwatchResume()
+  const current = await read($, resume)
+  if (current.at !== null || current.attempts > 0) await update($, resume, () => NO_RESUME)
+}
+
+// Work under way in an Engineer project: a plan with a step left. Anything else stays stopped.
+async function hasWorkUnderWay($: EngineInterface) {
+  const current = await read($, plan)
+  if (!current.tasks.some(one => one.status !== 'completed')) return false
+  return isEngineerProject($, await $.session.cwd())
+}
+
+async function scheduleResume($: EngineInterface) {
+  if (!(await hasWorkUnderWay($))) return
+  const at = await $.clock.now()
+  const limits = await $.session.usage().then(
+    usage => usage.rateLimits,
+    () => [],
+  )
+  const current = await read($, resume)
+  const planned = nextResume(at, current.attempts, limits)
+  if (!planned) {
+    unwatchResume()
+    // The tries stay spent until an answer or the Founder clears them.
+    await update($, resume, v => ({ ...v, at: null }))
+    $.ui.log(`engineer-desk: a sessão segue parada depois de ${current.attempts} tentativas de retomada; escreva "continue" para seguir`)
+    return
+  }
+  await update($, resume, () => planned)
+  watchResume($)
+  $.ui.log(`engineer-desk: sessão parada por ${planned.why === 'limit' ? 'limite de uso' : 'erro da API'}; o painel retoma às ${clockTime(planned.at as number)}`)
+}
+
+async function fireResume($: EngineInterface) {
+  const current: Resume = await read($, resume)
+  if (current.at === null) return unwatchResume()
+  if ((await $.clock.now()) < current.at) return
+  unwatchResume()
+  await update($, resume, v => ({ ...v, at: null }))
+  if (isMainTurnRunning || !(await hasWorkUnderWay($))) return
+  const sent = await $.prompt.submit({ text: resumePrompt(current.why) })
+  // The engine refuses a prompt while the host's limit stands: that is one more try spent.
+  if (sent.drop !== undefined) await scheduleResume($)
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -299,7 +364,14 @@ export const register: Register = on => {
       const at = await $.clock.now()
       await update($, now, () => at)
     }
+    // A reload or a restart keeps a resume that was waiting.
+    if ((await read($, resume)).at !== null) watchResume($)
 
+    return next(e)
+  })
+
+  on('turn.start', ($, e, next) => {
+    if (!e.agentId) isMainTurnRunning = true
     return next(e)
   })
 
@@ -376,6 +448,12 @@ export const register: Register = on => {
     if (id) {
       const status: AgentStatus = e.reason === 'answer' ? 'completed' : e.reason === 'aborted' ? 'killed' : 'failed'
       await recordEnd($, id, status, tokensOf(e.usage)).catch(error => logFailure($, error))
+      // A background agent that died while the main loop was idle: its notice may never start a turn.
+      if (e.reason === 'error' && !isMainTurnRunning) await scheduleResume($).catch(error => logFailure($, error))
+    } else {
+      isMainTurnRunning = false
+      // Only a turn the API killed is resumed. An answer may be a question to the Founder, and an interruption is his.
+      await (e.reason === 'error' ? scheduleResume($) : clearResume($)).catch(error => logFailure($, error))
     }
 
     return next(e)
@@ -384,6 +462,8 @@ export const register: Register = on => {
   // A plan done stays above the prompt for the turn that finished it, until the person writes again:
   // a notification, a trigger or a dropped prompt leaves it there.
   on('prompt.submit', async ($, e, next) => {
+    // The Founder is back, at the prompt or from his phone: the session is his again.
+    if ((e.origin.kind === 'composer' || e.origin.kind === 'bridge') && !e.isMeta) await clearResume($).catch(error => logFailure($, error))
     const entered = await next(e)
     if (e.origin.kind !== 'composer' || e.isMeta || entered.drop !== undefined) return entered
     await update($, plan, current =>

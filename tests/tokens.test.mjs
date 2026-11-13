@@ -71,3 +71,35 @@ test('the retro records what the goal cost', () => {
   const body = script.slice(script.indexOf('function spent()'), script.indexOf("if (command === 'check')"));
   assert.equal([...body.matchAll(/fs\.writeFileSync\(([^,]+),/g)].map((call) => call[1]).join(), 'goal.file');
 });
+
+test('a stopped session is resumed by the panel, never one that ended in an answer', () => {
+  // measured on SYND's ci-time (2026-11-13): 12.4 of 29.8 hours were a stopped session nobody restarted, 5.7 h after
+  // the 5-hour limit had reset and 6.7 h after one API network error. Neither was a decision of the Founder.
+  const panel = read('hooks/engineer-desk/register.tsx');
+  assert.match(panel, /e\.reason === 'error' \? scheduleResume\(\$\) : clearResume\(\$\)/);
+  assert.match(panel, /if \(isMainTurnRunning \|\| !\(await hasWorkUnderWay\(\$\)\)\) return/);
+  assert.match(panel, /\(e\.origin\.kind === 'composer' \|\| e\.origin\.kind === 'bridge'\) && !e\.isMeta\) await clearResume/);
+  const resume = read('hooks/engineer-desk/resume.ts');
+  assert.match(resume, /export const BACKOFF_MINUTES = \[2, 5, 15, 30, 60, 60, 60, 60, 60\]/);
+  assert.match(resume, /one\.percentUsed >= 100 && one\.resetsAt !== undefined/);
+  assert.match(resume, /Se o seu último passo foi uma pergunta ao fundador, repita a pergunta e pare/);
+  // the stop is told apart from a wait for the Founder, and the fixes from the builds
+  const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
+  assert.match(script, /else if \(row\.isApiErrorMessage\) erroredAt \?\?= ts;/);
+  assert.match(script, /h stopped by an error, \$\{M\(tokensIn\)\} tokens in/);
+  assert.match(script, /fixes after a verification/);
+});
+
+test('the planned proof is attacked at the plan gate, before the code', () => {
+  // ci-time: the ticket that built the proof script cost 1.0M tokens to build and 25.6M in three checkpoint rounds,
+  // and the attack on the contract, before the plan said how the proof would be built, had cost 0.2M
+  const command = read('commands/engineer.md');
+  assert.match(command, /\*\*A prova é atacada antes do código\.\*\*[^\n]*despache o \*\*quality-engineer\*\* em modo prova, com o contrato e os tickets/);
+  assert.match(command, /volta na mesma mensagem do gate e vira linha de `Criteria` do ticket/);
+  const card = read('agents/quality-engineer.md');
+  assert.match(card, /\*\*Modo prova, no gate do plano\.\*\*/);
+  assert.match(card, /ele aceita por lista fechada, ou recusa o que lembrou de listar\?/);
+  // the verdict stays independent: the one mission that reads tickets gives none
+  assert.match(card, /É a única missão em que você lê tickets, e nela não há veredito/);
+  assert.match(read('agents/full-stack-developer.md'), /o que o quality-engineer achou na prova planejada vira linha de `Criteria` do ticket/);
+});
