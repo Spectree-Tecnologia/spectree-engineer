@@ -50,6 +50,7 @@ Com defaults obtidos de `skills.config.json`:
 
 - `tasks.test.cache = false`
 - `tasks.build.outputs` contendo `dist/**`
+- `tasks.build.outputs` contendo `!.next/cache/**` quando contém `.next/**`, e `prebuild: node scripts/clean-next.mjs` no `package.json` da raiz
 
 11. Atualizar `<frontendAppPath>/next.config.ts|js|mjs` de forma incremental para garantir:
 
