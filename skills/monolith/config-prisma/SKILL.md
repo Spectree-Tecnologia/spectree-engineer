@@ -25,7 +25,6 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 5. Validar Prisma:
    - `npm --workspace apps/backend run prisma:generate`
 6. Rodar ciclo completo de banco (desenvolvimento local):
-   - `npx prisma migrate reset`
    - `npx prisma migrate dev`
    - `npm run db:roles` (cria/atualiza `app_runtime`; repetir depois de toda migration)
    - `npx prisma generate`
@@ -60,7 +59,7 @@ O contrato gerado de banco deve ficar compatível com a versão atual do projeto
 - O script instala usando o nome real do workspace lido de `apps/backend/package.json` (fallback: `apps/backend`).
 - Após criar modelos reais, remover `prisma/models/bootstrap.model.prisma` (se existir) e gerar nova migration.
 - Para ambientes locais de desenvolvimento, após ajustes no schema, executar o fluxo completo:
-  - `npx prisma migrate reset && npx prisma migrate dev && npx prisma generate && npx prisma db seed`
+  - `npx prisma migrate dev && npx prisma generate && npx prisma db seed` (nunca `migrate reset`: o Prisma o recusa a um agente; banco limpo é `npm run db:scratch`)
 - Em backends já evoluídos, o script evita regressão de `seed/main.ts` para template neutro quando o arquivo já estiver no padrão moderno com tasks registradas.
 - Consultar `references/prisma-init-checklist.md` para checklist operacional.
 

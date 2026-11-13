@@ -24,13 +24,10 @@
 ## Paths de referência
 
 - Interfaces de query em dominio:
-  - `modules/auth/src/user/provider/find-user-by-id.query.ts`
-  - `modules/product/src/product/provider/find-many-products-with-filters.query.ts`
-  - `modules/auth/src/audit/provider/find-auth-login-overview.query.ts`
-- Use cases que consomem query:
-  - `modules/auth/src/user/use-case/find-by-id.use-case.ts`
-  - `modules/product/src/product/use-case/find-many-products.use-case.ts`
-  - `modules/branch/src/branch/use-case/find-branch-by-id.use-case.ts`
+  - `modules/auth/src/user/query/find-user-by-id.query.ts`
+  - `modules/product/src/product/query/find-many-products-with-filters.query.ts`
+  - `modules/auth/src/audit/query/find-auth-login-overview.query.ts`
+- Quem consome a query é o controller, direto (`apps/backend/src/modules/<m>/<m>.controller.ts`): leitura nunca passa por use case, e o `check-boundaries` recusa `use-case/find-*`, `list-*`, `get-*`, `search-*` e `count-*` (regra 4).
 - Implementações no adapter (Prisma):
   - `apps/backend/src/modules/auth/user.prisma.ts`
   - `apps/backend/src/modules/product/product.prisma.ts`

@@ -10,4 +10,8 @@
 
 **New:** nothing.
 
+**Touches:** `modules/accounts`, `apps/backend/src/modules/accounts`
+
+**Proof:** run: `npm -w apps/backend run test:e2e`
+
 **Status:** ready

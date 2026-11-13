@@ -1,6 +1,6 @@
 # Spectree modular monolith
 
-One deployable, many modules, each one a bounded context that could become a service tomorrow without a rewrite. These rules are what makes that true. Five of them are enforced by `scripts/check-boundaries.mjs` (runs first in `npm test` and in CI), one by `npm run perf` and the e2e suite; the rest by the review. A rule you want to break is an ADR, never a comment.
+One deployable, many modules, each one a bounded context that could become a service tomorrow without a rewrite. These rules are what makes that true. Seven of them are enforced by `scripts/check-boundaries.mjs` (runs first in `npm test` and in CI), one by `npm run perf` and the e2e suite; the rest by the review. A rule you want to break is an ADR, never a comment.
 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|

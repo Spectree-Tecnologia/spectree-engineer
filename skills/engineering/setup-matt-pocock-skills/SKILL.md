@@ -8,11 +8,11 @@ description: "Configure this repo for the engineering skills: set up its issue t
 
 Scaffold the per-repo configuration that the engineering skills assume:
 
-- **Issue tracker**: where issues live (GitHub by default; local markdown is also supported out of the box)
+- **Issue tracker**: where issues live (in this squad, local markdown under `.scratch/`, without asking; GitHub only when the user asked for it)
 - **Triage labels**: the strings used for the five canonical triage roles
 - **Domain docs**: where `GLOSSARY.md` and ADRs live, and the consumer rules for reading them
 
-This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
+This is a prompt-driven skill, not a deterministic script. Explore, then write. In this squad the Engineer calls it and takes, for each choice, the default this skill recommends for a solo project, without questions.
 
 ## Process
 
