@@ -21,7 +21,7 @@ test('a full-stack-developer builds one ticket, and leaves the next one what it 
   assert.match(card, /`Status: done`, `Done: <sha>` e `Next needs:`/);
   assert.match(card, /com `to-tickets` para quebrar o objetivo/);
   // a long mission costs more per call: the card says what to do when the panel says so
-  assert.match(card, /\*\*Missão curta\.\*\*[^\n]*Na 60ª o painel recusa a chamada uma vez, como aviso[^\n]*relate `handoff`/);
+  assert.match(card, /\*\*Missão curta\.\*\*[^\n]*Quando o painel recusar uma chamada com o aviso de handoff[^\n]*relate `handoff`/);
   assert.doesNotMatch(card, /voltam para você mesmo/);
 });
 
