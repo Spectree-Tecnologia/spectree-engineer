@@ -25,13 +25,15 @@ test('a full-stack-developer builds one ticket, and leaves the next one what it 
   assert.doesNotMatch(card, /voltam para você mesmo/);
 });
 
-test('the command dispatches a new full-stack-developer for each ticket and each fix', () => {
+test('the command dispatches a new full-stack-developer for each ticket, and a ticket is fixed by the one that built it', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /despache um full-stack-developer \*\*novo\*\* para o ticket seguinte/);
+  assert.match(command, /despache um full-stack-developer \*\*novo\*\* para o primeiro da frontier/);
   assert.match(command, /despache um full-stack-developer novo com os achados, literais/);
-  // the one continuation left: the plan was approved and the same agent builds the first slice
-  assert.match(command, /a única continuação é a do full-stack-developer que teve o plano aprovado e segue para o primeiro ticket/);
-  assert.doesNotMatch(command, /\*\*mesmo\*\* full-stack-developer|\*\*mesmo full-stack-developer\*\*/);
+  // 0.30.0: three continuations, each of an agent whose context already holds what the message is about. Measured on
+  // SYND on 2026-11-13: fixes by a full-stack-developer starting cold were 44% of ci-time's tokens, and a one-line fix
+  // cost 3.8M in ts7. The unit is still one ticket per agent: a fix is of the agent's own ticket, never of the goal.
+  assert.match(command, /a continuação \(SendMessage\) existe em três casos: o full-stack-developer que teve o plano aprovado e segue para o primeiro ticket, a correção do ticket por quem o construiu, e a reconferência por quem achou/);
+  assert.match(command, /ao \*\*mesmo\*\* full-stack-developer que construiu o ticket, pela mesma conversa \(SendMessage\)/);
 });
 
 test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () => {
@@ -45,16 +47,19 @@ test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () =>
   for (const rel of ['commands/engineer.md', ...fs.readdirSync(path.join(plugin, 'agents')).map((name) => `agents/${name}`)]) assert.doesNotMatch(read(rel), /fatia/i, `${rel} still says "fatia"`);
 });
 
-test('a mission is short, and a checkpoint sends back only what blocks', () => {
+test('a mission is short, and a ticket gets one fix and one re-check', () => {
   // measured on SYND's ci-time (2026-11-12): 98 thousand tokens a call in missions of up to 60 calls, 162 thousand
   // past 110; the sentence that asked for batched calls changed nothing, so the panel says it
   const panel = read('hooks/engineer-desk/register.tsx');
   assert.match(panel, /export const HANDOFF_AT = 60/);
   assert.match(panel, /count === HANDOFF_AT && \/\(\?:\^\|:\)full-stack-developer\$\//);
   const command = read('commands/engineer.md');
-  assert.match(command, /leva os `blocking` e os `confirmed` que já chegaram do checkpoint anterior/);
-  assert.match(command, /`should` de checkpoint espera: vai na correção da verificação final/);
-  assert.match(command, /um problema por missão/);
+  // 0.25.0 held `should` findings for the final verification because every fix was a cold mission; with the builder's
+  // context alive (0.30.0) one message carries them all, and the loop is bounded instead of the list
+  assert.match(command, /achado de checkpoint \(`blocking`, `should`, `confirmed`\) volta, numa mensagem só e literal/);
+  assert.match(command, /\*\*Uma correção e uma reconferência por ticket\.\*\*/);
+  assert.match(command, /você grava literal em `\.scratch\/<slug>\/open\.md`/);
+  assert.match(command, /com os achados de `open\.md` na missão, literais/);
   assert.match(command, /Relato `handoff`: um full-stack-developer novo continua o mesmo ticket/);
   assert.match(read('skills/engineering/to-tickets/SKILL.md'), /about 40 tool calls of work/);
   const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
