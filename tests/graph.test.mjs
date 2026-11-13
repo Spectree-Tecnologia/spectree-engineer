@@ -218,6 +218,44 @@ test('no skill sends an agent to a user it cannot reach, or to a command the flo
   assert.doesNotMatch(read('commands/engineer.md'), /test:e2e`\); `npm run check:pr`/);
 });
 
+// Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on PILOT on 2026-11-13: tickets 02
+// and 06 of ci-time took three verification rounds each, every re-verification hunted again and found new things,
+// and the quality-engineer verified a checkout the next full-stack-developer was already changing.
+test('a ticket closes whole: nobody writes while it is verified, the builder fixes, whoever found re-checks, once', () => {
+  const command = read('commands/engineer.md');
+  assert.match(command, /\*\*Checkpoint por ticket: o ticket fecha antes de o próximo começar\.\*\*/);
+  assert.match(command, /Enquanto eles verificam, ninguém escreve no checkout: o que rodam é o commit do ticket/);
+  assert.doesNotMatch(command, /sem esperar por eles/);
+  assert.match(command, /quem achou reconfere, pela mesma conversa, com o diff da correção: cada achado `closed` ou `open`/);
+  assert.match(command, /Não é caça nova: o objetivo inteiro é da verificação final/);
+  assert.match(read('agents/quality-engineer.md'), /\*\*Reconferência\.\*\*[^\n]*`closed` ou `open`[^\n]*Não procure achado novo fora desse diff/);
+  assert.match(read('agents/security-engineer.md'), /`closed` ou `open` por achado seu, sem caça nova/);
+  assert.match(read('agents/full-stack-developer.md'), /Você pode ser chamado de volta uma vez, pela mesma conversa, com os achados do checkpoint do seu ticket/);
+  // the handoff notice no longer assumes a ticket: a fix or a bug mission has none
+  assert.match(read('hooks/engineer-desk/register.tsx'), /in your ticket, or in your report when the mission has no ticket/);
+});
+
+test('a proof written `in ci:` is run by the pull request\'s run, and by nothing before it', () => {
+  const inCi = contract().replace('| 3 | a thing is archived | run: `node -e "process.exit(0)"` |', '| 3 | a thing is archived | in ci: run: `node -e "process.exit(7)"` |');
+  const dir = project({}, inCi);
+  const prove = (...args) => {
+    const res = spawnSync(process.execPath, [goal, 'prove', ...args], { cwd: dir, encoding: 'utf8' });
+    return { code: res.status, out: res.stdout + res.stderr };
+  };
+  const before = prove('things');
+  assert.equal(before.code, 0, before.out);
+  assert.match(before.out, /waits\s+criterion 3\s+\(in ci: not run now\)/);
+  const run = prove('things', '--in-ci');
+  assert.equal(run.code, 1, 'the proof is run, and its exit code decides');
+  assert.match(run.out, /EXIT 7 {2}criterion 3/);
+  assert.doesNotMatch(run.out, /criterion 1/, 'only the proofs written in ci run in that step');
+  assert.equal(prove('things', '--in-ci', '--after-merge').code, 2);
+  assert.equal(prove('--changed', 'HEAD').code, 2, '--changed is for the deferred proofs of a run');
+  const ci = read('skills/monolith/config-project/assets/workflows/ci.yml');
+  assert.match(ci, /- name: Goal proofs written in ci\r?\n\s+if: github\.event_name == 'pull_request' && steps\.scope\.outputs\.code == 'true'\r?\n\s+run: node scripts\/goal\.mjs prove --in-ci --changed "origin\/\$BASE_REF"/);
+  assert.match(read('skills/engineering/to-goal/SKILL.md'), /An `in ci:` proof is run by the pull request's run \(the CI step `Goal proofs written in ci`/);
+});
+
 test('the squad plans, gates and walks by the graph', () => {
   const skill = read('skills/engineering/to-tickets/SKILL.md');
   assert.match(skill, /^\*\*Touches:\*\*/m);

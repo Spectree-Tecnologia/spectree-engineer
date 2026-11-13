@@ -300,6 +300,11 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     if (!/waits\s+criterion 3/.test(waits)) throw new Error(`goal prove ran a proof written after merge:${waits.slice(-400)}`);
     const later = run('goal-prove-after-merge', 'npm run goal -- prove probe-thing --after-merge');
     if (!/exit 0\s+criterion 3/.test(later) || /criterion 1/.test(later)) throw new Error(`goal prove --after-merge did not run only criterion 3:${later.slice(-400)}`);
+    // a proof written `in ci:` waits before the pull request and is run by the run's own step
+    write({ evidence: [...met12, '| 3 | 1 | pending | waits for the run |'], proof3: 'in ci: run: `node scripts/tz-probe.mjs` exits 0 on the runner.' });
+    if (!/waits\s+criterion 3/.test(run('goal-prove-leaves-the-in-ci-proof', 'npm run goal -- prove probe-thing'))) throw new Error('goal prove ran a proof written in ci');
+    const inCi = run('goal-prove-in-ci', 'npm run goal -- prove probe-thing --in-ci');
+    if (!/exit 0\s+criterion 3/.test(inCi) || /criterion 1/.test(inCi)) throw new Error(`goal prove --in-ci did not run only criterion 3:${inCi.slice(-400)}`);
     write({ evidence: [...met12, '| 3 | 1 | pending | waits for the merge |'], proof3: afterMerge, status: 'met on 2026-11-11' });
     refuse('goal-met-with-a-pending-proof', 'npm run goal -- check probe-thing', /it is "landed on <date>" until the proof is run/);
     write({ evidence: [...met12, '| 3 | 1 | pending | waits for the merge |'], proof3: afterMerge, status: 'landed on 2026-11-11' });
