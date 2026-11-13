@@ -20,7 +20,8 @@ test('a full-stack-developer builds one ticket, and leaves the next one what it 
   assert.match(card, /\*\*Um ticket por missão:\*\*/);
   assert.match(card, /`Status: done`, `Done: <sha>` e `Next needs:`/);
   assert.match(card, /com `to-tickets` para quebrar o objetivo/);
-  assert.match(card, /\*\*Cada turno relê o seu contexto inteiro\.\*\*/);
+  // a long mission costs more per call: the card says what to do when the panel says so
+  assert.match(card, /\*\*Missão curta\.\*\*[^\n]*Na 60ª o painel recusa a chamada uma vez, como aviso[^\n]*relate `handoff`/);
   assert.doesNotMatch(card, /voltam para você mesmo/);
 });
 
@@ -42,6 +43,24 @@ test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () =>
   assert.match(read('commands/engineer.md'), /quem quebra o trabalho em tickets é o full-stack-developer, olhando o código, nunca você/);
   // the unit of work has one name
   for (const rel of ['commands/engineer.md', ...fs.readdirSync(path.join(plugin, 'agents')).map((name) => `agents/${name}`)]) assert.doesNotMatch(read(rel), /fatia/i, `${rel} still says "fatia"`);
+});
+
+test('a mission is short, and a checkpoint sends back only what blocks', () => {
+  // measured on SYND's ci-time (2026-11-12): 98 thousand tokens a call in missions of up to 60 calls, 162 thousand
+  // past 110; the sentence that asked for batched calls changed nothing, so the panel says it
+  const panel = read('hooks/engineer-desk/register.tsx');
+  assert.match(panel, /export const HANDOFF_AT = 60/);
+  assert.match(panel, /count === HANDOFF_AT && \/\(\?:\^\|:\)full-stack-developer\$\//);
+  const command = read('commands/engineer.md');
+  assert.match(command, /leva os `blocking` e os `confirmed` que já chegaram do checkpoint anterior/);
+  assert.match(command, /`should` de checkpoint espera: vai na correção da verificação final/);
+  assert.match(command, /um problema por missão/);
+  assert.match(command, /Relato `handoff`: um full-stack-developer novo continua o mesmo ticket/);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /about 40 tool calls of work/);
+  const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
+  // the session is found by the title the app gives it, not only by its opening line
+  assert.ok(script.includes('"customTitle":"${goal.slug}"'), 'goal spent does not look for the session by its title');
+  assert.match(script, /missions over \$\{LONG\} turns/);
 });
 
 test('the retro records what the goal cost', () => {

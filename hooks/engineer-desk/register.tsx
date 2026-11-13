@@ -100,10 +100,11 @@ async function recordSpawn($: EngineInterface, id: string, description: string, 
 
 // A step writes its own subagent's steps and nothing else, whatever the session has done.
 async function recordStep($: EngineInterface, id: string, label: string) {
-  await update($, { plugin: 'spectree-engineer', key: 'steps', id } as const, (steps = NO_STEPS) => ({
+  const steps = await update($, { plugin: 'spectree-engineer', key: 'steps', id } as const, (steps = NO_STEPS) => ({
     count: steps.count + 1,
     labels: [...steps.labels, label].slice(-STEPS_KEPT),
   }))
+  return steps.count
 }
 
 async function recordEffort($: EngineInterface, id: string, effort: string) {
@@ -217,6 +218,19 @@ const STASH_DENY =
   'The stash list is shared by every worktree of the repository: a pop here can apply the work of another branch. ' +
   'Commit to your own branch instead (a wip commit you amend later).'
 
+// The fourth guard (2026-11-12): a long mission costs more per call, because every call re-reads the whole context.
+// On SYND's ci-time goal a full-stack-developer's call cost 98 thousand tokens in missions of up to 60 calls and 162
+// thousand in missions past 110, and six long missions were 76% of its tokens. A sentence in the card did not change
+// how the agents work, so the panel says it once, at the call where the cost turns: that call is refused, with the
+// way out, and passes when repeated.
+export const HANDOFF_AT = 60
+const HANDOFF_NOTICE =
+  `Handoff point: this is tool call ${HANDOFF_AT} of this mission, and every further call re-reads your whole context. ` +
+  'If what is left fits in 15 calls, finish it. Otherwise close what is in hand: commit, write `Next needs:` in your ticket with what is left and what you learned, ' +
+  'stop what you started, and report `handoff`. Another full-stack-developer continues from the ticket in a fresh context. ' +
+  'This call was not run: repeat it if you still need it.'
+export const isHandoffPoint = (type: string, count: number) => count === HANDOFF_AT && /(?:^|:)full-stack-developer$/.test(type)
+
 // The Founder's third guard (2026-11-10): the squad is goal driven, and the goal contract belongs to the
 // Engineer, the main loop that talks to the Founder. A subagent neither calls the `to-goal` skill nor
 // writes under docs/goals/: the full-stack-developer builds from the contract and the verifiers judge against
@@ -233,7 +247,7 @@ export const goalContractGuard = (tool: string, input: Record<string, unknown>):
   return null
 }
 
-// The panel only watches, except for the three guards above: a failure in its
+// The panel only watches, except for the guards above: a failure in its
 // bookkeeping is logged and never stops a spawn, a tool call or a turn.
 function logFailure($: EngineInterface, error: unknown) {
   $.ui.log(`engineer-desk: ${error instanceof Error ? error.message : String(error)}`)
@@ -326,7 +340,13 @@ export const register: Register = on => {
       return { result: said }
     }
     // An observer: whatever happens to the bookkeeping, the call goes on.
-    if (id) await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => logFailure($, error))
+    if (id) {
+      const count = await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => {
+        logFailure($, error)
+        return 0
+      })
+      if (count === HANDOFF_AT && isHandoffPoint((await read($, agents))[id]?.type ?? '', count)) return { deny: HANDOFF_NOTICE }
+    }
 
     const answered = await next(e)
     // The plan bar follows the main loop's own task list; a subagent's is its own.
