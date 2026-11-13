@@ -150,7 +150,8 @@ jobs:
         run: npm test
 
       # the p95 budget (rule 11) on a database nothing has written to yet, and with nothing else running on the runner.
-      # A pull request measures the routes its diff reaches; the weekly run measures all.
+      # A pull request measures the routes its diff reaches; the weekly run measures all. A route over budget twice is
+      # measured on the base too (worktree, npm ci, build: minutes, on a red run only), and only "slower than base" fails.
       - name: Latency budget
         if: steps.scope.outputs.code == 'true'
         run: |
