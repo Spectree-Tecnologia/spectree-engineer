@@ -59,7 +59,7 @@ Só o que mudaria o resultado de uma verificação. Não proponha solução, mó
 
 ## Standards
 
-Chame o Skill tool com `code-review`, apontando o ponto fixo da missão (a baseline). O skill tem dois eixos e pede dois subagentes paralelos; você não tem essa ferramenta e só precisa de um: rode o eixo **Standards**. O eixo Spec dele é o seu `## Criteria` acima, porque o contrato é a única declaração do que foi pedido.
+Chame o Skill tool com `code-review`, apontando o ponto fixo da missão (a baseline). Rode só o eixo **Standards**, sem subagentes. O eixo Spec dele é o seu `## Criteria` acima, porque o contrato é a única declaração do que foi pedido.
 
 Ao eixo **Standards**, some o terceiro bloco que o `code-review` não conhece, `## Architecture`, verificado por comando e não por leitura:
 

@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.28.0] - 2026-11-13
+
+Os prompts revistos contra o guia [Prompting Claude Fable 5.2](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-2): o Fable entra na rodada 3 de verificação, e o guia diz que ele segue "nunca" ao pé da letra, delega quando o prompt convida e para cedo diante de uma condição de parada ampla.
+
+### Changed
+- **Delegação só onde se paga.** A skill `grilling` busca o fato ela mesma (Grep, Read, um comando) e só despacha subagente quando a busca cobre muitos arquivos; antes, despachava para todo fato, contra a regra do comando de que busca no projeto é do Engineer. As descrições dos agentes, que decidem quando o Engineer os chama, ficam do tamanho do que o comando pede: `platform-engineer` para operação que muda estado (leitura é do Engineer), `security-engineer` na verificação final e no checkpoint que toca fronteira de confiança, `ui-ux-designer` em tela nova e nas rodadas de comentário. O `quality-engineer` roda o eixo Standards do `code-review` sem subagentes.
+- **"Nunca" com a exceção ao lado.** A principal que não conseguiu abrir a sessão de item aponta para o caso sem a ferramenta, que fica no fim da mesma seção; o `security-engineer` não roda o código do alvo por conta própria, e a suíte do projeto é a exceção dita na mesma frase; o scaffold é pelas skills de monólito, e o que nenhuma gera se escreve à mão a partir do vizinho; o `platform-engineer` não edita teste de módulo, porque é a prova do `full-stack-developer`.
+- **Parada estreita.** O teto de 3 tentativas conta a mesma abordagem falhando pelo mesmo motivo; timeout, porta ocupada e arquivo travado se diagnosticam e não contam, e bloqueio deliberado (arquivo proibido, acesso negado, gate) se relata na hora. O `full-stack-developer` contorna erro e ferramenta que falha antes de parar.
+- **Sem orçamento anunciado.** O card do `full-stack-developer` não anuncia mais a 60ª chamada: diz o que fazer quando o painel der o aviso de handoff, que continua em `HANDOFF_AT`. A missão é curta pelo motivo (o contrato e o card carregam o contexto), não por um teto de palavras.
+- A rodada 3 em Fable vai com `effort: "high"`, o ponto de partida do guia, a medir antes de subir.
+- O achado ao fundador continua numerado e em quatro partes, curtas, sem contagem de frases.
+- O comando e os cards somados têm 8 palavras a menos que na 0.27.0: o texto novo foi pago com repetições (a missão curta dita duas vezes, o histórico de minutos do SYND no card do `platform-engineer`, a linha do `security-engineer` para sessão de antes do Goal Driven, que a adoção já converte em contrato).
+
 ## [0.27.0] - 2026-11-13
 
 O orçamento de latência pergunta à base antes de bloquear. Medido no SYND: das 15 execuções vermelhas do CI desde 1º de novembro, 4 foram no passo de latência, e as 3 últimas falhas de PR foram todas nele. Em nenhuma das 4 a causa era o código do PR: duas vezes o runner estava lento (25% mais lento em rotas intocadas; `/health` de 1,8 para 5,6 ms), uma vez o modelo roteirizado do teste guardava cada chamada, e uma vez as 20 conexões eram a mesma pessoa, em fila numa trava por pessoa. Cada vermelho virou missão de diagnóstico (10,3M, 7,4M e 3,7M de tokens), novos runs de CI e duas decisões do fundador. O gate perguntava "esta rota responde abaixo de N ms nesta máquina?", e a resposta muda com a máquina.
