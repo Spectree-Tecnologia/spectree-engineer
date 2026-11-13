@@ -144,7 +144,19 @@ function reservationsDir() {
   if (common.status !== 0) fail(`git rev-parse --git-common-dir exited ${common.status}`);
   return path.join(path.resolve(root, common.stdout.trim()), 'spectree-worktree-offsets');
 }
-function reserveOffset(basePort, forced) {
+// Ports Chromium (net/base/port_util.cc) and Firefox refuse with ERR_UNSAFE_PORT: a worktree whose frontend or backend
+// lands on one cannot be opened by Playwright or the browser MCP, and the failure looks like a bug of the goal.
+const BROWSER_BLOCKED_PORTS = new Set([
+  1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111,
+  113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548,
+  554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566,
+  6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080,
+]);
+const blockedPortsAt = (basePorts, offset) => basePorts.map((p) => p + offset).filter((p) => BROWSER_BLOCKED_PORTS.has(p));
+
+// basePorts: [backend, frontend]; the backend one is how the other worktrees' offsets are read back.
+function reserveOffset(basePorts, forced) {
+  const [basePort] = basePorts;
   const dir = reservationsDir();
   fs.mkdirSync(dir, { recursive: true });
   const registered = registeredWorktrees();
@@ -168,12 +180,16 @@ function reserveOffset(basePort, forced) {
     return true;
   };
   if (forced !== undefined) {
+    const blocked = blockedPortsAt(basePorts, forced);
+    if (blocked.length > 0) fail(`offset ${forced} puts a server on port ${blocked.join(', ')}, which browsers refuse (ERR_UNSAFE_PORT); pick another offset or leave it out`);
     if (!take(forced)) fail(`offset ${forced} is taken by another worktree of this repository; leave it out and the first free one is picked`);
     return forced;
   }
-  let offset = 100;
-  while (!take(offset)) offset += 100;
-  return offset;
+  for (let offset = 100; ; offset += 100) {
+    const blocked = blockedPortsAt(basePorts, offset);
+    if (blocked.length > 0) console.log(`ports: offset ${offset} skipped, port ${blocked.join(', ')} is refused by browsers (ERR_UNSAFE_PORT)`);
+    else if (take(offset)) return offset;
+  }
 }
 function releaseOffset() {
   const dir = reservationsDir();
@@ -227,7 +243,7 @@ async function up() {
   }
 
   // reserved only now, with every refusal behind: a failed `up` leaves no offset taken
-  const offset = reserveOffset(backendPort, forcedOffset);
+  const offset = reserveOffset([backendPort, frontendPort], forcedOffset);
   const exists = git(['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]).status === 0;
   sh(exists ? ['git', 'worktree', 'add', worktree, branch] : ['git', 'worktree', 'add', worktree, '-b', branch, from]);
 
