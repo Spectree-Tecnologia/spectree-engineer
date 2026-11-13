@@ -59,9 +59,15 @@ One file per ticket, `.scratch/<slug>/issues/<NN>-<name>.md`, numbered from `01`
 
 **New:** what this ticket creates, and why nothing that exists served.
 
+**Touches:** the folders this ticket writes, comma separated, as narrow as is true (`modules/accounts`, `apps/backend/src/modules/accounts`).
+
+**Proof:** run: `<command>`, the one command that exits 0 when this ticket is done and not before.
+
 **Status:** ready
 
 </ticket-template>
+
+The tickets are a **graph**, and a script reads it: `Blocked by` is the edge, `Touches` says where a ticket writes, `Proof` closes it. Two tickets with no order between them may be built at the same time, so they never touch the same folder: if they do, one waits for the other, and you write that edge. Keep the graph wide where the work is truly independent, and never add an edge only to keep an order you like.
 
 Outside `Reuses`, avoid file paths and code snippets: they go stale. The exception is a snippet that encodes a decision more precisely than prose can (a state machine, a schema, a type shape).
 
@@ -73,10 +79,10 @@ Outside `Reuses`, avoid file paths and code snippets: they go stale. The excepti
 
 ### 4. The plan goes back before any code
 
-Report the plan and stop. The orchestrator has it judged against the numbered rules of `docs/architecture.md`; `violates rule N` comes back to you to redo that part. A path the judge would not have chosen, inside the rules, is yours and stays.
+Run `npm run goal -- graph <slug> --plan` until it exits 0: no cycle, every criterion has a ticket, every ticket says what it touches and its proof, and no two tickets that may run together write the same folder. Then report the plan and stop. The orchestrator has it judged against the numbered rules of `docs/architecture.md`; `violates rule N` comes back to you to redo that part. A path the judge would not have chosen, inside the rules, is yours and stays.
 
 ### 5. Working a ticket
 
-Work the **frontier**: a ticket whose blockers are all done. One ticket per agent.
+Work the **frontier**: a ticket whose blockers are all done, as `npm run goal -- graph <slug>` prints it. One ticket per agent. Your ticket is done when its own proof exits 0: `npm run goal -- graph <slug> --prove <NN>`.
 
 When yours is done, write in its file `**Status:** done`, `**Done:** <sha>`, and `**Next needs:**` with what the tickets it blocks need to know and cannot read in the code: the seam you opened, the fixture that serves, the trap you found. Whoever builds them starts from zero.

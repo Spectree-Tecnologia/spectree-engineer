@@ -310,6 +310,21 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     refuse('goal-reproof-turned-met-by-argument', 'npm run goal -- check probe-thing', /goes from reproved to met inside round 1 with no "narrowed" row/);
     write({ evidence: turned, amendments: ['| 2026-11-11 | 2 | narrowed: the reverse order is out | risk policy (2026-11-11) | `probe-hardening` in the roadmap |', '| 2026-11-11 | budget | extended: one more round | founder | none |'] });
     run('goal-narrowed-by-the-risk-policy', 'npm run goal -- check --ready probe-thing');
+    // the tickets as a graph: the plan gate by exit code, the frontier, and a ticket closed by its own proof
+    const issues = path.join(root, '.scratch', 'probe-thing', 'issues');
+    fs.mkdirSync(issues, { recursive: true });
+    const ticket = (name, criteria, blockedBy, touches, status = 'ready') =>
+      fs.writeFileSync(path.join(issues, name), ['# ' + name, '**Criteria:** ' + criteria, '**Blocked by:** ' + blockedBy, '**Touches:** ' + touches, '**Proof:** run: `node scripts/tz-probe.mjs`', '**Status:** ' + status].join(NL + NL) + NL);
+    ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`');
+    ticket('02-screen.md', '3', '01', '`apps/frontend/src/modules/probe`');
+    ticket('03-export.md', '2', '01', '`apps/frontend/src/modules/probe/export`');
+    refuse('graph-two-tickets-in-one-folder', 'npm run goal -- graph probe-thing --plan', /tickets 02 and 03 both touch apps.frontend.src.modules.probe and neither waits for the other/);
+    ticket('03-export.md', '2', '01', '`apps/backend/src/modules/probe`');
+    const planned = run('graph-plan', 'npm run goal -- graph probe-thing --plan');
+    if (!/3 tickets, 0 done, 2 waves, 2 wide/.test(planned) || !/frontier: 01/.test(planned)) throw new Error(`goal graph did not read the plan:${planned.slice(-400)}`);
+    ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'done');
+    if (!/frontier: 02, 03/.test(run('graph-frontier', 'npm run goal -- graph probe-thing'))) throw new Error('goal graph did not free the tickets that waited for 01');
+    if (!/exit 0\s+ticket 02/.test(run('graph-prove-ticket', 'npm run goal -- graph probe-thing --prove 2'))) throw new Error('goal graph --prove did not run the proof of ticket 02 in UTC');
     const stats = run('goal-stats', 'npm run goal -- stats');
     if (!/probe-thing\s+approved\s+3\s+1\/3\s+1\s+1\s+1\s/.test(stats)) throw new Error(`goal stats did not count the round, the reproof, the user decision and the policy one:${stats.slice(-500)}`);
     // what the goal cost, read from a session's transcript: the wall-clock, the stop at the usage limit, the wait for

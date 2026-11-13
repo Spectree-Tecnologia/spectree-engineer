@@ -7,6 +7,9 @@
 //   npm run goal -- prove <slug> [--criterion <n>] runs every `run:` proof and prints the exit code of each
 //   npm run goal -- prove <slug> --after-merge     runs only the proofs written `after merge:`, on the merged main
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
+//   npm run goal -- graph <slug>                   the tickets as a graph: no cycle, every criterion has a ticket, the frontier
+//   npm run goal -- graph <slug> --plan            also, before any code: every ticket says what it touches and its proof
+//   npm run goal -- graph <slug> --prove <ticket>  runs the ticket's own proof, in UTC, and exits with it
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
 //   npm run goal -- spent <slug> [--write]         what the goal cost, read from this machine's Claude Code transcripts
 //   npm run goal -- spent <slug> --agents          also one line per subagent: its turns, how its context grew, what filled it
@@ -33,7 +36,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]',
     2,
   );
 
@@ -574,7 +577,138 @@ function spent() {
   return 0;
 }
 
-if (command === 'check') process.exit(check());
+// The tickets of a goal are a graph: each ticket is a node, `Blocked by` its edges, `Touches` the paths it writes and
+// `Proof` the command that closes it. Read by a script, the graph says what the prose of a plan cannot be trusted to:
+// that it has no cycle, that every criterion has a ticket, that two tickets that could run at the same time never
+// write the same place, and which tickets are free to start now (the frontier).
+const pad = (n) => String(n).padStart(2, '0');
+const cleanPath = (one) => one.replace(/`/g, '').trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/\*{1,2}$/, '').replace(/\/+$/, '');
+const samePlace = (a, b) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+
+function readTickets(slug) {
+  const dir = path.join(root, '.scratch', slug, 'issues');
+  if (!fs.existsSync(dir)) fail(`.scratch/${slug}/issues not found: the goal has no tickets yet`);
+  return fs
+    .readdirSync(dir)
+    .filter((name) => /^\d+-.+\.md$/.test(name))
+    .sort()
+    .map((name) => {
+      const text = fs.readFileSync(path.join(dir, name), 'utf8');
+      const field = (label) => text.match(new RegExp(`^\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, 'im'))?.[1].trim() ?? null;
+      const numbers = (value) => [...(value ?? '').matchAll(/\d+/g)].map((m) => Number(m[0]));
+      const touches = field('Touches');
+      return {
+        n: Number(name.match(/^\d+/)[0]),
+        file: `.scratch/${slug}/issues/${name}`,
+        name: name.replace(/^\d+-/, '').replace(/\.md$/, ''),
+        // the numbers that open the field: "1 and 3, proved by 2 e2e tests" advances 1 and 3
+        criteria: numbers((field('Criteria') ?? '').match(/^\d+(?:\s*(?:,|and|e|&)\s*\d+)*/)?.[0]),
+        blockedBy: numbers(field('Blocked by')),
+        touches: touches === null ? null : touches.split(',').map(cleanPath).filter(Boolean),
+        proof: [...(field('Proof') ?? '').matchAll(/run:\s*`([^`]+)`/g)].map((m) => m[1].trim()),
+        done: /^done\b/i.test(field('Status') ?? ''),
+      };
+    });
+}
+
+function graph() {
+  const flags = parseArgs(args, ['--prove'], ['--plan', '--json']);
+  if (flags.positional.length !== 1) usage();
+  const slug = flags.positional[0];
+  const goal = parse(slugFile(slug));
+  const tickets = readTickets(slug);
+  const byNumber = new Map(tickets.map((ticket) => [ticket.n, ticket]));
+  const errors = [];
+  const notes = [];
+  if (tickets.length === 0) errors.push('no ticket file (<NN>-<name>.md) in the folder');
+  if (byNumber.size !== tickets.length) errors.push('two ticket files share a number');
+
+  for (const ticket of tickets) {
+    for (const blocker of ticket.blockedBy) {
+      if (blocker === ticket.n) errors.push(`ticket ${pad(ticket.n)} is blocked by itself`);
+      else if (!byNumber.has(blocker)) errors.push(`ticket ${pad(ticket.n)} is blocked by ${pad(blocker)}, which does not exist`);
+    }
+    if (ticket.criteria.length === 0) errors.push(`ticket ${pad(ticket.n)} names no criterion in "Criteria"`);
+    for (const n of ticket.criteria) if (!goal.criteria.some((criterion) => criterion.n === n)) errors.push(`ticket ${pad(ticket.n)} names criterion ${n}, which the contract does not have`);
+    if (ticket.done) continue;
+    // what a plan must say before any code; a goal planned before the graph only gets a note
+    const missing = [ticket.touches === null || ticket.touches.length === 0 ? '"Touches"' : null, ticket.proof.length === 0 ? '"Proof" with a run: command' : null].filter(Boolean);
+    if (missing.length > 0) (flags['--plan'] ? errors : notes).push(`ticket ${pad(ticket.n)} has no ${missing.join(' and no ')}`);
+  }
+  const gone = new Set(goal.amendments.filter((a) => ['moved', 'waived'].includes(a.change)).map((a) => a.n));
+  for (const criterion of goal.criteria) {
+    if (!gone.has(criterion.n) && !tickets.some((ticket) => ticket.criteria.includes(criterion.n))) errors.push(`criterion ${criterion.n} has no ticket`);
+  }
+
+  // every ticket a ticket waits for, direct or not; a ticket found on its own path is a cycle
+  const before = new Map();
+  let cycle = null;
+  const walk = (ticket, trail) => {
+    if (before.has(ticket.n)) return before.get(ticket.n);
+    if (trail.includes(ticket.n)) {
+      cycle ??= [...trail.slice(trail.indexOf(ticket.n)), ticket.n];
+      return new Set();
+    }
+    const all = new Set();
+    for (const blocker of ticket.blockedBy.filter((n) => byNumber.has(n) && n !== ticket.n)) {
+      all.add(blocker);
+      for (const n of walk(byNumber.get(blocker), [...trail, ticket.n])) all.add(n);
+    }
+    if (!cycle) before.set(ticket.n, all);
+    return all;
+  };
+  for (const ticket of tickets) walk(ticket, []);
+  if (cycle) errors.push(`the tickets form a cycle: ${cycle.map(pad).join(' -> ')}`);
+
+  // two tickets with no order between them may run at the same time: they must not write the same place
+  if (!cycle) {
+    for (const a of tickets) {
+      for (const b of tickets) {
+        if (a.n >= b.n || a.done || b.done || !a.touches || !b.touches || before.get(a.n).has(b.n) || before.get(b.n).has(a.n)) continue;
+        const shared = a.touches.find((one) => b.touches.some((other) => samePlace(one, other)));
+        if (shared) errors.push(`tickets ${pad(a.n)} and ${pad(b.n)} both touch ${shared} and neither waits for the other: add the edge`);
+      }
+    }
+  }
+
+  // the wave of a ticket is the longest chain of tickets it waits for
+  const wave = (ticket) => (cycle ? 1 : 1 + Math.max(0, ...ticket.blockedBy.filter((n) => byNumber.has(n)).map((n) => wave(byNumber.get(n)))));
+  for (const ticket of tickets) ticket.wave = wave(ticket);
+  const frontier = cycle ? [] : tickets.filter((ticket) => !ticket.done && ticket.blockedBy.every((n) => byNumber.get(n)?.done));
+
+  if (flags['--prove'] !== undefined) {
+    const ticket = byNumber.get(Number(flags['--prove']));
+    if (!ticket) fail(`.scratch/${slug}/issues has no ticket ${flags['--prove']}`);
+    if (ticket.proof.length === 0) fail(`ticket ${pad(ticket.n)} has no "Proof" with a run: command`);
+    let failed = 0;
+    for (const line of ticket.proof) {
+      console.log(`\n=== ticket ${pad(ticket.n)}\n$ ${line}`);
+      const status = spawnSync(line, { cwd: root, shell: true, stdio: 'inherit', env: { ...process.env, TZ: 'UTC' } }).status ?? 1;
+      console.log(`  ${status === 0 ? 'exit 0' : `EXIT ${status}`}  ticket ${pad(ticket.n)}  ${line}`);
+      if (status !== 0) failed++;
+    }
+    return failed === 0 ? 0 : 1;
+  }
+
+  if (flags['--json']) {
+    console.log(JSON.stringify({ slug, tickets, frontier: frontier.map((ticket) => ticket.n), errors, notes }, null, 2));
+    return errors.length === 0 ? 0 : 1;
+  }
+  const waves = Math.max(0, ...tickets.map((ticket) => ticket.wave));
+  const width = Math.max(0, ...Array.from({ length: waves }, (_, i) => tickets.filter((ticket) => ticket.wave === i + 1).length));
+  console.log(`goal graph: .scratch/${slug}/issues  (${tickets.length} tickets, ${tickets.filter((ticket) => ticket.done).length} done, ${waves} waves, ${width} wide)`);
+  for (const ticket of tickets.slice().sort((a, b) => a.wave - b.wave || a.n - b.n)) {
+    const after = ticket.blockedBy.length > 0 ? `  after ${ticket.blockedBy.map(pad).join(', ')}` : '';
+    console.log(`  wave ${ticket.wave}  ${pad(ticket.n)} ${ticket.done ? 'done ' : 'ready'}  ${ticket.name}  (criteria ${ticket.criteria.join(', ') || '-'})${after}`);
+  }
+  for (const error of errors) console.log(`      error: ${error}`);
+  for (const note of notes) console.log(`      note:  ${note}`);
+  if (errors.length === 0) console.log(frontier.length > 0 ? `  frontier: ${frontier.map((ticket) => pad(ticket.n)).join(', ')}` : '  frontier: none, every ticket is done');
+  return errors.length === 0 ? 0 : 1;
+}
+
+if (command === 'graph') process.exit(graph());
+else if (command === 'check') process.exit(check());
 else if (command === 'prove') process.exit(prove());
 else if (command === 'size') process.exit(size());
 else if (command === 'stats') process.exit(stats());
