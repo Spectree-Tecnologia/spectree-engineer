@@ -228,8 +228,8 @@ const STASH_DENY =
 export const HANDOFF_AT = 60
 const HANDOFF_NOTICE =
   `Handoff point: this is tool call ${HANDOFF_AT} of this mission, and every further call re-reads your whole context. ` +
-  'If what is left fits in 15 calls, finish it. Otherwise close what is in hand: commit, write `Next needs:` in your ticket with what is left and what you learned, ' +
-  'stop what you started, and report `handoff`. Another full-stack-developer continues from the ticket in a fresh context. ' +
+  'If what is left fits in 15 calls, finish it. Otherwise close what is in hand: commit, write `Next needs:` with what is left and what you learned (in your ticket, or in your report when the mission has no ticket), ' +
+  'stop what you started, and report `handoff`. Another full-stack-developer continues from there in a fresh context. ' +
   'This call was not run: repeat it if you still need it.'
 export const isHandoffPoint = (type: string, count: number) => count === HANDOFF_AT && /(?:^|:)full-stack-developer$/.test(type)
 

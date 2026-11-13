@@ -161,5 +161,11 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: npm -w apps/backend run test:e2e
 
+      # A proof the contract wrote as `in ci:` runs here, on the clean runner, and nowhere else: without this step a
+      # green run would turn the criterion `met` without ever running it.
+      - name: Goal proofs written in ci
+        if: github.event_name == 'pull_request' && steps.scope.outputs.code == 'true'
+        run: node scripts/goal.mjs prove --in-ci --changed "origin/$BASE_REF"
+
       # A Playwright suite goes here, as steps of this job (platform-engineer card): `docker compose down -v` and up
       # again for a database of its own, migrate, roles, seed, both servers, the browsers from the cache.

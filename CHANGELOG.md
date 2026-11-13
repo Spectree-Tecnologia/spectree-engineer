@@ -2,6 +2,29 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.30.0] - 2026-11-13
+
+**O ticket fecha inteiro antes de o próximo começar.** É a segunda entrega da engenharia de grafo. Medido no PILOT em 2026-11-13: correção por um `full-stack-developer` que nasce frio foi 44% dos tokens do `ci-time` (uma correção de uma linha custou 3,8M no `ts7`); os tickets 02 e 06 passaram por três rodadas de verificação, e cada uma procurou de novo e achou coisa nova; e o `quality-engineer` verificava um checkout que o próximo `full-stack-developer` já estava mudando.
+
+### Changed
+- **Passo 7 do `/engineer`.** Enquanto o `quality-engineer` e o `security-engineer` verificam o ticket, ninguém escreve no checkout: o que rodam é o commit do ticket. O achado (`blocking`, `should`, `confirmed`) volta, numa mensagem só, ao **mesmo** `full-stack-developer` que construiu o ticket, pela mesma conversa. Quem achou reconfere, também pela mesma conversa, só o diff da correção: `closed` ou `open` por achado, sem caça nova. Uma correção e uma reconferência por ticket; o que fica aberto, e o achado contestado, vão para `.scratch/<slug>/open.md` e entram na missão da verificação final.
+- A continuação por SendMessage passa a existir em três casos: o plano aprovado que segue para o primeiro ticket, a correção do ticket por quem o construiu e a reconferência por quem achou. A unidade continua sendo um agente por ticket.
+- `should` de checkpoint não espera mais a verificação final: com o contexto de quem construiu vivo, vai na mesma mensagem.
+- Os cards do `quality-engineer`, do `security-engineer` e do `full-stack-developer` dizem a parte de cada um na reconferência.
+- O aviso de handoff do painel não supõe mais um ticket: missão de correção ou de bug grava o que falta no relato.
+
+### Added
+- **`npm run goal -- prove --in-ci`** roda só as provas escritas `in ci:`; com `--changed <ref>`, as dos contratos que a branch mudou. O `ci.yml` gerado ganhou o passo `Goal proofs written in ci`. Antes, nenhum passo rodava essa prova, e o critério virava `met` com um run verde que não a tinha rodado.
+
+### Removed
+- A missão de migração do CI de antes da 0.17, no card do `platform-engineer` e no comando: nenhum projeto está mais nesse formato. Pagou, com duas repetições do comando, o texto novo: o comando e os cards somados têm 38 palavras a menos que na 0.29.0.
+
+### O que não foi provado
+- Nenhum objetivo real rodou neste fluxo. A economia em tokens e em rodadas só se mede no próximo objetivo, com `npm run goal -- spent <slug> --agents`.
+- O checkpoint deixou de rodar junto com a construção do ticket seguinte. Em relógio, isso pode custar o tempo de uma verificação por ticket; a entrega 3 (tickets da frontier ao mesmo tempo, cada um na sua pasta) é a que devolve o paralelo.
+- Um projeto que já existe não recebe o passo novo do `ci.yml` pelo `tooling-sync`: o contrato com prova `in ci:` o pede como critério.
+- Os evals não foram rodados: nenhum caso exercita o passo 7.
+
 ## [0.29.0] - 2026-11-13
 
 Os tickets de um objetivo viram um **grafo que um script lê**. É a primeira de três entregas da engenharia de grafo que o fundador aprovou em 2026-11-13, depois da medição de três objetivos do PILOT no mesmo dia: o squad rodou quase em série (paralelismo de 1,14 a 1,33), de 17% a 53% do tempo dos agentes foi correção depois de verificação, e o Engineer escolhia o próximo ticket lendo prosa. Esta entrega não muda quantos tickets rodam ao mesmo tempo: ela põe no disco o que as duas seguintes precisam.
@@ -422,6 +445,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.30.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.26.0...v0.27.0

@@ -6,6 +6,7 @@
 //   npm run goal -- check --ready --changed <ref>  the contracts this branch changed since <ref> (what CI and check:pr run)
 //   npm run goal -- prove <slug> [--criterion <n>] runs every `run:` proof and prints the exit code of each
 //   npm run goal -- prove <slug> --after-merge     runs only the proofs written `after merge:`, on the merged main
+//   npm run goal -- prove --in-ci --changed <ref>  runs the proofs written `in ci:` of the contracts this branch changed (a CI step)
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
 //   npm run goal -- graph <slug>                   the tickets as a graph: no cycle, every criterion has a ticket, the frontier
 //   npm run goal -- graph <slug> --plan            also, before any code: every ticket says what it touches and its proof
@@ -20,7 +21,8 @@
 //   npm run db:scratch -- <name> -- npm run goal -- prove <slug>
 //
 // A proof that only the pull request's run or the merged main can give starts with `in ci:` or `after merge:`.
-// It is not run before the pull request; its verdict is `pending` until then, and the contract is `landed`, not
+// It is not run before the pull request (`in ci:` runs in the pull request's run, `after merge:` on the merged
+// main); its verdict is `pending` until then, and the contract is `landed`, not
 // `met`, while one is pending.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -36,7 +38,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]',
     2,
   );
 
@@ -240,15 +242,20 @@ function lint(goal, ready) {
   return { errors, warnings };
 }
 
+// The contracts this branch changed since <ref>: what a pull request delivers.
+function changedContracts(ref) {
+  const base = commitOf(ref, '--changed');
+  return git(['diff', '--name-only', '--diff-filter=d', '--end-of-options', `${base}...HEAD`, '--', 'docs/goals'])
+    .filter((file) => /^docs\/goals\/[^/]+\.md$/.test(file))
+    .map((file) => path.join(root, file));
+}
+
 function check() {
   const flags = parseArgs(args, ['--changed'], ['--ready']);
   if (flags.positional.length > 1 || (flags.positional.length === 1 && flags['--changed'])) usage();
   let files;
   if (flags['--changed']) {
-    const base = commitOf(flags['--changed'], '--changed');
-    files = git(['diff', '--name-only', '--diff-filter=d', '--end-of-options', `${base}...HEAD`, '--', 'docs/goals'])
-      .filter((file) => /^docs\/goals\/[^/]+\.md$/.test(file))
-      .map((file) => path.join(root, file));
+    files = changedContracts(flags['--changed']);
     if (files.length === 0) {
       console.log(`goal check: no goal contract changed since ${flags['--changed']}`);
       return 0;
@@ -272,14 +279,24 @@ function check() {
 }
 
 function prove() {
-  const flags = parseArgs(args, ['--criterion'], ['--after-merge']);
+  const flags = parseArgs(args, ['--criterion', '--changed'], ['--after-merge', '--in-ci']);
+  if (flags['--after-merge'] && flags['--in-ci']) usage();
+  // the deferred proofs this run is the place for: the merged main, or the pull request's run
+  const now = flags['--after-merge'] ? 'after merge' : flags['--in-ci'] ? 'in ci' : null;
+  if (flags['--changed']) {
+    if (flags.positional.length !== 0 || !now) usage();
+    const files = changedContracts(flags['--changed']);
+    if (files.length === 0) console.log(`goal prove: no goal contract changed since ${flags['--changed']}`);
+    return files.map((file) => proveOne(parse(file), null, now)).some((code) => code !== 0) ? 1 : 0;
+  }
   if (flags.positional.length !== 1) usage();
-  const goal = parse(slugFile(flags.positional[0]));
-  const only = flags['--criterion'] === undefined ? null : Number(flags['--criterion']);
-  const afterMerge = Boolean(flags['--after-merge']);
-  const criteria = goal.criteria.filter((criterion) => (only === null || criterion.n === only) && (!afterMerge || criterion.deferred === 'after merge'));
-  if (afterMerge && criteria.length === 0) {
-    console.log(`goal prove: docs/goals/${goal.slug}.md has no proof written "after merge:"`);
+  return proveOne(parse(slugFile(flags.positional[0])), flags['--criterion'] === undefined ? null : Number(flags['--criterion']), now);
+}
+
+function proveOne(goal, only, now) {
+  const criteria = goal.criteria.filter((criterion) => (only === null || criterion.n === only) && (!now || criterion.deferred === now));
+  if (now && criteria.length === 0) {
+    console.log(`goal prove: docs/goals/${goal.slug}.md has no proof written "${now}:"`);
     return 0;
   }
   if (criteria.length === 0) fail(only === null ? `docs/goals/${goal.slug}.md has no criterion` : `docs/goals/${goal.slug}.md has no criterion ${only}`);
@@ -288,7 +305,7 @@ function prove() {
   const results = [];
   for (const criterion of criteria) {
     // what only the pull request's run or the merged main can show does not run here
-    if (criterion.deferred && !(afterMerge && criterion.deferred === 'after merge')) {
+    if (criterion.deferred && criterion.deferred !== now) {
       results.push({ n: criterion.n, command: `(${criterion.deferred}: not run now)`, status: null, waits: true });
       continue;
     }
