@@ -16,6 +16,8 @@ The PR title is a [Conventional Commit](https://www.conventionalcommits.org/) su
 
 ## Body
 
+The pull request of a goal (it changes `docs/goals/<slug>.md`) opens with the goal, before the template: a `## Goal` section with the objective in one sentence and the path of the contract, then the table of success criteria, each with its verdict and the command that gave it, copied from the contract's `Evidence`.
+
 Use this template for writing the PR body:
 
 ```markdown

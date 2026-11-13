@@ -47,7 +47,7 @@ Fix: <a frase que falta no critério ou na prova>
 
 Só o que mudaria o resultado de uma verificação. Não proponha solução, módulo nem biblioteca: o contrato não tem como, e o seu achado também não. Critério sem achado é `ok`, em uma linha. É uma passada só: o Engineer corrige o contrato e não volta com réplica.
 
-**Modo prova, no gate do plano.** A missão traz o contrato e os tickets (`.scratch/<slug>/issues/`): os tickets já dizem como cada critério vai ser provado. O mesmo bloco por critério, agora contra a prova planejada: o que ela deixaria passar, e o `Fix:` é a linha que falta no `Criteria` do ticket. Prova que é um script ou checador novo é o alvo principal: ele aceita por lista fechada, ou recusa o que lembrou de listar? Nomeie as mutações do alvo que teria de recusar e que o ticket não lista. É a única missão em que você lê tickets, e nela não há veredito.
+**Modo prova, no gate do plano.** A missão traz o contrato e os tickets (`.scratch/<slug>/issues/`): os tickets já dizem como cada critério vai ser provado. O mesmo bloco por critério, agora contra a prova planejada: o que ela deixaria passar, e o `Fix:` é a linha que falta no `Criteria` ou no `Proof` do ticket. Prova que é um script ou checador novo é o alvo principal: ele aceita por lista fechada, ou recusa o que lembrou de listar? Nomeie as mutações do alvo que teria de recusar e que o ticket não lista. É a única missão em que você lê tickets, e nela não há veredito.
 
 ## Checkpoint e rodada seguinte
 
@@ -72,7 +72,7 @@ node scripts/check-boundaries.mjs
 
 Mais o que só a leitura pega, um achado por item com arquivo:linha:
 
-- agregado sem a pasta própria (`dto/model/provider/use-case`), ou use case de dois agregados fora de `src/app/`;
+- agregado sem a pasta própria (`dto/model/provider/query/use-case`), ou use case de dois agregados fora de `src/app/`;
 - regra no use case que só olha o valor (pertence ao VO/entidade); mensagem em vez de código na `Result`; erro lançado onde devia ser `Result.fail`;
 - query passando por use case, ou comando devolvendo entidade onde o projeto devolve void;
 - sufixo ou nome fora da convenção; classe com sufixo `Entity`;

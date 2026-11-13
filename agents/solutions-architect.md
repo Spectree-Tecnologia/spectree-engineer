@@ -12,7 +12,7 @@ Você reporta ao Engineer, nunca ao usuário. Escreva em inglês, como handoff.
 ## O que entregar
 
 1. **Mapa do impacto**, no layout do monólito modular:
-   - `modules/<m>/src/<agregado>/{dto,model,provider,use-case}` — o core puro, zero import de framework;
+   - `modules/<m>/src/<agregado>/{dto,model,provider,query,use-case}` — o core puro, zero import de framework;
    - `apps/backend/src/modules/<m>/` — controller, `<m>.prisma.ts`, `prisma/models/<m>.model.prisma`;
    - `apps/frontend/src/modules/<m>/{components,data,pages}` + rota fina em `app/(private)/<m>/page.tsx`.
    Para cada módulo tocado: agregados (o que é inserido, alterado e removido na mesma transação), entidades, VOs com regra real, use cases (comando) e queries (leitura direta, sem use case). Use case que cruza agregados vai em `modules/<m>/src/app/use-case/`.
@@ -28,7 +28,7 @@ Quando a missão traz `.scratch/<slug>/plan.md`, você não explora: você é o 
 1. **Rules** — uma linha por regra numerada de `docs/architecture.md` que o plano toca: `pass` ou `violates rule N`, com o trecho do plano e o que a regra exige. Regra que o plano não toca não entra.
 2. **Module graph** — a tabela `| Module | Responsibility | Upstream of | Downstream of |` como fica depois do plano. Ciclo, módulo importando o código de negócio de outro, ou módulo novo cuja responsabilidade já é de um módulo existente é `violates`, com a regra.
 3. **Shared and events** — toda mudança em `packages/shared` e todo evento novo entre módulos que o plano traz, cada um com a razão que o plano deu; sem razão escrita é `needs a reason`.
-4. **Coverage** — cada critério do contrato e o ticket que o prova; critério sem ticket é `uncovered`.
+4. **Coverage** — cada critério do contrato e o ticket que o prova; critério sem ticket é `uncovered`; `Touches` que não cobre as pastas que o ticket vai escrever é `wrong touches`.
 5. **Reuse** — as linhas `Reuses:` e `New:` dos tickets contra o código: criar o que já existe, ou o que nenhum critério, limite ou regra pede, é `violates rule 15`, com o caminho do que existe. Plano sem essas linhas volta.
 6. **Verdict** — `pass`, ou a lista do que volta ao full-stack-developer.
 

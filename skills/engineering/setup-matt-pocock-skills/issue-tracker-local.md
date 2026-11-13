@@ -5,9 +5,9 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 ## Conventions
 
 - One feature per directory: `.scratch/<feature-slug>/`
-- The spec is `.scratch/<feature-slug>/spec.md`
+- There is no spec. The contract of a goal is `docs/goals/<slug>.md`; its working files are `.scratch/<slug>/plan.md` and `decisions.md`
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
-- Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
+- A ticket of a goal follows the template of the `to-tickets` skill (`Criteria`, `Blocked by`, `Touches`, `Proof`, `Status` ready or done): `npm run goal -- graph <slug>` reads those fields. Any other issue records triage state as a `Status:` line near the top (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
 ## When a skill says "publish to the issue tracker"
