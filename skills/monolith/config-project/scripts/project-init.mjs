@@ -400,7 +400,7 @@ async function ensureTurboRoot(rootDir, scope) {
       tasks: {
         build: {
           dependsOn: ['^build'],
-          outputs: ['.next/**', 'dist/**'],
+          outputs: ['.next/**', '!.next/cache/**', 'dist/**'],
         },
         lint: {
           dependsOn: ['^lint'],
@@ -1091,6 +1091,8 @@ async function patchRootPackageJson(rootDir, scope) {
   pkg.scripts['check:pr'] = pkg.scripts['check:pr'] ?? 'node scripts/check-pr.mjs';
   pkg.scripts['db:scratch'] = pkg.scripts['db:scratch'] ?? 'node scripts/db-scratch.mjs';
   pkg.scripts.goal = pkg.scripts.goal ?? 'node scripts/goal.mjs';
+  // a turbo cache restore never deletes: an old .next would sit next to the restored build (#78)
+  pkg.scripts.prebuild = pkg.scripts.prebuild ?? 'node scripts/clean-next.mjs';
   pkg.devDependencies = pkg.devDependencies ?? {};
   // "*": the lockfile pins what npm install resolved, Dependabot moves it; nothing is pinned by hand
   pkg.devDependencies['@stryker-mutator/core'] = pkg.devDependencies['@stryker-mutator/core'] ?? '*';
@@ -1148,6 +1150,12 @@ async function patchRootPackageJson(rootDir, scope) {
     ensureNewline: false,
     markRiskOnOverwrite: false,
     note: 'the goal contract by script: check its shape, run its proofs, measure its size',
+  });
+  const cleanNextScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'clean-next.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'clean-next.mjs'), await fs.readFile(cleanNextScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'empties apps/*/.next before npm run build, so a turbo cache restore never mixes two builds',
   });
   // What the plugin installed, by hash: tooling-sync.mjs later replaces only the scripts the project never changed.
   const scriptAssets = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts');
@@ -1249,6 +1257,10 @@ async function patchTurboJson(rootDir) {
   turbo.tasks = turbo.tasks ?? {};
   turbo.tasks.build = turbo.tasks.build ?? {};
   turbo.tasks.build.outputs = ensureArrayValue(turbo.tasks.build.outputs, 'dist/**');
+  // Next's own cache is not the build: restored by turbo it mixed with the next build's (#78)
+  if (turbo.tasks.build.outputs.includes('.next/**')) {
+    turbo.tasks.build.outputs = ensureArrayValue(turbo.tasks.build.outputs, '!.next/cache/**');
+  }
   // turbo's strict env hides these from the task, and the backend's prebuild (prisma generate) loads prisma.config.ts,
   // which resolves the URL at load. passThroughEnv: visible to the task, not part of the cache hash.
   turbo.tasks.build.passThroughEnv = ensureArrayValue(

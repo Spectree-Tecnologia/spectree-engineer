@@ -31,6 +31,7 @@ const NPM_SCRIPTS = {
   'check:pr': 'node scripts/check-pr.mjs',
   'db:scratch': 'node scripts/db-scratch.mjs',
   goal: 'node scripts/goal.mjs',
+  prebuild: 'node scripts/clean-next.mjs',
 };
 
 const fail = (message, code = 2) => {
@@ -72,6 +73,12 @@ const pkgFile = path.join(root, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
 pkg.scripts ??= {};
 const missingScripts = Object.keys(NPM_SCRIPTS).filter((name) => !(name in pkg.scripts));
+
+// turbo.json: a build that caches .next must leave Next's own cache out, or a restore mixes two builds (#78).
+const turboFile = path.join(root, 'turbo.json');
+const turbo = fs.existsSync(turboFile) ? JSON.parse(fs.readFileSync(turboFile, 'utf8')) : null;
+const buildOutputs = turbo?.tasks?.build?.outputs;
+const turboBehind = Array.isArray(buildOutputs) && buildOutputs.includes('.next/**') && !buildOutputs.includes('!.next/cache/**');
 
 // The numbered rules of docs/architecture.md: a rule the plugin gained after the project was bootstrapped is appended
 // below the last one. A row the project has is never rewritten, whatever it says.
@@ -118,6 +125,10 @@ if (mode === '--apply') {
     for (const name of missingScripts) pkg.scripts[name] = NPM_SCRIPTS[name];
     fs.writeFileSync(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
   }
+  if (turboBehind) {
+    buildOutputs.splice(buildOutputs.indexOf('.next/**') + 1, 0, '!.next/cache/**');
+    fs.writeFileSync(turboFile, `${JSON.stringify(turbo, null, 2)}\n`);
+  }
   if (missingRules.length > 0) {
     const eol = architecture.includes('\r\n') ? '\r\n' : '\n';
     const last = [...projectRules.values()].at(-1);
@@ -130,10 +141,11 @@ if (mode === '--apply') {
 }
 
 const behind = files.filter((file) => ['missing', 'outdated', 'differs'].includes(file.state));
-const scriptsBehind = mode === '--check' ? [...missingScripts, ...missingRules] : [];
+const scriptsBehind = mode === '--check' ? [...missingScripts, ...missingRules, ...(turboBehind ? ['turbo'] : [])] : [];
 console.log(`tooling-sync ${mode.slice(2)}: plugin ${plugin}, project stamped ${stamp.plugin ?? 'never'}`);
 for (const file of files) console.log(`  ${(file.done ?? file.state).padEnd(8)}  ${file.rel}`);
 for (const name of missingScripts) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  package.json script "${name}"`);
+if (turboBehind) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  turbo.json build output "!.next/cache/**"`);
 for (const [number] of missingRules) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  docs/architecture.md rule ${number}`);
 const differs = files.filter((file) => file.state === 'differs');
 if (differs.length > 0) {
