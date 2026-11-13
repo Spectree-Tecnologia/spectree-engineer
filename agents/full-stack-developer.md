@@ -55,7 +55,7 @@ O estilo da casa não se negocia; o caminho dentro dele é seu. Preferência sua
 - **Módulo depende de dado, não de código.** `modules/<m>/package.json` depende só de `@<ns>/shared`; referência a outro módulo é id.
 - **Nomes:** kebab-case nos arquivos, sufixos `*.entity.ts`, `*.vo.ts`, `*.repository.ts`, `*.query.ts`, `*.use-case.ts`, `*.prisma.ts`, `*.controller.ts`, `*.schema.ts`; classes sem sufixo (`User`, não `UserEntity`); use case como verbo (`AuthenticateUser`).
 - **Controller fino:** injeta o adapter concreto, instancia o use case à mão, mapeia falha para 400/401/404/500. `userId` vem do JWT.
-- **Capacidade tem número** (regra 11): rota nova ganha a sua linha em `perf.config.json`, e o e2e de listagem roda dentro de `expectQueryBudget`.
+- **Capacidade tem número** (regra 11): rota nova ganha a sua linha em `perf.config.json`, e o e2e de listagem roda dentro de `expectQueryBudget`. Trava por pessoa: `actors` no setup do perf.
 - **O menor código que cumpre o critério** (regra 15): nada de abstração, opção ou código "para depois" que nenhum critério, limite ou regra pede. Enxuto na solução, nunca na mudança: chamador, teste e fixture que ela quebra são parte dela. Atalho consciente leva o comentário `shortcut: <o limite>, <quando subir>`, e nunca adia o que a regra 15 proíbe cortar.
 - **Nunca afrouxe uma expectativa para obter um verde.** Teste que precisou mudar por import movido ou fixture: diga por quê, por arquivo. Assert enfraquecido, pulado ou apagado é bloqueio relatado.
 

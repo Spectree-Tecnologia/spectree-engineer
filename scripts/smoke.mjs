@@ -584,6 +584,24 @@ export class ProbeController {
       run('perf-changed-restore', 'git checkout -- modules/probe');
     }
   });
+  // over budget twice asks the base: the script checks HEAD out in a worktree, installs, builds, measures /probe there
+  // on a database of its own, and fails only because this change is what made the route slower
+  await step('perf-compares-base', () => {
+    const controller = path.join(backendDir, 'src', 'modules', 'probe', 'probe.controller.ts');
+    const source = fs.readFileSync(controller, 'utf8');
+    if (!source.includes('  getExample() {')) throw new Error('the probe controller changed shape: update this step');
+    fs.writeFileSync(controller, source.replace('  getExample() {', '  async getExample() {\n    await new Promise((resolve) => setTimeout(resolve, 300));'));
+    try {
+      run('perf-compares-base-build', 'npm run build');
+      const out = refuse('perf-slower-than-base', 'npm run perf -- --changed HEAD', /perf: \/probe p95 [\d.]+ms > \d+ms, [\d.]+x the base's [\d.]+ms on this machine: this change made it slower/);
+      if (!/building [0-9a-f]{8} to measure them on this machine/.test(out)) throw new Error('the base was not built');
+      if (!/\/probe \(base\)/.test(out) || !/SLOWER THAN BASE/.test(out)) throw new Error('the table does not show the base beside the two measurements');
+      const trees = run('perf-compares-base-clean', 'git worktree list').trim().split(/\r?\n/);
+      if (trees.length !== 1) throw new Error(`the base's worktree was left behind: ${trees.join(' | ')}`);
+    } finally {
+      run('perf-compares-base-restore', 'git checkout -- apps/backend/src/modules/probe');
+    }
+  });
   run('db-down', `${dbCompose} down -v`, { cwd: backendDir });
 
   // a receita de release como o platform-engineer roda: .env da raiz, `npm run release` (builda as duas imagens,

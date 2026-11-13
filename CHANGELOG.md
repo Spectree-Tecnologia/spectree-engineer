@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.27.0] - 2026-11-13
+
+O orçamento de latência pergunta à base antes de bloquear. Medido no SYND: das 15 execuções vermelhas do CI desde 1º de novembro, 4 foram no passo de latência, e as 3 últimas falhas de PR foram todas nele. Em nenhuma das 4 a causa era o código do PR: duas vezes o runner estava lento (25% mais lento em rotas intocadas; `/health` de 1,8 para 5,6 ms), uma vez o modelo roteirizado do teste guardava cada chamada, e uma vez as 20 conexões eram a mesma pessoa, em fila numa trava por pessoa. Cada vermelho virou missão de diagnóstico (10,3M, 7,4M e 3,7M de tokens), novos runs de CI e duas decisões do fundador. O gate perguntava "esta rota responde abaixo de N ms nesta máquina?", e a resposta muda com a máquina.
+
+### Added
+- **`perf` compara com a base.** Rota acima do orçamento em duas medições, com todas as respostas certas, e que a base já tinha, é medida também no código da base, na mesma máquina e na mesma execução: o script faz o checkout da base (a ref de `--changed`) num worktree, roda `npm ci` e o build, e mede as mesmas rotas duas vezes num banco só dela (`db:scratch`). Mais de 1,25 vez mais lenta que a base (`regressionRatio` em `perf.config.json`, melhor p95 de cada lado): exit 1, com os dois números. Não mais lenta: exit 0, uma linha `not this change` por rota e um aviso no run do PR. Rota nova, execução sem `--changed` e base que não builda ou não responde: decide o orçamento, como antes. `PERF_BASE_URL` mede uma base que já está no ar; `PERF_COMPARE=0` desliga.
+- **Uma pessoa por conexão.** O setup do perf pode devolver `actors`, e cada conexão mede como uma pessoa diferente. Vinte conexões como uma pessoa medem a trava dessa pessoa, não a rota (ADR 0006 do SYND).
+- `tests/perf-base.test.mjs`, sete testes que rodam o script contra dois servidores, e o passo `perf-compares-base` do smoke, que builda a base de um projeto gerado e exige o vermelho só pela mudança que deixou a rota lenta.
+
+### Changed
+- **Regra 11** (`ARCHITECTURE.md`): o p95 acima do orçamento falha a mudança quando a rota é nova ou quando ficou mais lenta que a base medida na mesma máquina. Projeto que já existe não tem a regra reescrita pelo `tooling-sync`: a troca do texto é um ADR do projeto.
+- **`/engineer`, verificação final:** a linha `not this change` vira item do roadmap, nunca rodada, e perf vermelho só vai ao `full-stack-developer` com as duas medições. O comando ficou em 7.569 palavras e o comando e os cards somados caíram de 18.739 para 18.738; o texto novo foi pago com a história da receita antiga de CI no card do `platform-engineer` e duas explicações do passo 8 que os scripts já dão.
+
 ## [0.26.0] - 2026-11-13
 
 A sessão parada e o retrabalho. Medido no `ci-time` do SYND, já com a verificação final feita: de 29,8 horas de relógio, 12,4 foram a sessão parada sem ninguém para retomar (5,7 horas depois de o limite de 5 horas já ter reaberto, de madrugada, e 6,7 horas depois de um erro de rede da API), e nenhuma foi espera por decisão do fundador. Dos 212 milhões de tokens do `full-stack-developer`, 128 milhões foram correção e diagnóstico depois de checkpoint. O ticket que construiu o script de prova custou 1,0 milhão para construir e 25,6 milhões em três rodadas de checkpoint; o ataque ao contrato, antes de o plano dizer como a prova seria feita, tinha custado 0,2 milhão.
@@ -360,6 +373,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.27.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.23.0...v0.24.0
