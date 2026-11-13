@@ -38,6 +38,10 @@ export type DeskUi = {
   isAutoOpened: boolean
 }
 
+// A session that stopped on the plan's usage limit or on an API error: when the panel tries again, how many
+// tries it has made since the last answer, and what stopped it.
+export type Resume = { at: number | null; attempts: number; why: 'limit' | 'error' | null }
+
 declare module 'claude-code' {
   interface PluginState {
     'spectree-engineer': {
@@ -46,6 +50,7 @@ declare module 'claude-code' {
       ui: Shaped<DeskUi>
       plan: Shaped<Plan>
       now: number
+      resume: Shaped<Resume>
     }
   }
 }
