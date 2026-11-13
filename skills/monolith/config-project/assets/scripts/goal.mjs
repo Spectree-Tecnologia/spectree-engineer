@@ -9,6 +9,7 @@
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
 //   npm run goal -- spent <slug> [--write]         what the goal cost, read from this machine's Claude Code transcripts
+//   npm run goal -- spent <slug> --agents          also one line per subagent: its turns, how its context grew, what filled it
 //
 // A proof a command decides is written in the Proof cell as run: `<command>`. `prove` runs each from the project
 // root, in UTC as CI does, one after the other, and exits 1 if any exits non-zero. A proof with no `run:` is an
@@ -32,7 +33,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--session <id,id>] [--transcripts <dir>]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- prove <slug> [--criterion <n>] [--after-merge]\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]',
     2,
   );
 
@@ -383,7 +384,7 @@ function stats() {
 // "/engineer item <slug>", their subagents, and where the wall-clock went. The speed of the squad is bounded by the
 // plan's usage limit, so the number to watch is tokens per goal, role by role.
 function spent() {
-  const flags = parseArgs(args, ['--session', '--transcripts'], ['--write']);
+  const flags = parseArgs(args, ['--session', '--transcripts'], ['--write', '--agents']);
   if (flags.positional.length !== 1) usage();
   const goal = parse(slugFile(flags.positional[0]));
   const projects = flags['--transcripts'] ?? path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude'), 'projects');
@@ -399,11 +400,12 @@ function spent() {
     return buffer.toString('utf8', 0, read);
   };
   const named = flags['--session']?.split(',').filter(Boolean);
-  const opening = new RegExp(`/engineer item ${goal.slug}(?![a-z0-9-])`);
+  // an item session opens with the command, and the app titles it with the slug: either one names it
+  const opening = new RegExp(`/engineer item ${goal.slug}(?![a-z0-9-])|"customTitle":"${goal.slug}"`);
   const sessions = dirs.flatMap((dir) =>
     fs.readdirSync(path.join(projects, dir)).filter((name) => name.endsWith('.jsonl')).map((name) => path.join(projects, dir, name)).filter((file) => (named ? named.some((id) => path.basename(file).startsWith(id)) : opening.test(head(file)))),
   );
-  if (sessions.length === 0) fail(`no session of this project opened with "/engineer item ${goal.slug}" under ${projects}: name it with --session <id>`);
+  if (sessions.length === 0) fail(`no session of this project opened with "/engineer item ${goal.slug}" or titled "${goal.slug}" under ${projects}: name it with --session <id>`);
 
   const rowsOf = (file) =>
     fs.readFileSync(file, 'utf8').split('\n').flatMap((line) => {
@@ -414,19 +416,33 @@ function spent() {
       }
     });
   const roles = {};
-  const count = (role, rows) => {
+  const missions = [];
+  const count = (role, rows, what) => {
     const one = (roles[role] ??= { turns: 0, cached: 0, fresh: 0, out: 0 });
     const seen = new Set();
+    // one subagent: its turns, the context of its first and last turn, and the bytes of tool results by tool
+    const mine = { role, what, at: rows.find((row) => row.timestamp)?.timestamp ?? '', turns: 0, first: 0, last: 0, tokens: 0, filled: {} };
+    const tools = new Map();
     for (const row of rows) {
       const used = row.message?.usage;
+      for (const part of Array.isArray(row.message?.content) ? row.message.content : []) {
+        if (part.type === 'tool_use') tools.set(part.id, part.name);
+        if (part.type === 'tool_result') mine.filled[tools.get(part.tool_use_id) ?? 'other'] = (mine.filled[tools.get(part.tool_use_id) ?? 'other'] ?? 0) + JSON.stringify(part.content ?? '').length;
+      }
       // one response is written once per content block: count it once
       if (row.type !== 'assistant' || !used || seen.has(row.message.id ?? row.uuid)) continue;
       seen.add(row.message.id ?? row.uuid);
       one.turns += 1;
+      const context = (used.cache_read_input_tokens ?? 0) + (used.input_tokens ?? 0) + (used.cache_creation_input_tokens ?? 0);
+      mine.turns += 1;
+      mine.first ||= context;
+      mine.last = context;
+      mine.tokens += context;
       one.cached += used.cache_read_input_tokens ?? 0;
       one.fresh += (used.input_tokens ?? 0) + (used.cache_creation_input_tokens ?? 0);
       one.out += used.output_tokens ?? 0;
     }
+    if (what !== undefined && mine.turns > 0) missions.push(mine);
   };
   const total = { wall: 0, limit: 0, waiting: 0, waits: 0, agents: 0, union: 0, from: Infinity, to: 0 };
   for (const file of sessions) {
@@ -435,8 +451,8 @@ function spent() {
     const sub = path.join(file.replace(/\.jsonl$/, ''), 'subagents');
     for (const name of fs.existsSync(sub) ? fs.readdirSync(sub).filter((one) => one.endsWith('.jsonl')) : []) {
       const meta = path.join(sub, name.replace(/\.jsonl$/, '.meta.json'));
-      const type = fs.existsSync(meta) ? JSON.parse(fs.readFileSync(meta, 'utf8')).agentType : null;
-      count(String(type ?? 'subagent').split(':').pop(), rowsOf(path.join(sub, name)));
+      const about = fs.existsSync(meta) ? JSON.parse(fs.readFileSync(meta, 'utf8')) : {};
+      count(String(about.agentType ?? 'subagent').split(':').pop(), rowsOf(path.join(sub, name)), String(about.description ?? ''));
     }
     // the wall-clock: a background agent runs from its launch, or from a message to it, until the next notice with
     // its id; a wait before a message from outside counts only while nothing runs, and as the usage limit when that
@@ -516,6 +532,20 @@ function spent() {
   for (const [role, one] of Object.entries(roles).sort((a, b) => b[1].cached + b[1].fresh - a[1].cached - a[1].fresh)) {
     const input = one.cached + one.fresh;
     console.log(`    ${role.padEnd(22)} ${String(one.turns).padStart(7)}  ${M(input).padStart(10)}  ${`${Math.round(input / Math.max(one.turns, 1) / 1000)}k`.padStart(9)}  ${M(one.out).padStart(6)}  ${Math.round((100 * input) / Math.max(tokensIn, 1))}%`);
+  }
+  // a mission past 60 turns re-reads a context that has grown: where the tokens of the builders went
+  const LONG = 60;
+  const builds = missions.filter((one) => one.role === 'full-stack-developer');
+  const long = builds.filter((one) => one.turns > LONG);
+  const sum = (list) => list.reduce((all, one) => all + one.tokens, 0);
+  if (builds.length > 0) console.log(`  missions over ${LONG} turns  ${long.length} of ${builds.length} full-stack-developer missions, ${Math.round((100 * sum(long)) / Math.max(sum(builds), 1))}% of its tokens`);
+  if (flags['--agents']) {
+    const k = (n) => `${Math.round(n / 1000)}k`;
+    console.log('  by agent      role                   turns   context         tokens in  what filled it');
+    for (const one of missions.sort((a, b) => a.at.localeCompare(b.at))) {
+      const top = Object.entries(one.filled).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([tool, bytes]) => `${tool} ${Math.round(bytes / 1000)}kB`).join(', ');
+      console.log(`    ${one.at.slice(5, 16).replace('T', ' ')}  ${one.role.padEnd(21)} ${String(one.turns).padStart(5)}   ${`${k(one.first)} -> ${k(one.last)}`.padEnd(14)} ${M(one.tokens).padStart(8)}  ${top}  ${one.what.slice(0, 40)}`);
+    }
   }
   const line = `Spent: ${h(total.wall)} h wall, ${h(total.limit)} h at the usage limit, ${h(total.waiting)} h waiting for the founder, ${M(tokensIn)} tokens in, ${M(all.out)} out, ${all.turns} turns`;
   console.log(`\n${line}`);

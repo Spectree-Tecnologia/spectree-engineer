@@ -2,6 +2,22 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.25.0] - 2026-11-12
+
+Missões curtas. Medido no primeiro objetivo do PILOT em tickets, o `ci-time`: todo `full-stack-developer` nasceu com 30 mil tokens de contexto, como desenhado, mas cresceu até 200 a 330 mil dentro de uma missão. Missões de até 60 chamadas custaram 98 mil tokens por chamada; acima de 110, 162 mil. Oito missões longas foram 88% dos tokens do papel.
+
+### Added
+- **Aviso de passagem na 60ª chamada.** O painel recusa uma vez a 60ª chamada de ferramenta de um `full-stack-developer`, com a saída: terminar se o que falta cabe em 15 chamadas, ou commit, `Next needs:` no ticket e relato `handoff`. A chamada passa quando repetida, e nenhum outro papel recebe o aviso. O Engineer despacha um `full-stack-developer` novo para o mesmo ticket.
+- **`goal spent --agents`.** Uma linha por agente: turnos, contexto no primeiro e no último turno, tokens e o que encheu o contexto. Toda saída ganha a linha `missions over 60 turns`.
+
+### Changed
+- **O checkpoint só devolve o que bloqueia.** `blocking` e `confirmed` voltam antes do ticket seguinte; `should` de checkpoint espera a correção da verificação final. Correção que não cabe no começo de um ticket é missão própria, um problema por missão.
+- A skill `to-tickets` dá o tamanho de um ticket em chamadas: cerca de 40.
+- Saiu do card do `full-stack-developer` a frase que pedia chamadas em lote: medida no PILOT, ela não mudou nada (1,17 chamada por turno antes, 1,10 depois). Saiu também a prosa sobre `git stash` e interpretador lendo a stdin, que o painel já recusa. O comando e os cards somados têm as mesmas 18.749 palavras da 0.24.0.
+
+### Fixed
+- **`goal spent` acha a sessão pelo título.** A sessão de item do PILOT não abria com a linha que o comando procurava, e era preciso nomeá-la com `--session`. O app dá à sessão o título do objetivo, e o comando agora aceita os dois.
+
 ## [0.24.0] - 2026-11-12
 
 Três achados das retros de ferramental do PILOT, nos scripts que o `config-project` grava no projeto.
@@ -327,6 +343,8 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.25.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.24.0...v0.25.0
+[0.24.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.21.0...v0.21.1

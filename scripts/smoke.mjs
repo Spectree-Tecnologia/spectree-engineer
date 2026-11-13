@@ -334,13 +334,24 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     ]));
     const built = { type: 'assistant', isSidechain: true, timestamp: at(10), message: { id: 's1', usage: usage(2000, 1000000, 4000), content: [{ type: 'text', text: 'building' }] } };
     fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.jsonl'), jsonl([built, built, { ...built, timestamp: at(20), message: { ...built.message, id: 's2', usage: usage(1000, 1500000, 2000) } }]));
-    fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.meta.json'), JSON.stringify({ agentType: 'spectree-engineer:full-stack-developer' }));
-    const spent = run('goal-spent', `npm run goal -- spent probe-thing --write --transcripts "${transcripts}"`);
+    fs.writeFileSync(path.join(sessionDir, 'session-1', 'subagents', 'agent-a1.meta.json'), JSON.stringify({ agentType: 'spectree-engineer:full-stack-developer', description: 'Build ticket 01' }));
+    const spent = run('goal-spent', `npm run goal -- spent probe-thing --write --agents --transcripts "${transcripts}"`);
+    if (!/missions over 60 turns\s+0 of 1 full-stack-developer missions/.test(spent) || !/full-stack-developer\s+2\s+1002k -> 1501k\s+2\.5M\s.*Build ticket 01/.test(spent)) throw new Error(`goal spent --agents did not print the agent's line:${spent.slice(-900)}`);
     if (!/Spent: 4\.6 h wall, 3\.0 h at the usage limit, 1\.0 h waiting for the founder, 2\.8M tokens in, 0\.0M out, 6 turns/.test(spent)) throw new Error(`goal spent did not measure the session:${spent.slice(-900)}`);
     if (!/an agent running 0\.5 h, x1\.00 in parallel/.test(spent) || !/full-stack-developer\s+2\s+2\.5M/.test(spent)) throw new Error(`goal spent did not count the subagent once per response:${spent.slice(-900)}`);
     run('goal-check-with-the-spent-line', 'npm run goal -- check --ready probe-thing');
     const measured = run('goal-stats-with-tokens', 'npm run goal -- stats');
     if (!/probe-thing\s.*\s4\.6\s+3\.0\s+2\.8\s*$/m.test(measured)) throw new Error(`goal stats did not read the Spent line:${measured.slice(-500)}`);
+    // a session that does not open with the command is still found by the title the app gave it: the slug
+    const titled = path.join(transcripts, 'titled', root.replace(/[^A-Za-z0-9]/g, '-'));
+    fs.mkdirSync(titled, { recursive: true });
+    fs.writeFileSync(path.join(titled, 'session-2.jsonl'), jsonl([
+      { type: 'custom-title', customTitle: 'probe-thing', sessionId: 'session-2' },
+      { type: 'user', timestamp: at(0), message: { content: 'carry on with the item' } },
+      { type: 'assistant', timestamp: at(30), message: { id: 'n1', usage: usage(1000, 99000, 10), content: [{ type: 'text', text: 'On it.' }] } },
+    ]));
+    const byTitle = run('goal-spent-finds-the-session-by-its-title', `npm run goal -- spent probe-thing --transcripts "${path.join(transcripts, 'titled')}"`);
+    if (!/Spent: 0\.5 h wall, 0\.0 h at the usage limit, 0\.0 h waiting for the founder, 0\.1M tokens in, 0\.0M out, 1 turns/.test(byTitle)) throw new Error(`goal spent did not find the session by its title:${byTitle.slice(-600)}`);
     refuse('goal-spent-without-a-session', `npm run goal -- spent probe-thing --transcripts "${path.join(transcripts, 'nowhere')}"`, /no session of this project opened with "\/engineer item probe-thing"/);
     fs.rmSync(transcripts, { recursive: true, force: true });
     run('goal-restore', 'git checkout -q -- . && git checkout -q - && git branch -q -D feat/probe-thing');
