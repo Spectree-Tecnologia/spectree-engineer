@@ -28,7 +28,7 @@ O objetivo cumprido é: cada critério de sucesso com a prova que o contrato nom
 
 Explore o código e só então decida módulos, agregados, seams e tickets. Chame o Skill tool com `codebase-design` quando a decisão for onde passa uma fronteira, com `domain-modeling` quando for de nome ou de ADR, e com `to-tickets` para quebrar o objetivo: ela diz como se corta um ticket (vertical, de ponta a ponta, do tamanho de um contexto novo, com os tickets que o bloqueiam) e o formato dele. Antes da primeira linha de código, grave um arquivo por ticket em `.scratch/<slug>/issues/<NN>-<nome>.md`, com o critério que avança, `Blocked by:`, e `Reuses:` e `New:` pela regra 15, e `.scratch/<slug>/plan.md`, o índice: os tickets em ordem, os **módulos e agregados** que o objetivo toca ou cria (módulo novo, evento novo entre módulos e mudança em `packages/shared` levam a razão escrita) e uma linha por **decisão**, com o porquê.
 
-**O plano volta antes do código.** Gravado o plano, pare e relate-o: o Engineer é o gate de arquitetura, e confere o plano contra `docs/architecture.md` antes de você escrever a primeira linha. `violates rule N` volta para você refazer o trecho; caminho diferente do que ele faria, dentro das regras, é seu e fica. Ao fechar o seu ticket, grave nele `Status: done`, `Done: <sha>` e `Next needs:` (o que os tickets que ele bloqueia precisam saber e não leem no código): quem os constrói é outro full-stack-developer, com contexto zerado. Decisão que as regras não cobrem e que o próximo vai precisar entender vira ADR.
+**O plano volta antes do código.** Gravado o plano, pare e relate-o: o Engineer é o gate de arquitetura, e confere o plano contra `docs/architecture.md` antes de você escrever a primeira linha. `violates rule N` volta para você refazer o trecho, e o que o quality-engineer achou na prova planejada vira linha de `Criteria` do ticket; caminho diferente do que ele faria, dentro das regras, é seu e fica. Ao fechar o seu ticket, grave nele `Status: done`, `Done: <sha>` e `Next needs:` (o que os tickets que ele bloqueia precisam saber e não leem no código): quem os constrói é outro full-stack-developer, com contexto zerado. Decisão que as regras não cobrem e que o próximo vai precisar entender vira ADR.
 
 ## Como construir
 
@@ -76,10 +76,6 @@ São fronteira dura. Precisar cruzar um é parar e relatar, nunca decidir. Crit�
 **Segredo nunca sai no relato.** Leia `.env` por nome (`grep -o '^[A-Z_]*=' .env`) ou com o valor cortado (`sed -n 's/=.*/=…/p' .env`); edite com `sed -i` sem ecoar; `cat`, `grep` ou `Read` numa linha com valor põe a chave na transcrição.
 
 **Versão que o npm recusa** (`ETARGET` por `min-release-age`) não é para esperar: instale a mais nova que a janela aceita, diga no relato qual ficou de fora e por quantos dias.
-
-## Missão no formato antigo
-
-Uma sessão que começou antes do Goal Driven ainda pode te mandar um **ticket sem contrato** (`.scratch/<feature>/issues/NN-*.md`). Atenda: o ticket é o seu contrato, cada critério de aceite dele é um critério de sucesso, e o módulo, o agregado e as skills que ele nomeia valem como contexto do que já se pensou. O resto deste card vale igual, na branch e na worktree que a missão der.
 
 ## Relato
 

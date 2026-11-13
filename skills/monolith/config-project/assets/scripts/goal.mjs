@@ -138,7 +138,7 @@ function parse(file) {
   const roundsLine = (sections.budget ?? []).join('\n').match(/^Verification rounds:\s*(\d+)/im);
   // "Landed: PR #23, 1842 product lines, CI 27 min", written by the orchestrator when the pull request merges
   const landed = lines.find((line) => /^Landed:/.test(line)) ?? '';
-  // "Spent: 15.2 h wall, 0.0 h at the usage limit, 1.3 h waiting for the founder, 212.4M tokens in, 0.9M out, 1104 turns",
+  // "Spent: 15.2 h wall, 0.0 h at the usage limit, 1.3 h waiting for the founder, 0.0 h stopped by an error, 212.4M tokens in, 0.9M out, 1104 turns",
   // written by `goal spent --write`
   const spentLine = lines.find((line) => /^Spent:/.test(line)) ?? '';
   return {
@@ -444,7 +444,7 @@ function spent() {
     }
     if (what !== undefined && mine.turns > 0) missions.push(mine);
   };
-  const total = { wall: 0, limit: 0, waiting: 0, waits: 0, agents: 0, union: 0, from: Infinity, to: 0 };
+  const total = { wall: 0, limit: 0, waiting: 0, waits: 0, stopped: 0, stops: 0, agents: 0, union: 0, from: Infinity, to: 0 };
   for (const file of sessions) {
     const rows = rowsOf(file);
     count('Engineer', rows.filter((row) => !row.isSidechain));
@@ -455,8 +455,8 @@ function spent() {
       count(String(about.agentType ?? 'subagent').split(':').pop(), rowsOf(path.join(sub, name)), String(about.description ?? ''));
     }
     // the wall-clock: a background agent runs from its launch, or from a message to it, until the next notice with
-    // its id; a wait before a message from outside counts only while nothing runs, and as the usage limit when that
-    // is what stopped the session
+    // its id; a wait before a message from outside counts only while nothing runs, as the usage limit when that is
+    // what stopped the session, and as a stop when an API error ended the turn: nobody was asked anything
     const calls = new Map();
     const known = new Set();
     const running = new Map();
@@ -464,6 +464,7 @@ function spent() {
     let first = null;
     let prev = null;
     let limitedAt = null;
+    let erroredAt = null;
     for (const row of rows) {
       if (row.isSidechain || !row.timestamp) continue;
       const ts = Date.parse(row.timestamp);
@@ -480,6 +481,9 @@ function spent() {
       const content = Array.isArray(row.message.content) ? row.message.content : [{ type: 'text', text: String(row.message.content ?? '') }];
       if (row.type === 'assistant') {
         if (row.isApiErrorMessage && /hit your .*limit/i.test(JSON.stringify(content))) limitedAt ??= ts;
+        // an error the turn got past is followed by another response, and is no stop
+        else if (row.isApiErrorMessage) erroredAt ??= ts;
+        else erroredAt = null;
         for (const part of content) if (part.type === 'tool_use') calls.set(part.id, { name: part.name, to: part.input?.to, ts });
       }
       if (row.type === 'user') {
@@ -497,6 +501,11 @@ function spent() {
         if (outside && limitedAt !== null) {
           total.limit += ts - limitedAt;
           limitedAt = null;
+          erroredAt = null;
+        } else if (outside && erroredAt !== null) {
+          total.stopped += ts - erroredAt;
+          total.stops += 1;
+          erroredAt = null;
         } else if (outside && prev !== null && running.size === 0 && ts - prev > 60_000) {
           total.waiting += ts - prev;
           total.waits += 1;
@@ -525,7 +534,8 @@ function spent() {
   console.log(`  wall                 ${h(total.wall).padStart(7)} h`);
   console.log(`  at the usage limit   ${h(total.limit).padStart(7)} h`);
   console.log(`  waiting for a reply  ${h(total.waiting).padStart(7)} h   ${total.waits} waits with nothing running`);
-  console.log(`  working              ${h(total.wall - total.limit - total.waiting).padStart(7)} h   an agent running ${h(total.union)} h, x${(total.agents / Math.max(total.union, 1)).toFixed(2)} in parallel`);
+  console.log(`  stopped by an error  ${h(total.stopped).padStart(7)} h   ${total.stops} turn${total.stops === 1 ? '' : 's'} an API error ended, until somebody wrote again`);
+  console.log(`  working              ${h(total.wall - total.limit - total.waiting - total.stopped).padStart(7)} h   an agent running ${h(total.union)} h, x${(total.agents / Math.max(total.union, 1)).toFixed(2)} in parallel`);
   console.log(`  tokens in            ${M(tokensIn).padStart(8)}    ${M(all.cached)} read from the cache, ${M(all.fresh)} new`);
   console.log(`  tokens out           ${M(all.out).padStart(8)}    in ${all.turns} turns`);
   console.log('  by role                    turns   tokens in   per turn     out');
@@ -539,6 +549,10 @@ function spent() {
   const long = builds.filter((one) => one.turns > LONG);
   const sum = (list) => list.reduce((all, one) => all + one.tokens, 0);
   if (builds.length > 0) console.log(`  missions over ${LONG} turns  ${long.length} of ${builds.length} full-stack-developer missions, ${Math.round((100 * sum(long)) / Math.max(sum(builds), 1))}% of its tokens`);
+  // what a verification sent back: a mission the Engineer named as a fix or a diagnosis
+  const REWORK = /\b(?:fix\w*|diagnos\w*|debug\w*|corre[cç]\w*|corrig\w*|conser\w*)/i;
+  const rework = builds.filter((one) => REWORK.test(one.what));
+  if (builds.length > 0) console.log(`  fixes after a verification  ${rework.length} of ${builds.length} full-stack-developer missions, ${Math.round((100 * sum(rework)) / Math.max(sum(builds), 1))}% of its tokens (by the mission's name)`);
   if (flags['--agents']) {
     const k = (n) => `${Math.round(n / 1000)}k`;
     console.log('  by agent      role                   turns   context         tokens in  what filled it');
@@ -547,7 +561,7 @@ function spent() {
       console.log(`    ${one.at.slice(5, 16).replace('T', ' ')}  ${one.role.padEnd(21)} ${String(one.turns).padStart(5)}   ${`${k(one.first)} -> ${k(one.last)}`.padEnd(14)} ${M(one.tokens).padStart(8)}  ${top}  ${one.what.slice(0, 40)}`);
     }
   }
-  const line = `Spent: ${h(total.wall)} h wall, ${h(total.limit)} h at the usage limit, ${h(total.waiting)} h waiting for the founder, ${M(tokensIn)} tokens in, ${M(all.out)} out, ${all.turns} turns`;
+  const line = `Spent: ${h(total.wall)} h wall, ${h(total.limit)} h at the usage limit, ${h(total.waiting)} h waiting for the founder, ${h(total.stopped)} h stopped by an error, ${M(tokensIn)} tokens in, ${M(all.out)} out, ${all.turns} turns`;
   console.log(`\n${line}`);
   if (flags['--write']) {
     const lines = fs.readFileSync(goal.file, 'utf8').split(/\r?\n/);
