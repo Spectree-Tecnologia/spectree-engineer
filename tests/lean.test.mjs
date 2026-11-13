@@ -61,9 +61,10 @@ test('a finding reaches the Founder numbered and in four parts', () => {
 test('the prompts stay inside their word budget', () => {
   // 0.22.0 took 416 words out of the command (step 3 repeated the to-goal skill) to pay for the lean rule in the
   // cards, and left the command and the cards together no larger than 0.21.1 had them. Raising a number here is a
-  // decision: say in the pull request what the new text buys.
-  const COMMAND = 7602;
-  const SQUAD = 18844;
+  // decision: say in the pull request what the new text buys. 0.23.0 and 0.25.0 each lowered both numbers to what
+  // they left.
+  const COMMAND = 7575;
+  const SQUAD = 18749;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

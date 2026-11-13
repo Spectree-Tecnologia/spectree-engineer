@@ -30,7 +30,7 @@ Look for prefactoring that makes the goal easier. "Make the change easy, then ma
 
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests): vertical, NOT a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
-- Each slice is sized to fit in a single fresh context window, with room to spare
+- Each slice is sized to fit in a single fresh context window, with room to spare: about 40 tool calls of work. Past 60 calls every call costs more, so a ticket that needs more is two tickets
 - Any prefactoring is done first, in a ticket that changes no behaviour
 - The first ticket is the tracer bullet: the smallest path from the test of one success criterion down to the database
 - Every success criterion of the contract is advanced by at least one ticket
