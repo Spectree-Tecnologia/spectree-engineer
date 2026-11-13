@@ -10,4 +10,8 @@
 
 **New:** `scripts/workflow-proof.mjs` and its test, because nothing in the project compares the workflow with its baseline.
 
+**Touches:** `scripts/workflow-proof.mjs`, `scripts/workflow-proof.test.mjs`
+
+**Proof:** run: `node --test scripts/workflow-proof.test.mjs`
+
 **Status:** ready

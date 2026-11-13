@@ -10,4 +10,8 @@
 
 **New:** nothing.
 
+**Touches:** `.github/workflows`
+
+**Proof:** run: `node scripts/workflow-proof.mjs`
+
 **Status:** ready

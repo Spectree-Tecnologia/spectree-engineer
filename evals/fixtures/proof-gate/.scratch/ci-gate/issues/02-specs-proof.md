@@ -10,4 +10,8 @@
 
 **New:** the `specs` mode.
 
+**Touches:** `scripts/workflow-proof.mjs`, `scripts/workflow-proof.test.mjs`
+
+**Proof:** run: `node --test scripts/workflow-proof.test.mjs`
+
 **Status:** ready

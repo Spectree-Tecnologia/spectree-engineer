@@ -10,4 +10,8 @@
 
 **New:** the module `transactions` with the aggregate `transaction`, because no module records money moving in or out of an account.
 
+**Touches:** `modules/transactions`, `apps/backend/src/modules/transactions`
+
+**Proof:** run: `npx vitest run modules/transactions`
+
 **Status:** ready

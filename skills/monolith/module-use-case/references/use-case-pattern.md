@@ -9,7 +9,6 @@
   - `modules/auth/src/user/use-case/update-user.use-case.ts`
   - `modules/auth/src/user/use-case/login.use-case.ts`
   - `modules/stock/src/movement/use-case/create-movement-out.use-case.ts`
-  - `modules/auth/src/user/use-case/get-auth-dashboard-overview.use-case.ts`
 - Testes (exemplos):
   - `modules/branch/test/branch/create-branch.test.ts`
   - `modules/stock/test/movement/create-movement-in.test.ts`
@@ -19,12 +18,12 @@
 ## Estrutura esperada
 
 1. Definir `XxxIn` (e `XxxOut` quando necessário).
-2. Declarar classe `XxxUseCase implements UseCase<XxxIn, XxxOut>`.
+2. Declarar a classe como verbo, sem sufixo: `CreateThing implements UseCase<CreateThingIn, void>`. Use case é comando e devolve `Result<void>`; leitura é query (`module-query-cqrs`).
 3. Injetar dependências via construtor (`Repository`, `Query`, `Checker`, `Provider`).
 4. Implementar `execute(data)` retornando `Promise<Result<...>>`.
 5. Aplicar validações de fluxo com retorno antecipado em falha.
 6. Delegar invariantes de domínio para entidade/VO (`tryCreate`, `cloneWith`).
-7. Retornar resultado de provider/repo ou `Result.ok(...)` com DTO/agregado final.
+7. Retornar a falha do provider/repo ou `Result.ok()`: comando não devolve DTO nem agregado.
 
 ## Padrões observados no código
 
@@ -34,7 +33,6 @@
   - Leitura/projeção: preferir `Query` retornando DTO.
   - Comando/escrita: preferir `Repository` e entidade de domínio.
 - Combinação de providers é comum:
-  - Exemplo: busca em query + agregação de dados (`GetAuthDashboardOverviewUseCase`).
   - Exemplo: valida existência e cria dependência se necessário (`CreateMovementIn`).
 - Em update:
   - Carregar estado atual (`findById`).
@@ -86,7 +84,7 @@ export interface CreateThingIn {
   name: string;
 }
 
-export class CreateThingUseCase implements UseCase<CreateThingIn, void> {
+export class CreateThing implements UseCase<CreateThingIn, void> {
   constructor(private readonly repo: ThingRepository) {}
 
   async execute(data: CreateThingIn): Promise<Result<void>> {
@@ -115,7 +113,7 @@ export interface CreateUserIn {
   password: string;
 }
 
-export class CreateUserUseCase implements UseCase<CreateUserIn, void> {
+export class CreateUser implements UseCase<CreateUserIn, void> {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly passRepo: PasswordRepository,

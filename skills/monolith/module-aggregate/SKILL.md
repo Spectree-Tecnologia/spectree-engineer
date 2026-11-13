@@ -21,11 +21,7 @@ Important: the skill may keep internal test templates under `${CLAUDE_PLUGIN_ROO
    - `crud`
    - `example`
 
-If the request does not include this third input, stop and ask one objective question:
-
-`Deseja criar a base de use cases em "crud" ou "example"?`
-
-Do not execute the skill without that answer.
+If the request does not include this third input, choose it yourself: `crud` when the aggregate is created, changed and removed as a whole, `example` otherwise. Say which one you chose in your report.
 
 ## Workflow
 

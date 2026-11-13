@@ -1,7 +1,7 @@
 {
   "name": "spectree-engineer",
-  "version": "0.28.0",
-  "description": "Orquestrador em pt-BR com sub-agentes especialistas para monólitos modulares em Goal Driven Development: o fundador dá o objetivo e os critérios de sucesso, o squad decide o como; skills de engenharia de Matt Pocock no processo, as skills de monólito modular da Spectree como padrão de arquitetura.",
+  "version": "0.29.0",
+  "description": "Orquestrador em pt-BR com sub-agentes especialistas para monólitos modulares em Goal Driven Development: o fundador dá o resultado que quer, o Engineer escreve o contrato com os critérios de sucesso, e o squad decide o como; skills de engenharia de Matt Pocock no processo, as skills de monólito modular da Spectree como padrão de arquitetura.",
   "author": {
     "name": "Spectree Tecnologia"
   },
