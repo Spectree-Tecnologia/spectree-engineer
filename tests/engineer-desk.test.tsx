@@ -402,3 +402,158 @@ test("the plan tool keeps the main loop's plan, refuses a subagent's, and shows 
   expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
   await band.unmount()
 })
+
+// A session that stopped: the engine beneath the panel, with the windows the last response reported,
+// whether the folder is an Engineer project, and what the panel submitted by itself.
+const MINUTE = 60_000
+const START = 1_000_000
+
+function stoppedSession(on: any, limits: unknown[] = [], isProject = true) {
+  const clock = mock.clock(on, { now: START })
+  const sent: string[] = []
+  const logged: string[] = []
+  const refuse = { left: 0 }
+  on('tool.call', () => ({ result: {} }))
+  on('turn.start', (_: unknown, e: any) => ({ turnId: e.turnId }))
+  on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
+  on('prompt.submit', (_: unknown, e: any) => {
+    if (e.origin?.kind !== 'plugin') return e
+    sent.push(e.text)
+    if (refuse.left > 0) {
+      refuse.left--
+      return { drop: 'the limit stands' }
+    }
+    return e
+  })
+  on('fs.exists', () => ({ value: isProject }))
+  on('session.cwd', () => ({ value: '/repo' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: {}, rateLimits: limits } }))
+  on('session.surfaces', () => ({ value: ['terminal'] }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.status', () => ({ value: {} }))
+  on('ui.log', (_: unknown, e: any) => {
+    logged.push(String(e.text ?? e))
+    return { value: {} }
+  })
+  return { clock, sent, logged, refuse }
+}
+
+const turnEnds = ($: any, reason: 'answer' | 'aborted' | 'error', agentId?: string) =>
+  $.turn.complete({ answer: '', durationMs: 1, isAborted: reason === 'aborted', turnId: 't1', reason, ...(agentId ? { agentId } : {}) } as any)
+
+const openPlan = ($: any, done = 1) => $.tool.call({ tool: PLAN_TOOL, steps: steps(done) } as any)
+
+test('a session stopped at the usage limit is resumed once, a minute after the window reopens', async ($, on) => {
+  const session = stoppedSession(on, [
+    { kind: 'five_hour', percentUsed: 100, resetsAt: new Date(START + 120 * MINUTE).toISOString() },
+    { kind: 'seven_day', percentUsed: 41, resetsAt: new Date(START + 4000 * MINUTE).toISOString() },
+  ])
+  await openPlan($)
+  await turnEnds($, 'error')
+  await session.clock.advance(120 * MINUTE)
+  expect(session.sent).toEqual([])
+  await session.clock.advance(2 * MINUTE)
+  expect(session.sent.length).toBe(1)
+  expect(session.sent[0]).toContain('limite de uso do plano')
+  expect(session.sent[0]).toContain('repita a pergunta e pare')
+  await session.clock.advance(600 * MINUTE)
+  expect(session.sent.length).toBe(1)
+})
+
+test('after an API error the panel tries again at growing intervals, and an answer starts the count over', async ($, on) => {
+  const session = stoppedSession(on)
+  await openPlan($)
+  await turnEnds($, 'error')
+  await session.clock.advance(1.5 * MINUTE)
+  expect(session.sent).toEqual([])
+  await session.clock.advance(1 * MINUTE)
+  expect(session.sent.length).toBe(1)
+  expect(session.sent[0]).toContain('erro da API')
+  // the resumed turn dies too: the second try waits five minutes
+  await turnEnds($, 'error')
+  await session.clock.advance(4 * MINUTE)
+  expect(session.sent.length).toBe(1)
+  await session.clock.advance(1.5 * MINUTE)
+  expect(session.sent.length).toBe(2)
+  // a prompt the engine refuses is a try spent: the next one waits fifteen minutes, then thirty
+  session.refuse.left = 1
+  await turnEnds($, 'error')
+  await session.clock.advance(15.5 * MINUTE)
+  expect(session.sent.length).toBe(3)
+  await session.clock.advance(29 * MINUTE)
+  expect(session.sent.length).toBe(3)
+  await session.clock.advance(1.5 * MINUTE)
+  expect(session.sent.length).toBe(4)
+  // the turn answers: the next stop starts from two minutes again
+  await turnEnds($, 'answer')
+  await turnEnds($, 'error')
+  await session.clock.advance(2.5 * MINUTE)
+  expect(session.sent.length).toBe(5)
+})
+
+test('only a turn the API killed, with work under way in an Engineer project, is resumed', async ($, on) => {
+  const session = stoppedSession(on)
+  const quiet = async () => {
+    await session.clock.advance(400 * MINUTE)
+    expect(session.sent).toEqual([])
+  }
+  // no plan: nothing was under way
+  await turnEnds($, 'error')
+  await quiet()
+  await openPlan($)
+  // an answer may be a question to the Founder, and an interruption is his
+  await turnEnds($, 'answer')
+  await quiet()
+  await turnEnds($, 'aborted')
+  await quiet()
+  // the Founder writes before the time comes
+  await turnEnds($, 'error')
+  await $.prompt.submit({ text: 'deixa comigo', origin: { kind: 'composer' } } as any)
+  await quiet()
+  // a main turn is alive when the time comes
+  await turnEnds($, 'error')
+  await $.turn.start({ text: 'continue', turnId: 't2' } as any)
+  await quiet()
+  await turnEnds($, 'answer')
+  // a subagent dies while the main loop works: the main loop hears it
+  await $.turn.start({ text: 'segue', turnId: 't3' } as any)
+  await turnEnds($, 'error', 'a1')
+  await quiet()
+  // the plan is done
+  await turnEnds($, 'answer')
+  await openPlan($, 4)
+  await turnEnds($, 'error')
+  await quiet()
+})
+
+test('a background agent that dies while the main loop is idle wakes the session', async ($, on) => {
+  const session = stoppedSession(on)
+  await openPlan($)
+  await turnEnds($, 'answer')
+  await turnEnds($, 'error', 'a1')
+  await session.clock.advance(2.5 * MINUTE)
+  expect(session.sent.length).toBe(1)
+})
+
+test('outside an Engineer project a stopped session stays stopped', async ($, on) => {
+  const session = stoppedSession(on, [], false)
+  await openPlan($)
+  await turnEnds($, 'error')
+  await session.clock.advance(400 * MINUTE)
+  expect(session.sent).toEqual([])
+})
+
+test('the panel gives up after nine tries and says so', async ($, on) => {
+  const session = stoppedSession(on)
+  await openPlan($)
+  const waits = [2, 5, 15, 30, 60, 60, 60, 60, 60]
+  for (const [index, minutes] of waits.entries()) {
+    await turnEnds($, 'error')
+    await session.clock.advance((minutes + 0.5) * MINUTE)
+    expect(session.sent.length).toBe(index + 1)
+  }
+  await turnEnds($, 'error')
+  await session.clock.advance(600 * MINUTE)
+  expect(session.sent.length).toBe(9)
+  expect(session.logged.join('\n')).toContain('segue parada depois de 9 tentativas')
+})
