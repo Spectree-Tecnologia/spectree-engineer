@@ -65,8 +65,10 @@ test('the prompts stay inside their word budget', () => {
   // they left, and so did 0.26.0, 0.27.0, 0.28.0, 0.29.0 and 0.30.0. 0.31.0 lowered the command to 7511 and raised
   // the squad by 141 words: the platform-engineer's CI by moment (the smoke list, the draft gate, the pre-release run
   // before a release), which replaced the weekly run and the p95 on every pull request.
-  const COMMAND = 7511;
-  const SQUAD = 18808;
+  // 0.32.0 moved the start of a goal from the platform-engineer's card to the command, as two commands the Engineer
+  // runs: the command grew and the two together shrank.
+  const COMMAND = 7579;
+  const SQUAD = 18786;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
