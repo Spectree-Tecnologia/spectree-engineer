@@ -67,8 +67,11 @@ test('the prompts stay inside their word budget', () => {
   // before a release), which replaced the weekly run and the p95 on every pull request.
   // 0.32.0 moved the start of a goal from the platform-engineer's card to the command, as two commands the Engineer
   // runs: the command grew and the two together shrank.
-  const COMMAND = 7578;
-  const SQUAD = 18781;
+  // 0.34.0 raised both by about 120 words: the two lanes of step 7 (which tickets run together, the second checkout,
+  // the merge of a closed ticket and its proof). Measured on PILOT's ci-time-20: a free ticket sat idle for 40 and for
+  // 77 minutes while the one before it was built and verified.
+  const COMMAND = 7692;
+  const SQUAD = 18896;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
