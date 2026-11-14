@@ -1,18 +1,44 @@
-# One workflow, one job, on pull requests only. GitHub bills a private repository per job (each one pays its own
-# checkout, install, build and database, and its time is counted on its own), and a run on every push to main repeats
-# what the pull request already proved on the merge commit. So: nothing runs on push, everything shares one runner, a
-# pull request that only touches documentation stops after the secret scan, and the lockfile scanners run when the
-# lockfile changed. Main gets the whole thing once a week (every route's latency budget, the lockfile scanners without
-# condition) and on demand from the Actions tab.
+# One workflow, one job, never on push. GitHub bills a private repository per job (each one pays its own checkout,
+# install, build and database, and its time is counted on its own), and a run on every push to main repeats what the
+# pull request already proved on the merge commit. So: nothing runs on push, everything shares one runner, a pull
+# request that only touches documentation stops after the secret scan, and the lockfile scanners run when the lockfile
+# changed.
+# What runs depends on the moment, from the cheapest and most frequent to the heaviest and rarest:
+# - every push to a pull request, draft or not: the title, the scanners, the goal contract and its `in ci:` proofs,
+#   the build and `npm test` (boundaries, type-check, unit tests). Minutes, the same in every pull request.
+# - a pull request that is not a draft (opened ready, or marked "Ready for review"): also the backend e2e (the query
+#   budget of rule 11) and, when the project has Playwright, its smoke: the specs of
+#   apps/frontend/e2e/smoke.txt plus every spec the pull request adds or edits (the whole suite when it touches the
+#   suite's harness). The merge gate.
+# - every night on main (only when something merged in the last 26 h; otherwise the scanners alone) and on demand from
+#   the Actions tab: everything, the whole Playwright suite and every route's latency budget, which reports (a warning
+#   and a line in the run's summary) and never fails the run. A p95 on a shared 2-vCPU runner cannot say a change made
+#   a route slow: on PILOT the same route on the same code measured 1362 ms and 625 ms minutes apart.
+# - before a release: on demand with stage `pre-release`, everything, and the latency budget fails the run.
 # Never add a second job, a matrix or a `push:` trigger: extend the steps of this job. `npm run check:pr` runs the
 # pull-request-only gates locally, before the PR exists.
 name: CI
 
 on:
   pull_request:
+    # the default three, and the move from draft to ready, which runs the merge gate
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   schedule:
-    - cron: '17 6 * * 1'
+    # every night; the scope step makes it the scanners alone when nothing merged in the last 26 h
+    - cron: '17 6 * * *'
   workflow_dispatch:
+    inputs:
+      stage:
+        description: 'nightly: the latency budget reports. pre-release: the latency budget fails the run.'
+        type: choice
+        options:
+          - nightly
+          - pre-release
+        default: nightly
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -36,6 +62,8 @@ jobs:
       TURBO_TELEMETRY_DISABLED: 1
       # empty outside a pull request; reaches the shell through env, never through ${{ }} inside run
       BASE_REF: ${{ github.base_ref }}
+      # 'pre-release' makes the latency budget a gate; empty on a pull request and on the nightly schedule
+      STAGE: ${{ inputs.stage }}
     steps:
       # squash merges carry the PR title into main's history. Read from the API, so a re-run sees a title fixed after the
       # first run. Fails in seconds, before anything is installed.
@@ -67,6 +95,8 @@ jobs:
           code=true
           lockfile=true
           migrations=
+          # what a ready pull request runs of the Playwright suite: `full`, or the smoke plus the specs it wrote
+          playwright=full
           if [ -n "$BASE_REF" ]; then
             changed=$(git diff --name-only "origin/$BASE_REF...HEAD")
             grep -qvE '(\.md$|^docs/|^\.scratch/)' <<<"$changed" || code=false
@@ -78,15 +108,37 @@ jobs:
               exit 1
             fi
             migrations=$(git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- apps/backend/prisma/migrations | grep '\.sql$' | tr '\n' ' ' || true)
-          elif [ "$EVENT" = schedule ] && [ -z "$(git log -1 --since='8 days ago' --format=%h)" ]; then
-            # a week without a commit: only the scanners have something new to say
+            # the suite's harness (its config, a helper, a fixture) changed: the whole suite; else the smoke and the
+            # specs this pull request wrote. A name outside the pattern or a missing file fails here, named: the smoke
+            # never shrinks by a typo
+            harness=$(grep -E '^apps/frontend/(playwright\.config\.|e2e/)' <<<"$changed" | grep -vE '(\.spec\.ts$|^apps/frontend/e2e/smoke\.txt$)' || true)
+            if [ -z "$harness" ] && [ -f apps/frontend/e2e/smoke.txt ]; then
+              smoke=$(tr -d '\r' < apps/frontend/e2e/smoke.txt | sed 's/#.*//' | tr -s ' \t' '\n' | grep . || true)
+              if [ -z "$smoke" ]; then
+                echo "apps/frontend/e2e/smoke.txt lists no spec"
+                exit 1
+              fi
+              written=$(git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- 'apps/frontend/e2e/*.spec.ts' | sed 's#^apps/frontend/##' || true)
+              playwright=$(printf '%s\n%s\n' "$smoke" "$written" | grep . | sort -u | tr '\n' ' ' || true)
+              for spec in $playwright; do
+                if [[ ! "$spec" =~ ^e2e/[A-Za-z0-9_.-]+\.spec\.ts$ ]] || [ ! -f "apps/frontend/$spec" ]; then
+                  echo "refused Playwright spec: $spec (e2e/<name>.spec.ts, an existing file)"
+                  exit 1
+                fi
+              done
+            fi
+          elif [ "$EVENT" = schedule ] && [ -z "$(git log -1 --since='26 hours ago' --format=%h)" ]; then
+            # nothing merged since the last nightly run (26 h, not 24: a scheduled run can start late): only the
+            # scanners have something new to say
             code=false
           fi
           echo "code=$code lockfile=$lockfile migrations=${migrations:-none}"
+          echo "playwright=$playwright"
           {
             echo "code=$code"
             echo "lockfile=$lockfile"
             echo "migrations=$migrations"
+            echo "playwright=$playwright"
           } >> "$GITHUB_OUTPUT"
 
       # .gitleaks.toml (default rules + narrow allowlists) and .gitleaksignore at the root list what was reviewed.
@@ -150,15 +202,32 @@ jobs:
         run: npm test
 
       # the p95 budget (rule 11) on a database nothing has written to yet, and with nothing else running on the runner.
-      # A pull request measures the routes its diff reaches; the weekly run measures all. A route over budget twice is
-      # measured on the base too (worktree, npm ci, build: minutes, on a red run only), and only "slower than base" fails.
+      # Never on a pull request: every night and on demand, every route, and a red result is a warning and a line in the
+      # run's summary, never a failed run; with stage pre-release, the gate before production, it fails the run. The
+      # budgets in perf.config.json are the same in both: only whether a red result stops the run changes.
       - name: Latency budget
-        if: steps.scope.outputs.code == 'true'
+        if: steps.scope.outputs.code == 'true' && github.event_name != 'pull_request'
         run: |
-          if [ -n "$BASE_REF" ]; then npm run perf -- --changed "origin/$BASE_REF"; else npm run perf; fi
+          status=0
+          npm run perf || status=$?
+          if [ "$status" = 0 ]; then
+            echo "### Latency budget: every route within budget" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$STAGE" = pre-release ]; then
+            echo "::error title=Latency budget::npm run perf exited $status: the pre-release gate fails"
+            echo "### Latency budget: over budget, the pre-release gate fails (exit $status)" >> "$GITHUB_STEP_SUMMARY"
+            exit "$status"
+          fi
+          echo "::warning title=Latency budget::npm run perf exited $status (3: the machine was busy, nothing measured). Reported, not a failed run: a roadmap item, and a gate before the release."
+          {
+            echo "### Latency budget: over budget, reported (exit $status)"
+            echo "The run does not fail on it. The table is in this step's log; the pre-release run is the gate."
+          } >> "$GITHUB_STEP_SUMMARY"
 
+      # the query budget of rule 11 lives here (expectQueryBudget): a ready pull request runs it, a draft does not
       - name: Backend e2e
-        if: steps.scope.outputs.code == 'true'
+        if: steps.scope.outputs.code == 'true' && github.event.pull_request.draft != true
         run: npm -w apps/backend run test:e2e
 
       # A proof the contract wrote as `in ci:` runs here, on the clean runner, and nowhere else: without this step a
@@ -168,4 +237,8 @@ jobs:
         run: node scripts/goal.mjs prove --in-ci --changed "origin/$BASE_REF"
 
       # A Playwright suite goes here, as steps of this job (platform-engineer card): `docker compose down -v` and up
-      # again for a database of its own, migrate, roles, seed, both servers, the browsers from the cache.
+      # again for a database of its own, migrate, roles, seed, both servers, the browsers from the cache. Each of its
+      # steps carries `github.event.pull_request.draft != true` in its `if:`, and the last runs what the scope chose,
+      # with `SPECS: ${{ steps.scope.outputs.playwright }}` in its env:
+      #   if [ "$SPECS" = full ]; then npx playwright test; else read -ra specs <<< "$SPECS"; npx playwright test "${specs[@]}"; fi
+      # never with `--` before the names: Playwright drops every file filter after it and runs the whole suite.
