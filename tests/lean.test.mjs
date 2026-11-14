@@ -62,9 +62,11 @@ test('the prompts stay inside their word budget', () => {
   // 0.22.0 took 416 words out of the command (step 3 repeated the to-goal skill) to pay for the lean rule in the
   // cards, and left the command and the cards together no larger than 0.21.1 had them. Raising a number here is a
   // decision: say in the pull request what the new text buys. 0.23.0 and 0.25.0 each lowered both numbers to what
-  // they left, and so did 0.26.0, 0.27.0, 0.28.0, 0.29.0 and 0.30.0.
-  const COMMAND = 7515;
-  const SQUAD = 18667;
+  // they left, and so did 0.26.0, 0.27.0, 0.28.0, 0.29.0 and 0.30.0. 0.31.0 lowered the command to 7511 and raised
+  // the squad by 141 words: the platform-engineer's CI by moment (the smoke list, the draft gate, the pre-release run
+  // before a release), which replaced the weekly run and the p95 on every pull request.
+  const COMMAND = 7511;
+  const SQUAD = 18808;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
