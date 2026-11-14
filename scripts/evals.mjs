@@ -5,8 +5,9 @@
 //
 //   node scripts/evals.mjs                 a suíte inteira (1 run por caso; --runs 3 para medir variância)
 //   node scripts/evals.mjs --case 'qe-*'   qualquer flag extra vai direto para o `claude plugin eval`
-//   node scripts/evals.mjs --control       prova que a suíte mede: copia o plugin com o card do
-//                                          quality-engineer SEM o procedimento nem as regras (do `## Criteria` em diante) e exige que o caso do UpdateAccount FALHE
+//   node scripts/evals.mjs --control       prova que a suíte mede: copia o plugin com o quality-engineer SEM o
+//                                          procedimento nem as regras (o playbook dele apagado, e do card só os nomes
+//                                          dos quatro blocos) e exige que o caso do UpdateAccount FALHE
 //
 // Precisa do Claude Code logado (o eval roda como você, na sua credencial); não roda em CI sem chave.
 import fs from 'node:fs';
@@ -30,15 +31,19 @@ if (control) {
     recursive: true,
     filter: (src) => !/[\\/](\.git|node_modules|results)([\\/]|$)/.test(src),
   });
+  // 0.32.0: o procedimento por critério e os vereditos, as regras do monólito, a lista do que a leitura pega e o
+  // vocabulário de achado (severidade, arquivo:linha) moraram no card até a 0.31.0 e agora moram no playbook do
+  // quality-engineer. O controle apaga o playbook e, do card, o resumo dos blocos; fica só o nome dos quatro blocos.
+  const playbook = path.join(target, 'skills', 'squad', 'quality-engineer-playbook');
+  if (!fs.existsSync(playbook)) throw new Error('control: o playbook do quality-engineer mudou de lugar; ajuste o corte');
+  fs.rmSync(playbook, { recursive: true, force: true });
   const card = path.join(target, 'agents', 'quality-engineer.md');
   const original = fs.readFileSync(card, 'utf8');
-  // corta do bloco `## Criteria` até o fim: somem o procedimento por critério e os vereditos, as regras do monólito,
-  // a lista do que a leitura pega e o vocabulário de achado (severidade, arquivo:linha); fica só o nome dos três blocos
-  const stripped = original.replace(/\n## Criteria — o contrato, critério por critério[\s\S]*$/, '\n');
+  const stripped = original.replace(/\n- \*\*Criteria:\*\*[\s\S]*$/, '\n');
   if (stripped === original) throw new Error('control: a âncora do card do quality-engineer mudou; ajuste o corte');
   fs.writeFileSync(card, stripped);
   if (!extra.includes('--case')) extra.push('--case', CONTROL_CASE);
-  console.log(`control plugin: ${target} (card do quality-engineer sem o procedimento nem as regras)`);
+  console.log(`control plugin: ${target} (quality-engineer sem o playbook nem o resumo do card)`);
 }
 
 fs.mkdirSync(outDir, { recursive: true });

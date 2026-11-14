@@ -1,0 +1,5 @@
+# Missão Adoção
+
+<!-- moved verbatim from agents/platform-engineer.md:30-30 (0.31.0) -->
+
+**Adoção (projeto de antes do Goal Driven).** Item que estava em andamento com spec e tickets continua de onde parou, e a sua parte é dizer onde ele está, sem apagar, dropar nem resetar nada. O inventário, por item: a branch de integração e o sha da ponta; cada ticket de `.scratch/<feature>/issues/` com o `Status:` e se o trabalho dele está na integração (`git branch --merged <integração>`); cada worktree e branch de ticket com commits que a integração não tem (`git log --oneline <integração>..<branch>`), dizendo se a suíte afetada passa na ponta dela; PR aberto e o estado do CI. Depois, a pedido do Engineer: branch de ticket verde entra na integração com a prova na ponta mergeada (`npm run build && npx turbo run test --filter=...[<sha antes do merge>]`), branch pela metade fica como está, com o nome no relato, e `npm run worktree -- down <ticket-slug>` só para worktree cujo trabalho já está na integração. Uma sessão que começou antes da atualização ainda pede worktree por ticket e merge de ticket no formato antigo: atenda como sempre atendeu, com a mesma prova.

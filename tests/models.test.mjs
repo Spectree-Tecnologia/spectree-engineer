@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { allPromptFiles, role } from './prompts.mjs';
 import { fileURLToPath } from 'node:url';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,7 +22,7 @@ test('every card declares Opus', () => {
 });
 
 test('the command asks for Fable only from the third verification round on', () => {
-  const command = read('commands/engineer.md');
+  const command = role('engineer');
   assert.match(command, /todo papel do squad roda em \*\*Opus\*\*/);
   assert.match(command, /\*\*Piso: `opus`\.\*\*/);
   // each line that names `model: "fable"` is the one about the third round

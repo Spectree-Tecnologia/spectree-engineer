@@ -2,6 +2,26 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.32.0] - 2026-11-14
+
+**Cada card tem no máximo 600 palavras, e o detalhe operacional mora num playbook por papel.** Um card curto mantém o agente na missão; o como de cada etapa fica numa reference que ele lê quando a missão pede. Antes: o comando tinha 7447 palavras e o maior card 3058 (sem o frontmatter). Depois: o comando tem 597 e o maior card 593. Nenhuma regra muda: o texto que saiu dos cards foi movido palavra por palavra, e um teste prova que cada linha da 0.31.0 está no card ou no playbook do mesmo papel.
+
+### Added
+- **Sete skills `<papel>-playbook`** em `skills/squad/` (agent-only, `user-invocable: false`): `engineer-playbook` (12 references: uma por etapa do fluxo, mais `mission.md`), `full-stack-developer-playbook`, `quality-engineer-playbook`, `security-engineer-playbook`, `solutions-architect-playbook`, `ui-ux-designer-playbook` e `platform-engineer-playbook` (uma reference por missão). Cada card, e o comando, manda chamar o seu playbook antes do primeiro passo e diz qual reference ler em cada missão. O `integration-engineer` já cabia em 600 palavras e não mudou.
+- `scripts/card-words.mjs`: conta as palavras do corpo de cada card e do comando, sem o frontmatter, e sai 1 acima de 600.
+- `tests/playbooks.test.mjs`: todo playbook é carregado pelo seu card e está no manifesto; toda reference e skill que um card cita existe; as ferramentas que um card cita estão no frontmatter dele; e nenhuma linha dos prompts da 0.31.0 se perdeu.
+- `tests/prompts.mjs`: os testes que procuram uma regra de um papel leem o card e o playbook dele juntos.
+
+### Changed
+- **O comando e os cards** foram reescritos em quatro partes explícitas: a missão, as skills e ferramentas com o quando de cada uma, os limites e o escalonamento, e os handoffs com os outros papéis, a etapa de UX Design incluída. O frontmatter de nenhum deles mudou.
+- `tests/lean.test.mjs`: o teto passa a ser de 600 palavras por corpo; o orçamento do squad conta o comando, os cards e os playbooks (24302 palavras; eram 18808 no comando e nos cards da 0.31.0, e a diferença é o resumo de cada card e os índices dos playbooks, que apontam para o detalhe).
+- `tests/vocabulary.test.mjs` e o teste de "fatia" leem também os playbooks.
+- `scripts/evals.mjs --control`: o controle apaga o playbook do `quality-engineer` e corta o resumo do card, porque o procedimento e as regras moraram no card até a 0.31.0.
+
+### O que não foi provado
+- Os evals não foram rodados (custam cerca de US$ 5 por passada, na credencial do fundador): que cada agente chama o seu playbook antes de agir está escrito no card e não foi medido num caso real. É o primeiro número a olhar no próximo objetivo: `npm run goal -- spent <slug> --agents` e a transcrição de um despacho.
+- Ler as references sob demanda pode custar algumas chamadas a mais por missão; o ganho esperado é o card curto no contexto de toda chamada. Nenhum dos dois foi medido.
+
 ## [0.31.0] - 2026-11-13
 
 **O CI roda por momento, e o p95 reporta durante o desenvolvimento.** Medido no SYND em 2026-11-13: o run de PR levava ~21 min (Playwright 609 s, perf 165 s, e2e do backend 157 s); três runs ficaram vermelhos no `/agent/chat`, e no mesmo run, mesmo código e mesma máquina a rota mediu 1362 ms e depois 625 ms. Um p95 de runner compartilhado não diz que a mudança deixou a rota lenta, e cada vermelho custava uma rodada do objetivo. Com o desenho novo no SYND (PR 29): push no PR em 3 min 11 s, PR pronto em 6 min 20 s, run noturno inteiro em 22 min.

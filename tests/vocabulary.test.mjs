@@ -6,11 +6,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { allPromptFiles } from './prompts.mjs';
 import { fileURLToPath } from 'node:url';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
-const prompts = ['commands/engineer.md', ...fs.readdirSync(path.join(plugin, 'agents')).map((name) => `agents/${name}`)];
+// the command and the cards, and the playbooks they point at (0.32.0)
+const prompts = allPromptFiles();
 
 // "dono" also means the owner of a resource, a table or a schema.
 const ALLOWED = ['dono do recurso', 'não é dono de nada', 'sem o dono;', 'dono do schema'];
@@ -33,7 +35,7 @@ test('the contract skill names the full-stack-developer, not "the owner"', () =>
 });
 
 test('the command tells the Engineer to name each agent by its role', () => {
-  const command = read('commands/engineer.md');
+  const command = read('commands/engineer.md'); // the rule stays in the command itself
   for (const role of ['full-stack-developer', 'quality-engineer', 'security-engineer', 'solutions-architect', 'platform-engineer', 'ui-ux-designer', 'integration-engineer']) {
     assert.match(command, new RegExp(`Nomeie cada agente pelo nome do papel[^\\n]*\`${role}\``));
   }

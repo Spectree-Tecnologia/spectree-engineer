@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { allPromptFiles, role } from './prompts.mjs';
 import { fileURLToPath } from 'node:url';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -115,16 +116,16 @@ test('the scope step chooses the Playwright smoke from the diff', { skip: !bash 
 });
 
 test('the squad reads the moments: a red p95 is reported, never a round', () => {
-  const command = read('commands/engineer.md');
+  const command = role('engineer');
   assert.match(command, /\*\*O p95 reporta, não bloqueia:\*\* a tabela vai à evidência como `reported`/);
   assert.match(command, /viram item do roadmap, nunca rodada\. Quem bloqueia é o run `pre-release`, antes do deploy\./);
   assert.match(command, /toda camada determinística sai 0, menos o p95\./);
   assert.match(command, /O PR abre pronto, nunca em draft: o run de PR pronto é o gate do merge\./);
   assert.doesNotMatch(command, /perf vermelho vai ao full-stack-developer/);
-  const platform = read('agents/platform-engineer.md');
+  const platform = role('platform-engineer');
   assert.match(platform, /\*\*um workflow, um job, nunca em push\*\*/);
   assert.match(platform, /gh workflow run ci\.yml --ref main -f stage=pre-release/);
   assert.match(platform, /\*\*sem `--` antes dos nomes\*\*/);
-  assert.match(read('agents/quality-engineer.md'), /Um p95 acima do orçamento não é achado: achado é a rota sem número/);
+  assert.match(role('quality-engineer'), /Um p95 acima do orçamento não é achado: achado é a rota sem número/);
   assert.match(read('ARCHITECTURE.md'), /gates the `pre-release` run before production/);
 });

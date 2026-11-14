@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { allPromptFiles, role } from './prompts.mjs';
 import { fileURLToPath } from 'node:url';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -210,27 +211,27 @@ test('no skill sends an agent to a user it cannot reach, or to a command the flo
   assert.doesNotMatch(read('skills/monolith/config-prisma/SKILL.md'), /`npx prisma migrate reset/);
   // a read is a query, in query/, never a use case: the rule, the cards and the skills say the same folder
   assert.match(read('ARCHITECTURE.md'), /`modules\/<m>\/src\/<aggregate>\/query\/`/);
-  assert.match(read('agents/full-stack-developer.md'), /`query\/` \(`\*\.query\.ts`\)/);
+  assert.match(role('full-stack-developer'), /`query\/` \(`\*\.query\.ts`\)/);
   assert.match(read('skills/monolith/module-query-cqrs/SKILL.md'), /src\/<feature>\/query\//);
   assert.doesNotMatch(read('skills/monolith/module-query-cqrs/SKILL.md'), /use case de leitura/);
   assert.doesNotMatch(read('skills/monolith/module-use-case/references/use-case-pattern.md'), /class \w+UseCase implements/);
   // check:pr needs the Evidence table filled: it runs before the pull request, not in the deterministic layer
-  assert.doesNotMatch(read('commands/engineer.md'), /test:e2e`\); `npm run check:pr`/);
+  assert.doesNotMatch(role('engineer'), /test:e2e`\); `npm run check:pr`/);
 });
 
 // Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on SYND on 2026-11-13: tickets 02
 // and 06 of ci-time took three verification rounds each, every re-verification hunted again and found new things,
 // and the quality-engineer verified a checkout the next full-stack-developer was already changing.
 test('a ticket closes whole: nobody writes while it is verified, the builder fixes, whoever found re-checks, once', () => {
-  const command = read('commands/engineer.md');
+  const command = role('engineer');
   assert.match(command, /\*\*Checkpoint por ticket: o ticket fecha antes de o próximo começar\.\*\*/);
   assert.match(command, /Enquanto eles verificam, ninguém escreve no checkout: o que rodam é o commit do ticket/);
   assert.doesNotMatch(command, /sem esperar por eles/);
   assert.match(command, /quem achou reconfere, pela mesma conversa, com o diff da correção: cada achado `closed` ou `open`/);
   assert.match(command, /Não é caça nova: o objetivo inteiro é da verificação final/);
-  assert.match(read('agents/quality-engineer.md'), /\*\*Reconferência\.\*\*[^\n]*`closed` ou `open`[^\n]*Não procure achado novo fora desse diff/);
-  assert.match(read('agents/security-engineer.md'), /`closed` ou `open` por achado seu, sem caça nova/);
-  assert.match(read('agents/full-stack-developer.md'), /Você pode ser chamado de volta uma vez, pela mesma conversa, com os achados do checkpoint do seu ticket/);
+  assert.match(role('quality-engineer'), /\*\*Reconferência\.\*\*[^\n]*`closed` ou `open`[^\n]*Não procure achado novo fora desse diff/);
+  assert.match(role('security-engineer'), /`closed` ou `open` por achado seu, sem caça nova/);
+  assert.match(role('full-stack-developer'), /Você pode ser chamado de volta uma vez, pela mesma conversa, com os achados do checkpoint do seu ticket/);
   // the handoff notice no longer assumes a ticket: a fix or a bug mission has none
   assert.match(read('hooks/engineer-desk/register.tsx'), /in your ticket, or in your report when the mission has no ticket/);
 });
@@ -261,9 +262,9 @@ test('the squad plans, gates and walks by the graph', () => {
   assert.match(skill, /^\*\*Touches:\*\*/m);
   assert.match(skill, /^\*\*Proof:\*\* run: `<command>`/m);
   assert.match(skill, /npm run goal -- graph <slug> --plan/);
-  const command = read('commands/engineer.md');
+  const command = role('engineer');
   assert.match(command, /`npm run goal -- graph <slug> --plan`/);
   assert.match(command, /o primeiro da frontier que `npm run goal -- graph <slug>` imprime/);
   assert.match(command, /`npm run goal -- graph <slug> --prove <NN>`/);
-  assert.match(read('agents/full-stack-developer.md'), /npm run goal -- graph <slug> --plan/);
+  assert.match(role('full-stack-developer'), /npm run goal -- graph <slug> --plan/);
 });
