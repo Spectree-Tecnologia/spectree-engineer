@@ -276,6 +276,36 @@ test('whoever plans does not build: the first ticket is a new full-stack-develop
   assert.doesNotMatch(read('README.md'), /quem planeja constrói o primeiro ticket/);
 });
 
+// Delivery 3 (0.34.0): two lanes. Measured on SYND's ci-time-20 (2026-11-14): ticket 02 sat free for the 40 minutes of
+// ticket 01 and ticket 03 for the 77 minutes of ticket 02, with the usage limit never reached in 3.8 hours.
+test('the graph says which tickets of the frontier may be built at the same time', () => {
+  const dir = project({ ...good, '01-create': { ...good['01-create'], status: 'done' } });
+  const res = run(dir);
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /parallel: 02 \+ 03 {2}\(no order between them, no folder in common: each in its own checkout\)/);
+  assert.deepEqual(JSON.parse(run(dir, '--json').out).parallel, [2, 3]);
+  // one ticket free: nothing to run beside it
+  assert.doesNotMatch(run(project(good)).out, /parallel:/);
+  // a ticket that does not say what it touches proved nothing: it is built alone
+  const silent = project({ ...good, '01-create': { ...good['01-create'], status: 'done' }, '03-archive': { criteria: '3', blockedBy: '01' } });
+  assert.doesNotMatch(run(silent).out, /parallel:/);
+  assert.deepEqual(JSON.parse(run(silent, '--json').out).parallel, []);
+});
+
+test('the Engineer runs two lanes, and a closed ticket is merged with the other lane stopped', () => {
+  const command = read('commands/engineer.md');
+  assert.match(command, /\*\*Duas pistas, quando o grafo deixa\.\*\*[^\n]*`parallel:`[^\n]*nunca com mais de dois/);
+  assert.match(command, /`npm run worktree -- up <slug>-b --branch <tipo>\/<slug>-b`/);
+  assert.match(command, /com a pista 1 parada: `git merge --no-ff --no-edit <sha fechado>` e a prova do afetado/);
+  assert.match(command, /conflito é `git merge --abort` e missão do platform-engineer/);
+  assert.match(command, /O grafo só vê `done` o ticket mergeado/);
+  assert.match(command, /Sessão com `worktree` no prompt roda uma pista só/);
+  // two verifiers at once never share a scratch database
+  assert.match(command, /`npm run db:scratch -- <papel>-t<NN> -- <comando>`/);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /also lists `package-lock\.json`/);
+  assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*Um por checkout\./m);
+});
+
 test('the squad plans, gates and walks by the graph', () => {
   const skill = read('skills/engineering/to-tickets/SKILL.md');
   assert.match(skill, /^\*\*Touches:\*\*/m);
