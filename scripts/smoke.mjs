@@ -328,7 +328,9 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     const planned = run('graph-plan', 'npm run goal -- graph probe-thing --plan');
     if (!/3 tickets, 0 done, 2 waves, 2 wide/.test(planned) || !/frontier: 01/.test(planned)) throw new Error(`goal graph did not read the plan:${planned.slice(-400)}`);
     ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'done');
-    if (!/frontier: 02, 03/.test(run('graph-frontier', 'npm run goal -- graph probe-thing'))) throw new Error('goal graph did not free the tickets that waited for 01');
+    const freed = run('graph-frontier', 'npm run goal -- graph probe-thing');
+    if (!/frontier: 02, 03/.test(freed)) throw new Error('goal graph did not free the tickets that waited for 01');
+    if (!/parallel: 02 \+ 03/.test(freed)) throw new Error('goal graph did not say that tickets 02 and 03 may be built at the same time');
     if (!/exit 0\s+ticket 02/.test(run('graph-prove-ticket', 'npm run goal -- graph probe-thing --prove 2'))) throw new Error('goal graph --prove did not run the proof of ticket 02 in UTC');
     const stats = run('goal-stats', 'npm run goal -- stats');
     if (!/probe-thing\s+approved\s+3\s+1\/3\s+1\s+1\s+1\s/.test(stats)) throw new Error(`goal stats did not count the round, the reproof, the user decision and the policy one:${stats.slice(-500)}`);

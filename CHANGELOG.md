@@ -2,6 +2,26 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.34.0] - 2026-11-14
+
+**Duas pistas: os tickets livres do grafo rodam ao mesmo tempo.** É a terceira entrega da engenharia de grafo. Medido no `ci-time-20` do SYND em 2026-11-14: o ticket 02 ficou livre e parado pelos 40 minutos do ticket 01, e o ticket 03 pelos 77 minutos do ticket 02 (paralelismo de 1,05), sem que o limite de uso do plano parasse a sessão em 3,8 horas. O mesmo objetivo mostrou a entrega 2 funcionando: o ticket 02 fechou em uma volta de conferência, com 9,8M tokens e 36 minutos depois de construído, contra três voltas, 25,6M e 83 minutos do ticket do mesmo tipo no `ci-time`.
+
+### Added
+- **`npm run goal -- graph <slug>` imprime `parallel:`** quando dois ou mais tickets da frontier dizem o que tocam: não há ordem entre eles, e o próprio grafo já provou que não escrevem na mesma pasta. O `--json` traz o mesmo em `parallel`. Ticket sem `Touches` não provou nada e roda sozinho.
+
+### Changed
+- **Passo 7 do `/engineer`, duas pistas.** A pista 1 é o checkout principal; a pista 2 é uma worktree que o Engineer cria uma vez, por script e em segundo plano (`npm run worktree -- up <slug>-b`), e remove no fim. Cada pista roda o ciclo inteiro do seu ticket (construir, gate, conferir, corrigir, reconferir). O ticket fechado na pista 2 entra na branch do objetivo com a pista 1 parada, por `git merge --no-ff` e a prova do afetado; conflito é `git merge --abort` e missão do `platform-engineer`. Nunca mais de dois, e a sessão aberta com `worktree` no prompt roda uma pista só.
+- O banco de quem verifica um checkpoint leva o número do ticket (`<papel>-t<NN>`): dois verificadores ao mesmo tempo nunca dividem um banco.
+- `to-tickets`: o ticket que acrescenta ou muda uma dependência lista `package-lock.json` em `Touches`, porque dois tickets que mexem no lockfile não se mergeiam sem conflito.
+- O comando cresceu 114 palavras, e o orçamento subiu com ele: é o texto das duas pistas. Saíram duas explicações repetidas para pagar parte.
+
+### O que não foi provado
+- Nenhum objetivo real rodou em duas pistas. O paralelo não gasta menos tokens: gasta os mesmos em menos tempo, então chega ao limite de uso do plano mais cedo.
+- Duas suítes de build e teste ao mesmo tempo na máquina do fundador: o tempo de cada uma pode crescer.
+- A worktree da pista 2 leva minutos para subir (instalar, migrar, buildar) e ocupa disco.
+- Um conflito de merge entre pistas só aparece quando `Touches` mentiu; o `solutions-architect` confere isso no gate do plano, por leitura.
+- Os evals não foram rodados: nenhum caso exercita o passo 7.
+
 ## [0.33.0] - 2026-11-14
 
 Duas correções medidas no `ci-time-20` do SYND em 2026-11-14, o primeiro objetivo planejado como grafo (7 tickets, 5 ondas, largura 2, `goal graph --plan` verde na primeira volta).
@@ -496,6 +516,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.34.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.30.0...v0.31.0
