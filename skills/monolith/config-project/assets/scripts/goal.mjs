@@ -8,7 +8,8 @@
 //   npm run goal -- prove <slug> --after-merge     runs only the proofs written `after merge:`, on the merged main
 //   npm run goal -- prove --in-ci --changed <ref>  runs the proofs written `in ci:` of the contracts this branch changed (a CI step)
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
-//   npm run goal -- graph <slug>                   the tickets as a graph: no cycle, every criterion has a ticket, the frontier
+//   npm run goal -- graph <slug>                   the tickets as a graph: no cycle, every criterion has a ticket, the frontier,
+//                                                  and which tickets of the frontier may be built at the same time
 //   npm run goal -- graph <slug> --plan            also, before any code: every ticket says what it touches and its proof
 //   npm run goal -- graph <slug> --prove <ticket>  runs the ticket's own proof, in UTC, and exits with it
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
@@ -702,6 +703,11 @@ function graph() {
   const wave = (ticket) => (cycle ? 1 : 1 + Math.max(0, ...ticket.blockedBy.filter((n) => byNumber.has(n)).map((n) => wave(byNumber.get(n)))));
   for (const ticket of tickets) ticket.wave = wave(ticket);
   const frontier = cycle ? [] : tickets.filter((ticket) => !ticket.done && ticket.blockedBy.every((n) => byNumber.get(n)?.done));
+  // Two tickets of the frontier have no order between them, and the check above proved they write no folder in
+  // common: they may be built at the same time, each in its own checkout. A ticket that does not say what it touches
+  // proved nothing, so it is built alone.
+  const together = frontier.filter((ticket) => ticket.touches && ticket.touches.length > 0);
+  const parallel = errors.length === 0 && together.length > 1 ? together : [];
 
   if (flags['--prove'] !== undefined) {
     const ticket = byNumber.get(Number(flags['--prove']));
@@ -721,7 +727,7 @@ function graph() {
   }
 
   if (flags['--json']) {
-    console.log(JSON.stringify({ slug, tickets, frontier: frontier.map((ticket) => ticket.n), errors, notes }, null, 2));
+    console.log(JSON.stringify({ slug, tickets, frontier: frontier.map((ticket) => ticket.n), parallel: parallel.map((ticket) => ticket.n), errors, notes }, null, 2));
     return errors.length === 0 ? 0 : 1;
   }
   const waves = Math.max(0, ...tickets.map((ticket) => ticket.wave));
@@ -734,6 +740,7 @@ function graph() {
   for (const error of errors) console.log(`      error: ${error}`);
   for (const note of notes) console.log(`      note:  ${note}`);
   if (errors.length === 0) console.log(frontier.length > 0 ? `  frontier: ${frontier.map((ticket) => pad(ticket.n)).join(', ')}` : '  frontier: none, every ticket is done');
+  if (parallel.length > 0) console.log(`  parallel: ${parallel.map((ticket) => pad(ticket.n)).join(' + ')}  (no order between them, no folder in common: each in its own checkout)`);
   return errors.length === 0 ? 0 : 1;
 }
 
