@@ -2,6 +2,24 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.32.0] - 2026-11-14
+
+**O começo de um objetivo é um script, não uma missão de agente.** Medido no PILOT: a missão do `platform-engineer` que cortava a branch e gravava a baseline levou 27 minutos e 9,3M tokens no `ts7` e 60 minutos e 9,2M no `ci-time-20`, com o `full-stack-developer` parado esperando. Branch, ferramentas, instalação, build, testes e audit foram 5 desses 60 minutos; cerca de 25 das 93 voltas do agente só olharam um log, e cada volta relê o contexto inteiro.
+
+### Added
+- **`goal-start.mjs`**, em `skills/monolith/config-project/scripts/`, rodado pelo Engineer da raiz do projeto. `<slug> --branch <tipo>/<slug>` corta a branch (ou muda para ela), roda o `tooling-sync`, commita só o que ele escreveu e imprime o sha da baseline; sai 4 quando um script que o projeto alterou difere do plugin. `<slug> --baseline [--e2e]` instala se o lockfile é mais novo que o `node_modules`, roda build, testes e audit em UTC, grava `.scratch/<slug>/baseline.md` com um log por passo, e sai 1 na baseline vermelha e 3 no audit com `high` ou `critical`.
+
+### Changed
+- **Passo 5 do `/engineer`:** o Engineer roda os dois comandos, o segundo em segundo plano. **O plano não espera a baseline:** o `full-stack-developer` é despachado logo depois do `--branch`. O que o contrato pede além da baseline (o e2e, a lista de testes do Playwright) também roda em segundo plano.
+- A missão "Branch e baseline" do `platform-engineer` virou "Tooling que difere": ele só entra quando o script sai 4, para ler as duas versões do script que o projeto alterou.
+- O `full-stack-developer` não diagnostica o browser do Playwright que não abre no Windows (`spawn UNKNOWN`, o Code Integrity recusa o executável): roda a suíte num container Linux. No `ci-time-20` isso custou 17 minutos.
+- O comando cresceu 68 palavras e o card do `platform-engineer` perdeu 90: os dois somados têm 22 a menos que na 0.31.0.
+
+### O que não foi provado
+- Nenhum objetivo real começou por este fluxo. O ganho esperado é o `full-stack-developer` começar o plano minutos depois do contrato, e não uma hora depois.
+- O Engineer passa a cortar a branch e a commitar o `chore(tooling)` ele mesmo, por script; antes, toda operação de git que muda estado era do `platform-engineer`.
+- O teste de fumaça não exercita o `goal-start.mjs`: quem o prova é `tests/goal-start.test.mjs`, num repositório temporário.
+
 ## [0.31.0] - 2026-11-13
 
 **O CI roda por momento, e o p95 reporta durante o desenvolvimento.** Medido no PILOT em 2026-11-13: o run de PR levava ~21 min (Playwright 609 s, perf 165 s, e2e do backend 157 s); três runs ficaram vermelhos no `/agent/chat`, e no mesmo run, mesmo código e mesma máquina a rota mediu 1362 ms e depois 625 ms. Um p95 de runner compartilhado não diz que a mudança deixou a rota lenta, e cada vermelho custava uma rodada do objetivo. Com o desenho novo no PILOT (PR 29): push no PR em 3 min 11 s, PR pronto em 6 min 20 s, run noturno inteiro em 22 min.
@@ -465,6 +483,8 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.32.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.31.0...v0.32.0
+[0.31.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.27.0...v0.28.0
