@@ -32,7 +32,11 @@ test('the command dispatches a new full-stack-developer for each ticket, and a t
   // 0.30.0: three continuations, each of an agent whose context already holds what the message is about. Measured on
   // PILOT on 2026-11-13: fixes by a full-stack-developer starting cold were 44% of ci-time's tokens, and a one-line fix
   // cost 3.8M in ts7. The unit is still one ticket per agent: a fix is of the agent's own ticket, never of the goal.
-  assert.match(command, /a continuação \(SendMessage\) existe em três casos: o full-stack-developer que teve o plano aprovado e segue para o primeiro ticket, a correção do ticket por quem o construiu, e a reconferência por quem achou/);
+  assert.match(command, /a continuação \(SendMessage\) existe em três casos: o plano que o gate devolveu a quem o escreveu, a correção do ticket por quem o construiu, e a reconferência por quem achou/);
+  // 0.33.0: measured on PILOT's ci-time-20 (2026-11-14): the planner went on to ticket 01 with 191 thousand tokens of
+  // context and its tool-call count already past the handoff point, and handed off after 5 calls
+  assert.match(command, /a missão de quem planejou termina aí: despache um full-stack-developer \*\*novo\*\* para o primeiro ticket da frontier/);
+  assert.doesNotMatch(command, /mande o mesmo full-stack-developer construir o primeiro ticket/);
   assert.match(command, /ao \*\*mesmo\*\* full-stack-developer que construiu o ticket, pela mesma conversa \(SendMessage\)/);
 });
 
