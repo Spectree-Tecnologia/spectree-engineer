@@ -14,7 +14,7 @@ If you are the orchestrator (you talk to the user and dispatch the others), stop
 
 ## Why tickets
 
-Each ticket is built by a **new** `full-stack-developer`, in a fresh context; only the first is built by the one that wrote the plan. An agent that holds a whole goal re-reads its whole context on every turn, and that is where a goal's tokens go. A ticket is the unit that keeps the context small. So write each one for a reader who has the contract, the plan, the ticket and the code, and nothing else.
+Each ticket is built by a **new** `full-stack-developer`, in a fresh context, and never by the one that wrote the plan: that context already holds the whole exploration. An agent that holds a whole goal re-reads its whole context on every turn, and that is where a goal's tokens go. A ticket is the unit that keeps the context small. So write each one for a reader who has the contract, the plan, the ticket and the code, and nothing else.
 
 ## Process
 

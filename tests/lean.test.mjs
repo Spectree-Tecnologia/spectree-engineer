@@ -67,8 +67,8 @@ test('the prompts stay inside their word budget', () => {
   // before a release), which replaced the weekly run and the p95 on every pull request.
   // 0.32.0 moved the start of a goal from the platform-engineer's card to the command, as two commands the Engineer
   // runs: the command grew and the two together shrank.
-  const COMMAND = 7579;
-  const SQUAD = 18786;
+  const COMMAND = 7578;
+  const SQUAD = 18781;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
