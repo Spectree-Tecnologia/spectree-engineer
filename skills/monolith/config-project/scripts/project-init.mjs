@@ -1699,7 +1699,7 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     if (!(await pathExists(ciPath))) {
       const ciAsset = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'workflows', 'ci.yml');
       await activeRunOps.writeTextFile(ciPath, await fs.readFile(ciAsset, 'utf8'), {
-        note: 'CI: one job on pull requests, scanners included, the full run weekly on main',
+        note: 'CI: one job on pull requests, scanners included, by moment: fast checks on every push, the merge gate on a ready PR, the full run nightly on main',
       });
     }
     // root typescript follows the backend scaffold: create-turbo's TS 7 breaks typescript-eslint in the frontend

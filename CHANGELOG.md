@@ -2,6 +2,26 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.31.0] - 2026-11-13
+
+**O CI roda por momento, e o p95 reporta durante o desenvolvimento.** Medido no SYND em 2026-11-13: o run de PR levava ~21 min (Playwright 609 s, perf 165 s, e2e do backend 157 s); três runs ficaram vermelhos no `/agent/chat`, e no mesmo run, mesmo código e mesma máquina a rota mediu 1362 ms e depois 625 ms. Um p95 de runner compartilhado não diz que a mudança deixou a rota lenta, e cada vermelho custava uma rodada do objetivo. Com o desenho novo no SYND (PR 29): push no PR em 3 min 11 s, PR pronto em 6 min 20 s, run noturno inteiro em 22 min.
+
+### Changed
+- **`ci.yml` gerado, por momento.** Todo push num PR, draft ou não: título, scanners, contrato, build, `npm test`. PR pronto (`ready_for_review` entrou nos gatilhos): mais o e2e do backend e o smoke do Playwright, que é o gate do merge. Toda noite na main (cron diário; só os scanners se nada entrou em 26 h) e no `workflow_dispatch`: tudo, a suíte Playwright inteira e o p95 de cada rota, que **reporta** (aviso e linha no resumo do run) e nunca falha o run. `workflow_dispatch` com `stage: pre-release`: tudo, e o p95 **falha** o run. Nenhum teste sai do CI: muda de momento.
+- **Smoke do Playwright.** O passo de escopo escolhe o que um PR pronto roda: as specs de `apps/frontend/e2e/smoke.txt` mais toda spec que o PR escreveu; a suíte inteira quando o PR toca o arnês (config, helper, fixture). Nome fora de `e2e/<nome>.spec.ts` ou arquivo que não existe falha o passo, com o nome: o smoke nunca encolhe por erro de digitação. O card do `platform-engineer` diz o critério da lista e que os nomes vão a `npx playwright test` sem `--` (com ele o Playwright ignora o filtro e roda a suíte inteira, como no run 43534301712 do SYND).
+- **Passo 8 do `/engineer`.** O p95 reporta e não bloqueia o objetivo: a tabela vai à evidência como `reported`; rota acima do orçamento e perf que sai 3 viram item do roadmap, nunca rodada, e nada volta ao `full-stack-developer` por eles. Continuam bloqueando: resposta não-2xx, `expectQueryBudget` no e2e e critério do contrato que é meta de latência.
+- **Passo 10 e missão Release.** O PR do objetivo abre pronto, nunca em draft. Antes de `npm run release`, o `platform-engineer` roda `gh workflow run ci.yml --ref main -f stage=pre-release` e só sobe com ele verde.
+- **Regra 11** do `ARCHITECTURE.md`: o orçamento de queries bloqueia todo PR pronto; o p95 roda toda noite, reportando, e bloqueia o run `pre-release`. O `quality-engineer` não acusa p95 acima do orçamento: o achado é a rota sem número.
+- O run noturno vermelho na main é correção antes de qualquer objetivo (era o run semanal).
+
+### Added
+- `tests/ci-moments.test.mjs`: roda em bash o passo de escopo (smoke mais specs do PR, suíte inteira no arnês, nome errado recusado) e o passo do Latency Budget (exit 1 e 3 reportam no nightly; só o `pre-release` falha), e lê as regras no comando e nos cards.
+
+### O que não foi provado
+- O caminho vermelho do Latency Budget foi exercitado em bash, não num run real: os runs do SYND neste dia ficaram dentro do orçamento.
+- Um projeto que já existe não recebe o `ci.yml` novo pelo `tooling-sync`: o SYND recebeu pelo PR 29; outro projeto pede uma missão do `platform-engineer`.
+- O orçamento de palavras do squad subiu 141 palavras (o comando desceu 4): o texto novo é a receita do CI por momento no card do `platform-engineer`.
+
 ## [0.30.0] - 2026-11-13
 
 **O ticket fecha inteiro antes de o próximo começar.** É a segunda entrega da engenharia de grafo. Medido no SYND em 2026-11-13: correção por um `full-stack-developer` que nasce frio foi 44% dos tokens do `ci-time` (uma correção de uma linha custou 3,8M no `ts7`); os tickets 02 e 06 passaram por três rodadas de verificação, e cada uma procurou de novo e achou coisa nova; e o `quality-engineer` verificava um checkout que o próximo `full-stack-developer` já estava mudando.
