@@ -271,6 +271,12 @@ function check() {
     const goal = parse(file);
     const { errors, warnings } = lint(goal, Boolean(flags['--ready']));
     console.log(`${errors.length === 0 ? 'ok  ' : 'FAIL'}  docs/goals/${goal.slug}.md  (${goal.status || 'no status'}, ${goal.criteria.length} criteria)`);
+    // one contract: every command its proofs will run, as the script reads the cell and not as its author meant it
+    if (files.length === 1) {
+      for (const criterion of goal.criteria) {
+        for (const line of criterion.commands) console.log(`      runs:  criterion ${criterion.n}${criterion.deferred ? ` (${criterion.deferred})` : ''}  ${line}`);
+      }
+    }
     for (const error of errors) console.log(`      error: ${error}`);
     for (const warning of warnings) console.log(`      note:  ${warning}`);
     if (errors.length > 0) bad++;

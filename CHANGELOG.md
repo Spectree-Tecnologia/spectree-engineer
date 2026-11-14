@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.33.0] - 2026-11-14
+
+Duas correções medidas no `ci-time-20` do SYND em 2026-11-14, o primeiro objetivo planejado como grafo (7 tickets, 5 ondas, largura 2, `goal graph --plan` verde na primeira volta).
+
+### Changed
+- **Quem planeja não constrói.** A missão do `full-stack-developer` que escreve o plano termina no plano aprovado, e o primeiro ticket é de um `full-stack-developer` novo. No `ci-time-20` quem planejou seguiu para o ticket 01 com 191 mil tokens de contexto e com o contador de chamadas já além do ponto de handoff, por causa do plano e da revisão dele; parou depois de 5 chamadas, e um agente novo recomeçou. A continuação por SendMessage segue em três casos: o plano que o gate devolveu a quem o escreveu, a correção do ticket por quem o construiu, e a reconferência por quem achou.
+- **`npm run goal -- check <slug>` imprime `runs:`**, uma linha por comando que as provas do contrato vão rodar, como o script lê a célula. No `ci-time-20` a redação de uma prova "by hand" trazia um segundo `run:`, e o passo `Goal proofs written in ci` do próprio PR o rodaria; quem achou foi o `quality-engineer`, no ataque às provas. O passo 3 manda o Engineer ler essas linhas ao gravar o contrato.
+- O comando e os cards somados têm 5 palavras a menos que na 0.32.0.
+
+### O que não foi provado
+- Nenhum objetivo real rodou com quem planeja parando no plano: o custo é o começo frio do ticket 01, que no `ci-time-20` aconteceu de qualquer jeito.
+- O Engineer foi 31% dos tokens das primeiras 2,3 horas do `ci-time-20` (contexto de 77 mil na primeira volta, 282 mil na 60ª). Nada aqui muda isso.
+
 ## [0.32.0] - 2026-11-14
 
 **O começo de um objetivo é um script, não uma missão de agente.** Medido no SYND: a missão do `platform-engineer` que cortava a branch e gravava a baseline levou 27 minutos e 9,3M tokens no `ts7` e 60 minutos e 9,2M no `ci-time-20`, com o `full-stack-developer` parado esperando. Branch, ferramentas, instalação, build, testes e audit foram 5 desses 60 minutos; cerca de 25 das 93 voltas do agente só olharam um log, e cada volta relê o contexto inteiro.
@@ -483,6 +496,7 @@ Fecha o backlog de retros anteriores: #1 #2 #3 #4 #5 #6 #7 #8 #11 #12.
 ### Added
 - `/engineer` em pt-BR, seis agentes, skills de engenharia de Matt Pocock (MIT) e skills de monólito modular da Spectree.
 
+[0.33.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/Spectree-Tecnologia/spectree-engineer/compare/v0.29.0...v0.30.0

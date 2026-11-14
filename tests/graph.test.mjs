@@ -256,6 +256,26 @@ test('a proof written `in ci:` is run by the pull request\'s run, and by nothing
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /An `in ci:` proof is run by the pull request's run \(the CI step `Goal proofs written in ci`/);
 });
 
+// 0.33.0, from SYND's ci-time-20 (2026-11-14): the wording of a by-hand half of a proof held a second `run:`, and the
+// pull request's own step would have run it. The quality-engineer found it; the author can see it when it writes.
+test('goal check prints every command a contract will run, as the script reads the cell', () => {
+  const two = contract().replace('| 3 | a thing is archived | run: `node -e "process.exit(0)"` |', '| 3 | a thing is archived | in ci: run: `node a.mjs` exits 0; by hand, on the runner, the step\'s run: `node b.mjs` shows it |');
+  const dir = project({}, two);
+  const res = spawnSync(process.execPath, [goal, 'check', 'things'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(res.status, 0, res.stdout + res.stderr);
+  assert.match(res.stdout, /runs: {2}criterion 1 {2}node -e "process\.exit\(0\)"/);
+  assert.match(res.stdout, /runs: {2}criterion 3 \(in ci\) {2}node a\.mjs/);
+  assert.match(res.stdout, /runs: {2}criterion 3 \(in ci\) {2}node b\.mjs/, 'the command the author did not mean to run is on the list');
+  assert.match(read('commands/engineer.md'), /as linhas `runs:` são o que cada critério roda/);
+});
+
+test('whoever plans does not build: the first ticket is a new full-stack-developer\'s', () => {
+  assert.match(read('agents/full-stack-developer.md'), /Plano aprovado, a sua missão acabou\./);
+  assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*O primeiro só planeja o objetivo/m);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /never by the one that wrote the plan/);
+  assert.doesNotMatch(read('README.md'), /quem planeja constrói o primeiro ticket/);
+});
+
 test('the squad plans, gates and walks by the graph', () => {
   const skill = read('skills/engineering/to-tickets/SKILL.md');
   assert.match(skill, /^\*\*Touches:\*\*/m);
