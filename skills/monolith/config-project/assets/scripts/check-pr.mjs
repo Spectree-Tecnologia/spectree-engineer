@@ -1,7 +1,8 @@
 // What CI runs only on a pull request, run here before opening one, so a run in Actions is never the first to say it:
 // the PR title, the branch holding the tip of its base (nothing runs on push to main: the PR's run is the proof of the
 // merged tree, and only for the base it was cut from), gitleaks over the commits this branch adds and squawk over the
-// migrations it adds; the goal contract it delivers (approved, every criterion met or waived); Prettier too when the
+// migrations it adds; the goal contract it delivers (approved, every criterion met or waived) and, once the project has one, the product
+// index still current; Prettier too when the
 // project has `format:check`. Each check runs even when an earlier one
 // failed; the summary lists every exit code and the script exits 1 if any check failed.
 //
@@ -93,6 +94,10 @@ results.push(['up to date with the base', behind ? 1 : 0]);
 // amendment. A branch with no contract (a bug fix, a dependency bump) has nothing to check.
 if (fs.existsSync(path.join(root, 'scripts', 'goal.mjs'))) {
   results.push(['goal contract', run(process.execPath, ['scripts/goal.mjs', 'check', '--ready', '--changed', base])]);
+  // The product index is generated from the code: a branch that changed the code without regenerating it would hand
+  // the next goal a stale map. A project with a module and no index gets one here: the check says to run `goal map`.
+  const hasModule = fs.existsSync(path.join(root, 'modules')) && fs.readdirSync(path.join(root, 'modules'), { withFileTypes: true }).some((entry) => entry.isDirectory());
+  if (hasModule || fs.existsSync(path.join(root, 'docs', 'index.md'))) results.push(['product index', run(process.execPath, ['scripts/goal.mjs', 'map', '--check'])]);
 }
 
 // 4. Prettier, when the project checks it. A constant string through the shell: npm is a .cmd shim on Windows.

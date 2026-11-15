@@ -15,6 +15,7 @@
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
 //   npm run goal -- spent <slug> [--write]         what the goal cost, read from this machine's Claude Code transcripts
 //   npm run goal -- spent <slug> --agents          also one line per subagent: its turns, how its context grew, what filled it
+//   npm run goal -- map [--check]                  docs/index.md, the product's index generated from the code; --check: is it current
 //
 // A proof a command decides is written in the Proof cell as run: `<command>`. `prove` runs each from the project
 // root, in UTC as CI does, one after the other, and exits 1 if any exits non-zero. A proof with no `run:` is an
@@ -39,7 +40,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
     2,
   );
 
@@ -409,6 +410,226 @@ function stats() {
   return 0;
 }
 
+// The product's index, generated from the code. The monolith has one shape, so a script reads what the
+// solutions-architect used to rebuild by hand for every request: modules, aggregates, use cases, queries, events,
+// routes, tables, screens, and the ADRs and contracts that name each module. The code is the source of truth and the
+// index is derived from it, so it cannot drift unnoticed: `--check` exits 1 when docs/index.md is not what the code
+// gives. Nothing in it is a rule: a rule is in docs/architecture.md, the GLOSSARY or an ADR.
+const INDEX = path.join('docs', 'index.md');
+const LAYERS = ['dto', 'model', 'provider', 'query', 'use-case'];
+
+function projectConfig() {
+  for (const rel of ['skills.config.json', path.join('.env', 'skills.config.json')]) {
+    const file = path.join(root, rel);
+    if (!fs.existsSync(file)) continue;
+    try {
+      return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch {
+      fail(`${rel} is not valid JSON`);
+    }
+  }
+  return {};
+}
+
+const posix = (rel) => rel.split(path.sep).join('/');
+const entries = (rel) => {
+  const dir = path.join(root, rel);
+  return fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)) : [];
+};
+const folders = (rel) => entries(rel).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+// Source files under a folder, tests and build output left out.
+function sources(rel) {
+  const out = [];
+  for (const entry of entries(rel)) {
+    const child = path.join(rel, entry.name);
+    if (entry.isDirectory()) {
+      if (!['node_modules', 'dist', '.next', 'test', '__tests__', 'coverage'].includes(entry.name)) out.push(...sources(child));
+    } else if (/\.tsx?$/.test(entry.name) && !/\.(test|spec)\.tsx?$/.test(entry.name)) out.push(child);
+  }
+  return out;
+}
+const textOf = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
+const named = (files, suffix) => files.filter((file) => file.endsWith(suffix)).map((file) => path.basename(file, suffix)).sort();
+const spans = (names) => names.map((name) => `\`${name}\``).join(', ');
+const literal = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function productIndex() {
+  const config = projectConfig();
+  const ns = config.namespace ?? null;
+  const backend = config.backendAppPath ?? path.join('apps', 'backend');
+  const frontend = config.frontendAppPath ?? path.join('apps', 'frontend');
+  const coreNames = folders('modules');
+  const backendNames = folders(path.join(backend, 'src', 'modules'));
+  const frontendNames = folders(path.join(frontend, 'src', 'modules'));
+  const names = [...new Set([...coreNames, ...backendNames, ...frontendNames])].sort();
+  if (names.length === 0) return null;
+
+  const modules = names.map((name) => {
+    const coreRel = path.join('modules', name, 'src');
+    const aggregates = folders(coreRel)
+      .filter((dir) => folders(path.join(coreRel, dir)).some((layer) => LAYERS.includes(layer)))
+      .map((dir) => {
+        const files = sources(path.join(coreRel, dir));
+        const events = [];
+        for (const file of files.filter((one) => one.endsWith('-events.dto.ts') || one.endsWith('.event.ts'))) {
+          for (const m of textOf(file).matchAll(/export\s+const\s+([A-Z][A-Z0-9_]*)\s*=\s*['"`]([^'"`]+)['"`]/g)) events.push({ constant: m[1], name: m[2] });
+        }
+        return {
+          name: dir,
+          entities: named(files, '.entity.ts'),
+          vos: named(files, '.vo.ts'),
+          useCases: named(files, '.use-case.ts'),
+          queries: named(files, '.query.ts'),
+          repositories: named(files, '.repository.ts'),
+          events,
+        };
+      });
+    const backendRel = path.join(backend, 'src', 'modules', name);
+    const backendFiles = sources(backendRel);
+    // Which other modules' packages a folder imports; `shared` is everyone's and is left out.
+    const imports = (files) => {
+      if (!ns) return [];
+      const found = new Set();
+      const re = new RegExp(`from\\s+['"]${literal(ns)}/([a-z0-9-]+)`, 'g');
+      for (const file of files) for (const m of textOf(file).matchAll(re)) if (m[1] !== name && m[1] !== 'shared') found.add(m[1]);
+      return [...found].sort();
+    };
+    const routes = new Set();
+    for (const file of backendFiles.filter((one) => one.endsWith('.controller.ts'))) {
+      const source = textOf(file);
+      const prefix = /@Controller\(\s*['"`]([^'"`]*)['"`]/.exec(source)?.[1] ?? '';
+      for (const m of source.matchAll(/@(Get|Post|Put|Patch|Delete)\(\s*(?:['"`]([^'"`]*)['"`])?/g)) {
+        const route = [prefix, m[2] ?? ''].join('/').replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+        routes.add(`${m[1].toUpperCase()} /${route}`);
+      }
+    }
+    const prismaRel = path.join(backend, 'prisma', 'models', `${name}.model.prisma`);
+    const tables = fs.existsSync(path.join(root, prismaRel)) ? [...textOf(prismaRel).matchAll(/^model\s+(\w+)/gm)].map((m) => m[1]).sort() : [];
+    return {
+      name,
+      core: coreNames.includes(name) ? posix(coreRel) : null,
+      backend: backendNames.includes(name) ? posix(backendRel) : null,
+      frontend: frontendNames.includes(name) ? posix(path.join(frontend, 'src', 'modules', name)) : null,
+      aggregates,
+      coreImports: imports(sources(coreRel)),
+      backendImports: imports(backendFiles),
+      backendFiles,
+      routes: [...routes].sort(),
+      tables,
+      screens: [],
+      reactsTo: [],
+      adrs: [],
+      goals: [],
+    };
+  });
+
+  // Rule 13: a module reacts to another's event in its own backend wiring, by the event's constant or its name.
+  const published = modules.flatMap((module) => module.aggregates.flatMap((aggregate) => aggregate.events.map((event) => ({ ...event, module: module.name }))));
+  for (const module of modules) {
+    const wiring = module.backendFiles.map(textOf).join('\n');
+    module.reactsTo = published
+      .filter((event) => event.module !== module.name)
+      .filter((event) => new RegExp(`\\b${event.constant}\\b`).test(wiring) || wiring.includes(`'${event.name}'`) || wiring.includes(`"${event.name}"`))
+      .map((event) => `\`${event.name}\` (${event.module})`)
+      .sort();
+  }
+
+  // A screen is a page.tsx under app/; it belongs to the module whose folder it imports.
+  const appRel = path.join(frontend, 'src', 'app');
+  const loose = [];
+  for (const file of sources(appRel).filter((one) => path.basename(one) === 'page.tsx')) {
+    const segments = posix(path.relative(appRel, path.dirname(file))).split('/').filter((segment) => segment && segment !== '.' && !/^\(.*\)$/.test(segment));
+    const route = `/${segments.join('/')}`;
+    const source = textOf(file);
+    const owner = modules.find((module) => new RegExp(`modules/${literal(module.name)}['"/]`).test(source));
+    if (owner) owner.screens.push(route);
+    else loose.push(route);
+  }
+
+  // The documents that name a module: its path, its package, or its name in a code span.
+  const markdown = (dir) => entries(dir).filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => path.join(dir, entry.name));
+  const mentions = (module, body) => [`modules/${module.name}/`, `/modules/${module.name}`, `\`${module.name}\``, ...(ns ? [`${ns}/${module.name}`] : [])].some((needle) => body.includes(needle));
+  for (const file of markdown(path.join('docs', 'adr'))) {
+    const body = textOf(file);
+    for (const module of modules) if (mentions(module, body)) module.adrs.push(path.basename(file, '.md'));
+  }
+  for (const file of markdown(path.join('docs', 'goals'))) {
+    const body = textOf(file);
+    const status = /^Status:\s*(proposed|approved|landed|met|stopped)/m.exec(body)?.[1] ?? 'no status';
+    for (const module of modules) if (mentions(module, body)) module.goals.push(`\`${path.basename(file, '.md')}\` (${status})`);
+  }
+
+  const total = (module, key) => module.aggregates.reduce((sum, aggregate) => sum + aggregate[key].length, 0);
+  const cell = (n) => (n === 0 ? '-' : String(n));
+  const lines = [
+    '# Product index',
+    '',
+    'Generated from the code by `npm run goal -- map`. Do not edit it by hand: run the command again and commit the result. The code is the source of truth; when this page and the code disagree, the page is stale and `npm run goal -- map --check` exits 1. Nothing here is a rule: the rules are in `docs/architecture.md`, `GLOSSARY.md` and `docs/adr/`.',
+    '',
+    '| Module | Aggregates | Use cases | Queries | Events | Routes | Tables | Screens | Core imports |',
+    '|---|---|---|---|---|---|---|---|---|',
+    ...modules.map(
+      (m) =>
+        `| [${m.name}](#${m.name}) | ${cell(m.aggregates.filter((a) => a.name !== 'app').length)} | ${cell(total(m, 'useCases'))} | ${cell(total(m, 'queries'))} | ${cell(total(m, 'events'))} | ${cell(m.routes.length)} | ${cell(m.tables.length)} | ${cell(m.screens.length)} | ${m.coreImports.length ? spans(m.coreImports) : '-'} |`,
+    ),
+  ];
+  for (const m of modules) {
+    lines.push('', `## ${m.name}`, '');
+    if (m.core) {
+      lines.push(`- **Core** \`${m.core}/\``);
+      for (const a of m.aggregates) {
+        const parts = [
+          ['entities', a.entities],
+          ['value objects', a.vos],
+          ['use cases', a.useCases],
+          ['queries', a.queries],
+          ['repositories', a.repositories],
+          ['publishes', a.events.map((event) => event.name)],
+        ]
+          .filter(([, list]) => list.length > 0)
+          .map(([label, list]) => `${label} ${spans(list)}`);
+        lines.push(`  - \`${a.name}\`${a.name === 'app' ? ' (across aggregates)' : ''}: ${parts.join('; ') || 'no files yet'}`);
+      }
+      if (m.coreImports.length) lines.push(`  - imports the business code of ${spans(m.coreImports)}`);
+    }
+    if (m.backend) {
+      lines.push(`- **Backend** \`${m.backend}/\``);
+      if (m.routes.length) lines.push(`  - routes: ${spans(m.routes)}`);
+      if (m.tables.length) lines.push(`  - tables: ${spans(m.tables)}`);
+      if (m.reactsTo.length) lines.push(`  - reacts to: ${m.reactsTo.join(', ')}`);
+      if (m.backendImports.length) lines.push(`  - imports the packages of ${spans(m.backendImports)}`);
+    }
+    if (m.frontend || m.screens.length) lines.push(`- **Frontend**${m.frontend ? ` \`${m.frontend}/\`` : ''}${m.screens.length ? `: screens ${spans(m.screens.sort())}` : ''}`);
+    if (m.adrs.length) lines.push(`- **ADRs**: ${spans(m.adrs)}`);
+    if (m.goals.length) lines.push(`- **Goals**: ${m.goals.join(', ')}`);
+  }
+  if (loose.length) lines.push('', '## Screens outside a module', '', spans(loose.sort()));
+  return { modules: modules.length, body: `${lines.join('\n')}\n` };
+}
+
+function map() {
+  const flags = parseArgs(args, [], ['--check']);
+  if (flags.positional.length > 0) usage();
+  const index = productIndex();
+  if (!index) fail('no module under modules/ or the backend and frontend modules folders: nothing to index');
+  const file = path.join(root, INDEX);
+  const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n') : null;
+  if (flags['--check']) {
+    if (current === index.body) {
+      console.log(`goal map: ${posix(INDEX)} is current (${index.modules} modules)`);
+      return 0;
+    }
+    console.log(`goal map: ${posix(INDEX)} is ${current === null ? 'missing' : 'stale'}: run \`npm run goal -- map\` and commit it`);
+    return 1;
+  }
+  if (current !== index.body) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, index.body);
+  }
+  console.log(`goal map: ${posix(INDEX)} ${current === index.body ? 'unchanged' : 'written'} (${index.modules} modules)`);
+  return 0;
+}
+
 // What a goal cost, read from the Claude Code transcripts of this project on this machine: the sessions opened with
 // "/engineer item <slug>", their subagents, and where the wall-clock went. The speed of the squad is bounded by the
 // plan's usage limit, so the number to watch is tokens per goal, role by role.
@@ -750,4 +971,5 @@ else if (command === 'prove') process.exit(prove());
 else if (command === 'size') process.exit(size());
 else if (command === 'stats') process.exit(stats());
 else if (command === 'spent') process.exit(spent());
+else if (command === 'map') process.exit(map());
 else usage();

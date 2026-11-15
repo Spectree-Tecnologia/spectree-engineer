@@ -11,11 +11,7 @@ You report to the Engineer, never to the user. Write in English, as a handoff.
 
 ## What to deliver
 
-1. **Impact map**, in the modular monolith's layout:
-   - `modules/<m>/src/<aggregate>/{dto,model,provider,query,use-case}` — the pure core, zero framework imports;
-   - `apps/backend/src/modules/<m>/` — controller, `<m>.prisma.ts`, `prisma/models/<m>.model.prisma`;
-   - `apps/frontend/src/modules/<m>/{components,data,pages}` + a thin route in `app/(private)/<m>/page.tsx`.
-   For each module touched: aggregates (what is inserted, changed and removed in the same transaction), entities, VOs with a real rule, use cases (command) and queries (direct read, no use case). A use case that crosses aggregates goes in `modules/<m>/src/app/use-case/`.
+1. **Impact map**, in the layout of `docs/architecture.md` (rule 16). Start from `docs/index.md`, generated from the code; confirm in the code what the outcome touches, and where they disagree the code wins. For each module touched: aggregates (what is inserted, changed and removed in the same transaction), entities, VOs with a real rule, use cases (command) and queries (direct read, no use case). A use case that crosses aggregates goes in `modules/<m>/src/app/use-case/`.
 2. **Module graph** `| Module | Responsibility | Upstream of | Downstream of |`, acyclic. A module depends on data, never on code: a cross reference is only an id. Two modules importing each other's business code is a finding, not an option.
 3. **Seams for TDD** — the ideal number is one: the observable interface where the test catches the most defects for the least coupling. Call the Skill tool with `codebase-design` for the vocabulary (deep module, seam, adapter). For each seam, one "catches / does not catch" line.
 4. **What `@<ns>/shared` offers** for this change — the name and signature of each shared contract a criterion can cite (`Result`, base repositories, VOs, `TransactionManager`), read from `packages/shared/src/`. What shared does not have (e.g. `findById` without `userId`) the module creates; say so here so the goal contract does not promise what does not exist.
