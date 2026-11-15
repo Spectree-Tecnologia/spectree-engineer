@@ -12,10 +12,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - `LICENSE` (MIT, as `plugin.json` already declared), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, issue forms for bugs and feature requests, a pull request template, and `.github/social-preview.png` (the official character art), which is also the README's hero image.
 - `docs/how-it-works.md`: the Goal-Driven Development (GDD) reference that used to be the README's long table, in English.
 
+### Removed
+- **The `to-wireframe` skill.** It did not serve its purpose. It was also the one vendored piece with no license, which blocked opening the repository. The `ui-ux-designer` now reads a founder's reference for its regions and elements and builds each one from a kit component, with no intermediate wireframe file, and the handoff loses its "Wireframes" section. Git history still holds the files.
+
 ### Changed
 - The `README.md` is rewritten in English around Goal-Driven Development (GDD), Spectree's own methodology: its seven principles and an abridged contract, then graph engineering for modular monoliths, the squad and its flow, where the founder comes in, a tested Quick Start, and the current limits. The manifests and the repository description lead with GDD too.
 - This `CHANGELOG.md`, `THIRD-PARTY-LICENSES.md`, `templates/shared/README.md` and the manifest descriptions are in English.
-- `commands/engineer.md`, `agents/*.md`, `hooks/engineer-desk/resume.ts`, every monolith skill and its references, and the vendored `to-wireframe` are translated to English, rule for rule. The methodology is spelled Goal-Driven Development throughout.
+- `commands/engineer.md`, `agents/*.md`, `hooks/engineer-desk/resume.ts`, every monolith skill and its references are translated to English, rule for rule. The methodology is spelled Goal-Driven Development throughout.
 - Code comments, script log messages and the Engineer panel's text are in English.
 - **Generated projects default to English.** The frontend's default locale is `en`, and Portuguese stays available in `shared/i18n` (`messages.en.ts` now defines the key set). The UI copy is English, numbers, currency and dates format as `en-US`, and the delete confirmation word is `delete`. A module's menu label is the English title case of its slug (`credit-cards` → `Credit Cards`; `auth` → `Authentication`).
 - The tests guard the English text. Every assertion was re-pointed to the English phrase that carries the same rule, the vocabulary test forbids English nicknames ("the owner", "the builder", "the reviewer", "the verifier"), and the word budgets in `tests/lean.test.mjs` are re-based on the English translation, about 5% longer than the Portuguese. A new guard covers the language rule and checks that no Portuguese is left in the prompts.

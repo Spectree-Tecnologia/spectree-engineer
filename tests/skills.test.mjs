@@ -24,7 +24,7 @@ const frontmatter = (file) => fs.readFileSync(file, 'utf8').split(/^---\r?$/m)[1
 const rel = (file) => path.relative(plugin, file).split(path.sep).join('/');
 
 test('every skill stays out of the slash menu', () => {
-  assert.ok(skills.length >= 32, `only ${skills.length} skills found`);
+  assert.ok(skills.length >= 31, `only ${skills.length} skills found`);
   for (const file of skills) {
     assert.match(frontmatter(file), /^user-invocable: false\r?$/m, `${rel(file)} does not declare user-invocable: false`);
   }

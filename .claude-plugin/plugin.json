@@ -52,7 +52,6 @@
     "./skills/monolith/backend-controller",
     "./skills/monolith/backend-prisma-data",
     "./skills/monolith/frontend-form-schema",
-    "./skills/security/security-audit",
-    "./skills/design/to-wireframe"
+    "./skills/security/security-audit"
   ]
 }
