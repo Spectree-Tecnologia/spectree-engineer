@@ -2,6 +2,30 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.36.0] - 2026-11-15
+
+**O resto da leitura de 2026-11-15: cinco lacunas e contradições, e a regra de desempate de três dualidades.** O fundador pediu a rodada inteira ("achados 4 a 8 e as três dualidades"). Como na 0.35.0, nada foi medido num objetivo: são regras que faltavam ou que diziam duas coisas.
+
+### Fixed
+- **Quem roda comando de git.** O card do `platform-engineer` dizia que tudo que muda o repositório passa por ele, e desde a 0.32.0 e a 0.34.0 o Engineer corta a branch, cria a worktree, mergeia o ticket fechado e roda o `down`. A regra agora está escrita nos dois lugares: comando determinístico é do Engineer, que grava cada um como `[CMD] <comando> → exit <n>` em `decisions.md`; o que pede leitura e julgamento (conflito, tooling que difere, script que sai diferente de zero, PR, release) é do `platform-engineer`. A sessão de item com `worktree` não despacha mais o `platform-engineer` para o `worktree up`, e a missão Worktree do card deixou de dizer que o padrão é não ter worktree.
+- **A etapa de design registra toda aprovação e tem volta.** A aprovação do design system passa a ficar em `docs/design/design-system.md` (`Approved by founder on <data>`), e a leitura de estado a confere em projeto que ainda não tem contrato. Estado de tela que falta num protótipo aprovado é uma rodada do `ui-ux-designer` só para esse artboard, com nova aprovação. Em módulo que ainda não existe, os campos do formulário vêm de `decisions.md` e do `GLOSSARY.md`, e a dúvida do designer é do Engineer, não do `solutions-architect`.
+- **A auditoria a cada cinco itens tem contagem.** Antes de abrir um item, quem o abre conta os itens marcados no roadmap abaixo da linha `Audited on <data>, through <slug>`; com cinco ou mais, a auditoria `quick` roda antes e regrava a linha.
+- **Uma ordem de construção.** O `ARCHITECTURE.md` e o card do `solutions-architect` diziam "largura antes de profundidade", e o roadmap e o `to-tickets` dizem tracer bullet antes de largura. Ficou: módulos de suporte antes do domínio core; dentro de um objetivo, tracer bullet antes de largura.
+- **O plano é commitado antes do primeiro ticket.** A worktree da pista 2 nasce do HEAD da branch, e ninguém era dono do commit do contrato, do plano e dos tickets. Plano aprovado, o Engineer commita `docs/goals/<slug>.md` e `.scratch/<slug>/` como `docs(<slug>): plan`.
+
+### Changed
+- **Escopo: os critérios são do Engineer, e o contrato diz isso.** O contrato de um item do roadmap sai como `approved by engineer under the roadmap approved on <data>`, não mais `approved by founder`; `approved by founder` fica para o contrato que ele aprovou num gate 2. O teste do gate 2 para regra nova está escrito uma vez: sobe a decisão que muda o que o usuário final pode fazer, pagar ou ver e não está no roadmap, no `GLOSSARY.md`, num ADR nem no protótipo aprovado.
+- **Um `should` paga uma rodada, não duas.** Ele bloqueia no checkpoint e na primeira rodada final. Da segunda em diante, o resíduo que a política de risco cobre segue para o objetivo de hardening sem esperar o orçamento acabar, e a pergunta da política na entrevista diz isso. A subida para Fable passou a exigir critério `not met` ou `weak proof`, `blocking`, ou `confirmed` de `medium` para cima. Projeto com `docs/risk-policy.md` gravada antes desta versão tem a política escrita só para o orçamento esgotado: o Engineer passa a aplicá-la mais cedo sem que o fundador daquele projeto tenha decidido isso.
+- **Dois `full-stack-developer` por máquina, por qualquer caminho.** Duas sessões de item e duas pistas somavam três. A pista 2 só abre com `git worktree list` mostrando só o checkout e com a linha `Spent:` do último objetivo sem horas no limite de uso; a segunda sessão de item só abre se a primeira não está em duas pistas.
+- O `README.md` ainda descrevia a regra da 0.25.0 (`should` espera a verificação final), revertida na 0.30.0.
+- O orçamento de palavras subiu 389 no comando e 500 no conjunto.
+
+### O que não foi provado
+- Nenhum objetivo rodou com este texto, e os evals não foram rodados.
+- A contagem da auditoria e o teto de dois por `git worktree list` são regras de leitura: nenhum script as cobra, e duas sessões que olham ao mesmo tempo podem as duas ver o checkout livre.
+- O `Status` novo foi conferido contra a expressão do `goal.mjs`, não num `goal check` de um contrato real. As fixtures dos evals e os contratos de projetos existentes continuam `approved by founder`, e seguem válidos.
+- Ficaram como estavam: `ARCHITECTURE.md` regra 14 ainda diz "(gate 4)" para o que é da entrevista, e o `code-review` vendorizado ainda procura spec em `.scratch/` no passo 2, desarmado só pelo parágrafo do squad.
+
 ## [0.35.0] - 2026-11-15
 
 **Três pontos em que o Goal Driven Development dizia uma coisa e o squad praticava outra.** Saíram de uma leitura do repositório inteiro, pedida pelo fundador em 2026-11-15 antes de evoluir o squad. Nenhum foi medido num objetivo: são contradições entre arquivos.
