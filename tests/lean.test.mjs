@@ -73,8 +73,12 @@ test('the prompts stay inside their word budget', () => {
   // 0.35.0 raised the command by 66 words and the two together by 118: the bug's minimal contract (step 8 could not
   // run without one), the verifiers' diff without `.scratch/`, and the rule number beside each item the
   // quality-engineer reads for. The full-stack-developer's card shrank by 34: its rules moved to ARCHITECTURE.md.
-  const COMMAND = 7758;
-  const SQUAD = 19014;
+  // 0.36.0 raised the command by 389 words and the two together by 500: eight rules that were missing or said two
+  // things (who runs a git command, the approval of the design system and the way back to an approved prototype, the
+  // count of the audit, the commit of the plan, the test of gate 2, a `should` that pays one round, the ceiling of
+  // two full-stack-developers per machine). Each is a sentence where the squad had to guess.
+  const COMMAND = 8147;
+  const SQUAD = 19514;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

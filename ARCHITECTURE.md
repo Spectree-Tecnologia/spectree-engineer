@@ -36,4 +36,4 @@ apps/<frontend>/src/app/(private)/<m>/page.tsx                     thin route
 packages/shared                                                    Result, Entity, ValueObject, UseCase, repositories, TransactionManager, DomainEvent
 ```
 
-Support modules (`identity` first) come before the core domain; breadth before depth.
+Support modules (`identity` first) come before the core domain; inside a goal, the tracer bullet comes before breadth.
