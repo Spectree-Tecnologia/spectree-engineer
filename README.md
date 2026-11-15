@@ -99,7 +99,7 @@ Abre sozinho uma vez por sessão no app desktop e no VS Code, numa pasta com `sk
 ## Layout
 
 ```
-ARCHITECTURE.md            as quinze regras do monólito modular Spectree (vira docs/architecture.md no projeto)
+ARCHITECTURE.md            as dezenove regras do monólito modular Spectree (vira docs/architecture.md no projeto)
 CHANGELOG.md               o que mudou por versão
 commands/engineer.md       o orquestrador
 agents/*.md                os sete especialistas
