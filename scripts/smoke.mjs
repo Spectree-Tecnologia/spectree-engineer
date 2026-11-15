@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Smoke do bootstrap: roda as skills de monólito a partir do repo do plugin
-// (como o plugin instalado faz), num projeto temporário. Sai 1 no primeiro
-// passo que falhar, mostrando as últimas 30 linhas da saída.
-// SMOKE_KEEP=1 preserva o projeto gerado para inspeção.
+// Bootstrap smoke: runs the monolith skills from the plugin repo
+// (as the installed plugin does), in a temporary project. Exits 1 at the first
+// step that fails, showing the last 30 lines of its output.
+// SMOKE_KEEP=1 keeps the generated project for inspection.
 import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -18,7 +18,7 @@ const scope = '@smoke';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spectree-smoke-'));
 const logFile = path.join(root, 'smoke.log');
 const backendDir = path.join(root, 'apps', 'backend');
-// portas livres por rodada: o smoke não pode colidir com o Postgres/API de outro projeto nem com outro smoke na máquina
+// free ports per run: the smoke must not collide with another project's Postgres/API nor with another smoke on the machine
 const freePort = () =>
   new Promise((resolve) => {
     const server = net.createServer();
@@ -131,13 +131,13 @@ await step('check-boundaries-catches-a-leak', () => {
   }
 });
 
-// sem migration: o `npm test` do Nest é só unitário (e2e fica em test:e2e, que exige Postgres e não roda aqui)
+// no migration: Nest's `npm test` is unit only (e2e lives in test:e2e, which needs Postgres and does not run here)
 run('build', 'npm run build');
 run('test', 'npm test');
 // mutation testing of the probe module: Stryker runs its Vitest suite against each mutant and reports a score
 console.log(run('mutation', 'npm run mutation -- probe').trim().split(/\r?\n/).slice(-6).join('\n'));
 
-// prova do schema do .env: um JWT_SECRET curto derruba o processo antes de qualquer conexão, nomeando a variável
+// proof of the .env schema: a short JWT_SECRET brings the process down before any connection, naming the variable
 await step('backend-refuses-bad-env', () => {
   const res = spawnSync('node dist/main.js', {
     cwd: backendDir,
@@ -158,8 +158,8 @@ async function expectStatus(url, status) {
   return response;
 }
 
-// prova de segurança: sem token, GET / responde 401 pelo guard global, no envelope do ApiExceptionFilter.
-// Precisa do Postgres (PrismaService faz SELECT 1 ao subir); sem Docker, o passo é pulado e dito.
+// security proof: without a token, GET / answers 401 from the global guard, in the ApiExceptionFilter envelope.
+// Needs Postgres (PrismaService runs SELECT 1 on boot); without Docker, the step is skipped and says so.
 if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   run('db-up', `${dbCompose} up -d --wait postgres`, { cwd: backendDir });
   // the e2e needs tables: db push creates the bootstrap model without the interactive migrate dev
@@ -626,8 +626,8 @@ export class ProbeController {
   });
   run('db-down', `${dbCompose} down -v`, { cwd: backendDir });
 
-  // a receita de release como o platform-engineer roda: .env da raiz, `npm run release` (builda as duas imagens,
-  // `prisma migrate deploy` no serviço migrate, sobe e espera healthy), depois as sondas que a missão Release exige
+  // the release recipe as the platform-engineer runs it: the root .env, `npm run release` (builds both images,
+  // `prisma migrate deploy` in the migrate service, starts and waits for healthy), then the probes the Release mission requires
   await step('release-env', () => {
     const env = [
       'POSTGRES_PASSWORD=smoke',

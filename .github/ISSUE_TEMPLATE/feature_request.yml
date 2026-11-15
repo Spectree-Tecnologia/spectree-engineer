@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a change to the squad, a skill, the architecture rules or the generated project.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What goes wrong or costs too much today? Measurements help (rounds, tokens, CI minutes, hours waiting).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should change, and where (the command, an agent card, a skill, a script, a rule in ARCHITECTURE.md).
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: How we would know it works
+      description: The test, eval or measurement that would prove the change.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

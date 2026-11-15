@@ -4,10 +4,10 @@ import { AppLogo } from '@/shared/components/branding/app-logo.component';
 import { Button } from '@/shared/components/ui/button';
 
 /**
- * Landing page de exemplo (rota raiz `/`).
+ * Example landing page (root route `/`).
  *
- * Hero simples com dois caminhos: entrar (autenticação) e acessar o dashboard.
- * Substitua os textos e o CTA pelo conteúdo real do produto.
+ * A simple hero with two paths: sign in (authentication) and open the dashboard.
+ * Replace the copy and the CTA with the product's real content.
  */
 export default function LandingPage() {
   return (

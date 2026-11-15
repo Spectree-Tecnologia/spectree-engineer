@@ -1,7 +1,7 @@
 import type { Resume } from './state'
 
 // The fifth mechanism (2026-11-13): a session that stopped is restarted by the panel, not by the Founder.
-// On SYND's ci-time goal 12.4 of 29.8 hours were a stopped session nobody restarted: 5.7 h after the 5-hour
+// On the pilot project's ci-time goal 12.4 of 29.8 hours were a stopped session nobody restarted: 5.7 h after the 5-hour
 // limit had already reset, overnight, and 6.7 h after one API network error ended the turn. Neither was a
 // decision of his. A turn that ends in an answer is never resumed: the Engineer may have asked a question.
 

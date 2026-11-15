@@ -1,5 +1,5 @@
-// The start of a goal is a script, not an agent mission (0.32.0, the Founder's "Sim, construir" on 2026-11-14).
-// Measured on SYND: the platform-engineer mission that cut the branch and recorded the baseline took 27 minutes and
+// The start of a goal is a script, not an agent mission (0.32.0, the Founder's "Yes, build it" on 2026-11-14).
+// Measured on the pilot project: the platform-engineer mission that cut the branch and recorded the baseline took 27 minutes and
 // 9.3M tokens in ts7 and 60 minutes and 9.2M in ci-time-20, with the full-stack-developer waiting for it; branch,
 // tooling, install, build, test and audit were 5 of those 60 minutes, and about 25 of its 93 turns only polled a log.
 // Run, not read:

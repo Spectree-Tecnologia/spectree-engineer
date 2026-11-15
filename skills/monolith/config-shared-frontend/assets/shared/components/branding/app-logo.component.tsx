@@ -1,8 +1,8 @@
 import { Boxes, type LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/class-name.util';
 
-// ── Configuração ──────────────────────────────────────────────────────────────
-// Substitua APP_NAME pelo nome do seu app e MarkIcon pelo ícone desejado.
+// ── Configuration ─────────────────────────────────────────────────────────────
+// Replace APP_NAME with your app's name and MarkIcon with the icon you want.
 const APP_NAME = 'App';
 const MarkIcon: LucideIcon = Boxes;
 

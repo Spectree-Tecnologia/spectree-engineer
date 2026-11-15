@@ -1,4 +1,4 @@
-// The squad names each agent by its role, never by a nickname (the Founder, 2026-11-11: "o dono" told him nothing
+// The squad names each agent by its role, never by a nickname (the Founder, 2026-11-11: "o dono" ("the owner") told him nothing
 // about who was responsible). What the command and the cards say is what the Engineer repeats to the Founder, so the
 // nickname is kept out of them here.
 //   node --test tests/vocabulary.test.mjs
@@ -12,7 +12,7 @@ const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
 const prompts = ['commands/engineer.md', ...fs.readdirSync(path.join(plugin, 'agents')).map((name) => `agents/${name}`)];
 
-// "dono" also means the owner of a resource, a table or a schema.
+// "dono" ("owner") also means the owner of a resource, a table or a schema.
 const ALLOWED = ['dono do recurso', 'não é dono de nada', 'sem o dono;', 'dono do schema'];
 const NICKNAMES = /\b(don[oa]s?|revisor(es)?|verificador(es)?|construtor(es)?|quem verifica)\b/gi;
 

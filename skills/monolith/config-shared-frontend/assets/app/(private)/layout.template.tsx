@@ -7,12 +7,12 @@ import { AdminShell } from '@/shared/template/admin-shell.component';
 import { SidebarMenu, type SidebarMenuSection } from '@/shared/components/ui/sidebar-menu.component';
 
 /**
- * Navegação da aplicação.
+ * The application's navigation.
  *
- * Os caminhos de navegação fazem parte do ESTADO da aplicação e por isso são
- * definidos aqui no layout — não em shared/. Para alterar o menu (adicionar
- * itens, seções ou reorganizar a estrutura), edite NAVIGATION_SECTIONS abaixo.
- * Cada `href` deve apontar para uma rota dentro do grupo (private).
+ * The navigation paths are part of the application's STATE, so they are
+ * defined here in the layout, not in shared/. To change the menu (add items or
+ * sections, or reorganize it), edit NAVIGATION_SECTIONS below.
+ * Each `href` must point to a route inside the (private) group.
  */
 const NAVIGATION_SECTIONS: SidebarMenuSection[] = [
   {

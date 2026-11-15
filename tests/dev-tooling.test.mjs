@@ -1,4 +1,4 @@
-// The three dev-tooling issues the SYND retros opened on 2026-11-12, each one run instead of read:
+// The three dev-tooling issues the pilot project's retros opened on 2026-11-12, each one run instead of read:
 //   #76 worktree.mjs handed a worktree port 6000, which Chromium refuses (ERR_UNSAFE_PORT)
 //   #77 perf.mjs measured a create route on its duplicate-key 409 path
 //   #78 a turbo cache restore left a stale apps/frontend/.next next to the restored build
@@ -22,7 +22,7 @@ test('#76 the worktree offset skips every port browsers refuse, and a forced one
   assert.ok(list, 'worktree.mjs declares the blocked list');
   const blocked = new Set(list.split(',').map((one) => Number(one.trim())).filter(Boolean));
   for (const port of [6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080]) assert.ok(blocked.has(port), `${port} is blocked`);
-  // frontend 3000 + offset 3000 is the SYND case; both servers are checked
+  // frontend 3000 + offset 3000 is the pilot project's case; both servers are checked
   assert.match(source, /reserveOffset\(\[backendPort, frontendPort\], forcedOffset\)/);
   assert.match(source, /offset \$\{offset\} skipped, port/);
   assert.match(source, /which browsers refuse \(ERR_UNSAFE_PORT\)/);

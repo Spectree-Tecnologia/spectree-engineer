@@ -38,7 +38,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 ## skills/design/to-wireframe — rtadewald, https://github.com/rtadewald/skills/tree/main/to-wireframe
 
-Vendored at commit 82fe5ed (2026-10-30), adapted: `disable-model-invocation` removed so the `ui-ux-designer` agent can call it. **The source repository carries no license file** at that commit: the author keeps copyright, and this copy rests on the founder's own use of the skill and his request to ship it with the plugin. Before redistributing the plugin beyond Spectree, get the author's written permission or a license in the repository, and record it here.
+Vendored at commit 82fe5ed (2026-10-30), adapted: `disable-model-invocation` removed so the `ui-ux-designer` agent can call it. **The source repository carries no license file** at that commit: the author keeps copyright, and this copy rests on the founder's own use of the skill and the founder's request to ship it with the plugin. Before redistributing the plugin beyond Spectree, get the author's written permission or a license in the repository, and record it here.
 
 ## Rule 15 of ARCHITECTURE.md and the lean parts of the cards — Dietrich Gebert, https://github.com/DietrichGebert/ponytail (MIT)
 
@@ -46,6 +46,6 @@ Not vendored: no file of ponytail ships with this plugin. Read as pushed on 2026
 
 Copyright (c) 2026 DietrichGebert. MIT License, the text is the one above.
 
-## Demais skills e templates
+## Everything else
 
-`skills/monolith/**`, `templates/**`, `agents/**`, `commands/**`, `scripts/**`: Spectree Tecnologia.
+`skills/monolith/**`, `templates/**`, `agents/**`, `commands/**`, `hooks/**`, `scripts/**`, `tests/**`, `evals/**`, `docs/**`: Spectree Tecnologia, under the MIT License in [LICENSE](LICENSE). The squad's character art (traced into `hooks/engineer-desk/mascot-art.ts` and shown in `.github/social-preview.png`) is Spectree's own artwork.

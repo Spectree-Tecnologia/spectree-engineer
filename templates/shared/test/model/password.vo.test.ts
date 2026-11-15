@@ -1,33 +1,33 @@
 import { Password } from '../../src/index.js';
 
-test('Deve retornar uma senha', () => {
+test('returns a password', () => {
   expect(new Password('123').value).toBeDefined();
   expect(new Password('abc123').value).toBeDefined();
   expect(new Password('%%StrongPassword123').value).toBeDefined();
 });
 
-test('Deve lançar erro com senha vazia', () => {
+test('throws on an empty password', () => {
   expect(() => new Password(undefined as any)).toThrow('password.empty');
   expect(() => new Password('')).toThrow('password.empty');
   expect(() => new Password('     ')).toThrow('password.empty');
 });
 
-test('Deve tentar criar uma senha com sucesso', () => {
+test('tries to create a password and succeeds', () => {
   const password = Password.tryCreate('123');
   expect(password.isOk).toBe(true);
 });
 
-test('Deve tentar criar uma senha inválida', () => {
+test('tries to create an invalid password', () => {
   const password = Password.tryCreate('    ');
   expect(password.isOk).toBe(false);
   expect(password.errors[0]?.code).toBe('password.empty');
 });
 
-test('Deve criar uma senha válida via create', () => {
+test('creates a valid password through create', () => {
   const password = Password.create('secret123');
   expect(password.value).toBe('secret123');
 });
 
-test('Deve lançar ao criar senha inválida via create', () => {
+test('throws when creating an invalid password through create', () => {
   expect(() => Password.create('')).toThrow();
 });

@@ -165,7 +165,7 @@ export function validateField(
     return isOptional;
   }
 
-  // NOTE: lida com campos de um array
+  // NOTE: handles the fields of an array
   if (isArrayField(fieldDef)) {
     const isValid = validateArray(fieldDef, fieldValue, context, fieldName);
     if (!isValid) return false;
@@ -173,13 +173,13 @@ export function validateField(
     return validateArrayItems(fieldDef, fieldValue as unknown[], context, fieldName);
   }
 
-  // NOTE: lida com VO e FieldConfig
+  // NOTE: handles VO and FieldConfig
   const { vo, config } = resolveField(fieldDef);
   if (vo) {
     return validateSimpleField(vo, fieldValue, config, context, fieldName);
   }
 
-  // NOTE: lida com objetos simples/aninhados
+  // NOTE: handles plain/nested objects
   if (isObjectSchema(fieldDef)) {
     const result = validateObjectSchema(fieldDef, fieldValue, context, fieldName);
     if (result.isValid && result.processedValue) {
@@ -188,7 +188,7 @@ export function validateField(
     return result.isValid;
   }
 
-  // NOTE: lida com SchemaObject definido via v.defineObject(...)
+  // NOTE: handles a SchemaObject defined with v.defineObject(...)
   if (isSchemaObject(fieldDef)) {
     const schemaObject = fieldDef as SchemaObject<any>;
     const result = validateObjectSchema(schemaObject.fields, fieldValue, context, fieldName, schemaObject._refinements);
@@ -219,7 +219,7 @@ export function validateArrayItems(
     const itemPath = `${fieldName}[${index}]`;
 
     if (isObjectArray) {
-      // NOTE: Valida objeto de schema
+      // NOTE: Validates a schema object
       const schema = itemDef as ObjectSchema;
       const result = validateObjectSchema(schema, item, context, itemPath);
 
@@ -231,7 +231,7 @@ export function validateArrayItems(
         delete context.errors[itemPath];
       }
     } else {
-      // NOTE: Valida VO
+      // NOTE: Validates a VO
       const voItem = itemDef as ArrayFieldVO<any, any>['item'];
       const voConfig = (fieldDef as ArrayFieldVO<any, any>).config;
       const result = voItem.tryCreate(item, voConfig);
