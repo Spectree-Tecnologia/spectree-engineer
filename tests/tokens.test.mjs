@@ -1,8 +1,8 @@
 // The speed of the squad is bounded by the plan's usage limit, so the number to watch is tokens per goal (0.23.0,
-// the Founder's "Sim, construir" on 2026-11-11). Measured on PILOT: one goal stood 61.6 of its 82.4 hours at the weekly
+// the Founder's "Yes, build it" on 2026-11-11). Measured on the pilot project: one goal stood 61.6 of its 82.4 hours at the weekly
 // limit, and 85% of its tokens were one full-stack-developer re-reading a context that held the whole goal, 259
 // thousand tokens a turn. So the full-stack-developer that plans a goal breaks it into tickets (Matt Pocock's
-// to-tickets, adapted: the Founder asked for tickets, not "fatias", the same day), each ticket is built by a new
+// to-tickets, adapted: the Founder asked for tickets, not "slices", the same day), each ticket is built by a new
 // full-stack-developer from the plan, and `goal spent` reads what a goal cost from the transcripts.
 //   node --test tests/tokens.test.mjs
 import assert from 'node:assert/strict';
@@ -30,10 +30,10 @@ test('the command dispatches a new full-stack-developer for each ticket, and a t
   assert.match(command, /despache um full-stack-developer \*\*novo\*\* para o primeiro da frontier/);
   assert.match(command, /despache um full-stack-developer novo com os achados, literais/);
   // 0.30.0: three continuations, each of an agent whose context already holds what the message is about. Measured on
-  // PILOT on 2026-11-13: fixes by a full-stack-developer starting cold were 44% of ci-time's tokens, and a one-line fix
+  // On the pilot project on 2026-11-13: fixes by a full-stack-developer starting cold were 44% of ci-time's tokens, and a one-line fix
   // cost 3.8M in ts7. The unit is still one ticket per agent: a fix is of the agent's own ticket, never of the goal.
   assert.match(command, /a continuação \(SendMessage\) existe em três casos: o plano que o gate devolveu a quem o escreveu, a correção do ticket por quem o construiu, e a reconferência por quem achou/);
-  // 0.33.0: measured on PILOT's ci-time-20 (2026-11-14): the planner went on to ticket 01 with 191 thousand tokens of
+  // 0.33.0: measured on the pilot project's ci-time-20 (2026-11-14): the planner went on to ticket 01 with 191 thousand tokens of
   // context and its tool-call count already past the handoff point, and handed off after 5 calls
   assert.match(command, /a missão de quem planejou termina aí: despache um full-stack-developer \*\*novo\*\* para o primeiro ticket da frontier/);
   assert.doesNotMatch(command, /mande o mesmo full-stack-developer construir o primeiro ticket/);
@@ -52,7 +52,7 @@ test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () =>
 });
 
 test('a mission is short, and a ticket gets one fix and one re-check', () => {
-  // measured on PILOT's ci-time (2026-11-12): 98 thousand tokens a call in missions of up to 60 calls, 162 thousand
+  // measured on the pilot project's ci-time (2026-11-12): 98 thousand tokens a call in missions of up to 60 calls, 162 thousand
   // past 110; the sentence that asked for batched calls changed nothing, so the panel says it
   const panel = read('hooks/engineer-desk/register.tsx');
   assert.match(panel, /export const HANDOFF_AT = 60/);
@@ -82,7 +82,7 @@ test('the retro records what the goal cost', () => {
 });
 
 test('a stopped session is resumed by the panel, never one that ended in an answer', () => {
-  // measured on PILOT's ci-time (2026-11-13): 12.4 of 29.8 hours were a stopped session nobody restarted, 5.7 h after
+  // measured on the pilot project's ci-time (2026-11-13): 12.4 of 29.8 hours were a stopped session nobody restarted, 5.7 h after
   // the 5-hour limit had reset and 6.7 h after one API network error. Neither was a decision of the Founder.
   const panel = read('hooks/engineer-desk/register.tsx');
   assert.match(panel, /e\.reason === 'error' \? scheduleResume\(\$\) : clearResume\(\$\)/);

@@ -13,7 +13,7 @@
 # - every night on main (only when something merged in the last 26 h; otherwise the scanners alone) and on demand from
 #   the Actions tab: everything, the whole Playwright suite and every route's latency budget, which reports (a warning
 #   and a line in the run's summary) and never fails the run. A p95 on a shared 2-vCPU runner cannot say a change made
-#   a route slow: on PILOT the same route on the same code measured 1362 ms and 625 ms minutes apart.
+#   a route slow: on the pilot project the same route on the same code measured 1362 ms and 625 ms minutes apart.
 # - before a release: on demand with stage `pre-release`, everything, and the latency budget fails the run.
 # Never add a second job, a matrix or a `push:` trigger: extend the steps of this job. `npm run check:pr` runs the
 # pull-request-only gates locally, before the PR exists.

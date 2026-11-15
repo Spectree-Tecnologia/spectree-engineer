@@ -1,4 +1,4 @@
-// Lean code in a goal driven squad (0.22.0, the Founder's "Sim, construir" on 2026-11-11, after reading
+// Lean code in a goal driven squad (0.22.0, the Founder's "Yes, build it" on 2026-11-11, after reading
 // DietrichGebert/ponytail): the smallest complete change, where "nobody asked for it" is decided by the contract.
 // The rule is written once, as rule 15 of the architecture, and each role has its part of it. The prompts pay for
 // what they gain: a rule added to the command or to a card is paid with text that came out.
@@ -68,7 +68,7 @@ test('the prompts stay inside their word budget', () => {
   // 0.32.0 moved the start of a goal from the platform-engineer's card to the command, as two commands the Engineer
   // runs: the command grew and the two together shrank.
   // 0.34.0 raised both by about 120 words: the two lanes of step 7 (which tickets run together, the second checkout,
-  // the merge of a closed ticket and its proof). Measured on PILOT's ci-time-20: a free ticket sat idle for 40 and for
+  // the merge of a closed ticket and its proof). Measured on the pilot project's ci-time-20: a free ticket sat idle for 40 and for
   // 77 minutes while the one before it was built and verified.
   // 0.35.0 raised the command by 66 words and the two together by 118: the bug's minimal contract (step 8 could not
   // run without one), the verifiers' diff without `.scratch/`, and the rule number beside each item the

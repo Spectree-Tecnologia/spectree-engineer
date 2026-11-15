@@ -1,5 +1,5 @@
-// The skills of this plugin are tools of the squad's agents, not commands of the Founder (2026-11-11: "as skills são
-// de utilização exclusiva dos agentes, não quero que elas fiquem aparecendo nos slash commands"). `user-invocable:
+// The skills of this plugin are tools of the squad's agents, not commands of the Founder (2026-11-11: "the skills are
+// for the agents' use only, I don't want them showing up in the slash commands"). `user-invocable:
 // false` keeps a skill out of the slash menu and leaves it callable by the model, so the only thing the Founder types
 // is `/engineer`.
 //   node --test tests/skills.test.mjs

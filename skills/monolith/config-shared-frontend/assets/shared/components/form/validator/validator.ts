@@ -33,7 +33,7 @@ export class Validator {
     return obj;
   }
 
-  // INFO: Overload para optional: true
+  // INFO: Overload for optional: true
   defineArray<T, Config extends Record<string, any> = any>(
     item: ValueObjectClass<T, Config>,
     options: {
@@ -44,7 +44,7 @@ export class Validator {
     },
   ): ArrayFieldVO<T, Config> & { optional: true };
 
-  // INFO: Overload para optional: false ou undefined
+  // INFO: Overload for optional: false or undefined
   defineArray<T, Config extends Record<string, any> = any>(
     item: ValueObjectClass<T, Config>,
     options?: {
@@ -55,13 +55,13 @@ export class Validator {
     },
   ): ArrayFieldVO<T, Config>;
 
-  // INFO: Overload para arrays de objetos com optional: true
+  // INFO: Overload for arrays of objects with optional: true
   defineArray<T extends ObjectSchema>(
     item: T,
     options: { optional: true; min?: number; max?: number },
   ): ArrayFieldObjects<T> & { optional: true };
 
-  // INFO: Overload para arrays de objetos com optional: false ou undefined
+  // INFO: Overload for arrays of objects with optional: false or undefined
   defineArray<T extends ObjectSchema>(
     item: T,
     options?: { optional?: false; min?: number; max?: number },

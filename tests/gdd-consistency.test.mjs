@@ -1,5 +1,5 @@
 // 0.35.0: three places where what Goal Driven Development declared and what the squad practised disagreed, found by
-// reading the whole repository on 2026-11-15 (the Founder's "Sim, corrija 1 a 3").
+// reading the whole repository on 2026-11-15 (the Founder's "Yes, fix 1 to 3").
 //   node --test tests/gdd-consistency.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -61,7 +61,7 @@ test('a bug has a contract, because the final verification reads one', () => {
   assert.match(script, /approved by \.\+ on/);
 });
 
-// 0.36.0: the rest of the same reading (the Founder's "Execute a rodada: achados 4 a 8 e as três dualidades").
+// 0.36.0: the rest of the same reading (the Founder's "Run the round: findings 4 to 8 and the three dualities").
 const command = read('commands/engineer.md');
 const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2})$/;
 

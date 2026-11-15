@@ -214,9 +214,9 @@ function parseLucideImportSpecifiers(importSpecifiersRaw) {
     .filter(Boolean);
 }
 
-// Encontra o índice do `]` que fecha o array aberto em `openIndex` (posição do
-// `[`), respeitando strings entre aspas simples/duplas/template para não contar
-// colchetes que apareçam dentro de valores. Retorna -1 se não houver par.
+// Finds the index of the `]` that closes the array opened at `openIndex` (the
+// position of the `[`), honouring single/double/template quoted strings so that
+// brackets inside values are not counted. Returns -1 when there is no match.
 function findMatchingBracket(source, openIndex) {
   if (source[openIndex] !== '[') return -1;
   let depth = 0;
@@ -246,16 +246,16 @@ function findMatchingBracket(source, openIndex) {
   return -1;
 }
 
-// Garante que `iconComponent` esteja presente no import de 'lucide-react',
-// mantendo os specifiers ordenados. Retorna o source possivelmente atualizado.
+// Makes sure `iconComponent` is in the 'lucide-react' import, keeping the
+// specifiers sorted. Returns the source, updated when needed.
 function ensureLucideIconImport(source, iconComponent) {
-  // `[^{}]*` impede que o match atravesse outros imports (a lista de specifiers
-  // de um import não contém chaves), garantindo que peguemos exatamente o import
-  // de 'lucide-react' e não um import anterior por backtracking.
+  // `[^{}]*` keeps the match from crossing other imports (an import's specifier
+  // list holds no braces), so it takes exactly the 'lucide-react' import and not
+  // an earlier one by backtracking.
   const lucideImportRegex = /import\s*\{([^{}]*)\}\s*from\s*['"]lucide-react['"];/m;
   const lucideImportMatch = source.match(lucideImportRegex);
   if (!lucideImportMatch) {
-    // Sem import existente: adiciona um logo após a primeira linha de import.
+    // No import yet: add one right after the first import line.
     const importLine = `import { ${iconComponent} } from 'lucide-react';`;
     const firstImportMatch = source.match(/^import .*$/m);
     if (!firstImportMatch) {
@@ -276,14 +276,14 @@ function ensureLucideIconImport(source, iconComponent) {
   return source.replace(lucideImportRegex, nextImportLine);
 }
 
-// Registra o módulo no menu de navegação do projeto. O menu é a constante
-// `NAVIGATION_SECTIONS` (tipo `SidebarMenuSection[]`) declarada no layout do grupo
-// (private). A entrada é acrescentada (de forma não destrutiva) ao final do array
-// `items` da primeira seção, preservando os itens já curados. Falhas estruturais
-// são não fatais (apenas logadas) para não abortar a criação do módulo.
+// Registers the module in the project's navigation menu. The menu is the
+// `NAVIGATION_SECTIONS` constant (type `SidebarMenuSection[]`) declared in the
+// (private) group layout. The entry is appended (non-destructively) to the end of
+// the first section's `items` array, keeping the items already curated. Structural
+// problems are not fatal (only logged), so the module creation is not aborted.
 async function ensureFrontendNavigationMenuEntry({ navigationLayoutPath, moduleName, logger }) {
   if (!(await pathExists(navigationLayoutPath))) {
-    logger.risk(`Layout de navegação não encontrado; registro no menu ignorado: ${navigationLayoutPath}`);
+    logger.risk(`Navigation layout not found; menu registration skipped: ${navigationLayoutPath}`);
     return;
   }
 
@@ -292,44 +292,44 @@ async function ensureFrontendNavigationMenuEntry({ navigationLayoutPath, moduleN
   const navRegex = /const\s+NAVIGATION_SECTIONS\s*(?::[^=]*)?=\s*\[/m;
   const navMatch = source.match(navRegex);
   if (!navMatch) {
-    logger.risk(`NAVIGATION_SECTIONS não localizado em ${navigationLayoutPath}; registro no menu ignorado.`);
+    logger.risk(`NAVIGATION_SECTIONS not found in ${navigationLayoutPath}; menu registration skipped.`);
     return;
   }
 
   const expectedHref = `/${moduleName}`;
-  // O regex termina exatamente no `[` que abre o array (o `[` do tipo
-  // `SidebarMenuSection[]` fica antes do `=`, então não pode ser localizado por
-  // indexOf). Usamos o fim do match para apontar para o colchete correto.
+  // The regex ends exactly at the `[` that opens the array (the `[` of the
+  // `SidebarMenuSection[]` type sits before the `=`, so indexOf cannot find it).
+  // The end of the match points at the right bracket.
   const navOpenBracketIndex = navMatch.index + navMatch[0].length - 1;
   const navCloseBracketIndex = findMatchingBracket(source, navOpenBracketIndex);
   if (navCloseBracketIndex === -1) {
-    logger.risk(`NAVIGATION_SECTIONS malformado em ${navigationLayoutPath}; registro no menu ignorado.`);
+    logger.risk(`NAVIGATION_SECTIONS malformed in ${navigationLayoutPath}; menu registration skipped.`);
     return;
   }
 
   const navBlock = source.slice(navOpenBracketIndex, navCloseBracketIndex + 1);
-  // Idempotência: não duplica se a rota do módulo já estiver no menu.
+  // Idempotent: no duplicate when the module's route is already in the menu.
   if (new RegExp(`href:\\s*['"]${expectedHref.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}['"]`).test(navBlock)) {
-    logger.step(`Menu de navegação já continha o módulo ${moduleName} em ${navigationLayoutPath}.`);
+    logger.step(`Navigation menu already had the ${moduleName} module in ${navigationLayoutPath}.`);
     return;
   }
 
-  // Localiza o array `items` da primeira seção dentro do bloco de navegação.
+  // Finds the first section's `items` array inside the navigation block.
   const itemsKeyIndex = source.indexOf('items', navOpenBracketIndex);
   if (itemsKeyIndex === -1 || itemsKeyIndex > navCloseBracketIndex) {
-    logger.risk(`Nenhuma seção com 'items' em NAVIGATION_SECTIONS (${navigationLayoutPath}); registro no menu ignorado.`);
+    logger.risk(`No section with 'items' in NAVIGATION_SECTIONS (${navigationLayoutPath}); menu registration skipped.`);
     return;
   }
   const itemsOpenBracketIndex = source.indexOf('[', itemsKeyIndex);
   const itemsCloseBracketIndex = findMatchingBracket(source, itemsOpenBracketIndex);
   if (itemsOpenBracketIndex === -1 || itemsCloseBracketIndex === -1 || itemsCloseBracketIndex > navCloseBracketIndex) {
-    logger.risk(`Array 'items' malformado em NAVIGATION_SECTIONS (${navigationLayoutPath}); registro no menu ignorado.`);
+    logger.risk(`Malformed 'items' array in NAVIGATION_SECTIONS (${navigationLayoutPath}); menu registration skipped.`);
     return;
   }
 
   const iconComponent = resolveMainMenuLucideIcon(moduleName);
   const label = resolveMainMenuLabel(moduleName);
-  logger.ai(`ícone e rótulo PT-BR resolvidos deterministicamente para o módulo ${moduleName}: ${label} (${iconComponent}).`);
+  logger.ai(`icon and PT-BR label resolved deterministically for the ${moduleName} module: ${label} (${iconComponent}).`);
 
   const newItem = `{ id: '${moduleName}', label: '${label}', href: '${expectedHref}', icon: ${iconComponent}, match: 'prefix' }`;
   const inner = source.slice(itemsOpenBracketIndex + 1, itemsCloseBracketIndex);
@@ -342,12 +342,12 @@ async function ensureFrontendNavigationMenuEntry({ navigationLayoutPath, moduleN
   updated = ensureLucideIconImport(updated, iconComponent);
 
   if (updated === source) {
-    logger.step(`Menu de navegação já estava atualizado em ${navigationLayoutPath}.`);
+    logger.step(`Navigation menu was already up to date in ${navigationLayoutPath}.`);
     return;
   }
 
   await writeFile(navigationLayoutPath, updated);
-  logger.step(`Menu de navegação atualizado com o módulo ${moduleName}: ${navigationLayoutPath}`);
+  logger.step(`Navigation menu updated with the ${moduleName} module: ${navigationLayoutPath}`);
 }
 
 async function pathExists(targetPath) {
@@ -368,7 +368,7 @@ async function ensureTargetPathAvailability({ targetPath, force, logger, label }
     throw new Error('Run operations are not initialized.');
   }
   await activeRunOps.removePath(targetPath, { recursive: true, force: true, markRisk: true });
-  logger.step(`${label} existente removido com --force: ${targetPath}.`);
+  logger.step(`Existing ${label} removed with --force: ${targetPath}.`);
 }
 
 async function readJson(filePath) {
@@ -406,7 +406,7 @@ async function ensurePackageDependency({ packageJsonPath, dependencyName, depend
   dependencies[dependencyName] = dependencyVersion;
   packageJson.dependencies = dependencies;
   await writeFile(packageJsonPath, stringifyJson(packageJson));
-  logger.step(`${label} atualizado com dependência ${dependencyName}@${dependencyVersion}: ${packageJsonPath}`);
+  logger.step(`${label} updated with dependency ${dependencyName}@${dependencyVersion}: ${packageJsonPath}`);
   return true;
 }
 
@@ -447,7 +447,7 @@ async function ensureBackendModuleImportedInAppModule({ appModulePath, moduleNam
       note: `${moduleName}.module import`,
       markRiskOnOverwrite: true,
     });
-    logger.step(`arquivo atualizado: ${appModulePath}`);
+    logger.step(`updated file: ${appModulePath}`);
   }
 }
 
@@ -470,7 +470,7 @@ async function main() {
 
     if (!moduleName) {
       usage();
-      logger.step('Comando sem nome de módulo. Encerrado após exibir help.');
+      logger.step('Command without a module name. Exited after showing the help.');
       await logger.success();
       process.exit(1);
     }
@@ -479,7 +479,7 @@ async function main() {
       throw new Error(`Invalid module name '${moduleName}'. Use lowercase letters, numbers and hyphens.`);
     }
 
-    logger.step(`Nome do módulo validado: ${moduleName}.`);
+    logger.step(`Module name validated: ${moduleName}.`);
 
     const { packagesDir, sharedModule, sharedPackageJsonPath, config } = await resolveSkillPaths(rootDir);
     const modulesDir = path.join(rootDir, 'modules');
@@ -511,9 +511,9 @@ async function main() {
     const backendAppModulePath = path.join(rootDir, backendAppPath, 'src', 'app.module.ts');
     const backendPackageJsonPath = path.join(rootDir, backendAppPath, 'package.json');
     const frontendPackageJsonPath = path.join(rootDir, frontendAppPath, 'package.json');
-    // O menu de navegação do projeto vive como `NAVIGATION_SECTIONS` no layout do
-    // grupo (private) (`app/(private)/layout.tsx`), que renderiza o `AdminShell`
-    // único da aplicação. Não existe `dashboard/layout.tsx` nem menu por módulo.
+    // The project's navigation menu lives as `NAVIGATION_SECTIONS` in the (private)
+    // group layout (`app/(private)/layout.tsx`), which renders the application's
+    // single `AdminShell`. There is no `dashboard/layout.tsx` and no per-module menu.
     const frontendNavigationLayoutPath = path.join(
       hasFrontendPrivateGroup ? frontendPrivateGroupDir : frontendAppBaseDir,
       'layout.tsx',
@@ -537,7 +537,7 @@ async function main() {
       cliScope: scopeArg,
       fallbackScope: sharedScopeFromPackage,
     });
-    logger.step(`Namespace resolvido: ${scope}.`);
+    logger.step(`Namespace resolved: ${scope}.`);
 
     const packageName = `${scope}/${moduleName}`;
     const sharedDependency = `${scope}/${sharedModule}`;
@@ -586,25 +586,25 @@ async function main() {
       targetPath: targetDir,
       force,
       logger,
-      label: 'Diretório do package',
+      label: 'package directory',
     });
     await ensureTargetPathAvailability({
       targetPath: backendModuleDir,
       force,
       logger,
-      label: 'Diretório do módulo backend',
+      label: 'backend module directory',
     });
     await ensureTargetPathAvailability({
       targetPath: frontendModuleDir,
       force,
       logger,
-      label: 'Diretório do módulo frontend',
+      label: 'frontend module directory',
     });
     await ensureTargetPathAvailability({
       targetPath: frontendRouteDir,
       force,
       logger,
-      label: 'Diretório da rota frontend',
+      label: 'frontend route directory',
     });
 
     const packageJson = {
@@ -723,10 +723,10 @@ export class ${backendModuleClassName} {}
 // Add concrete models for this module below.
 `;
     if (hasFrontendEmptyDashboardState) {
-      logger.step(`Componente base detectado para dashboard vazio: ${frontendEmptyDashboardStatePath}.`);
+      logger.step(`Base component for the empty dashboard found: ${frontendEmptyDashboardStatePath}.`);
     } else {
       logger.step(
-        `Componente base de dashboard vazio nao encontrado (${frontendEmptyDashboardStatePath}); aplicando fallback local para evitar erro de compilacao.`,
+        `Base component for the empty dashboard not found (${frontendEmptyDashboardStatePath}); using a local fallback to avoid a compile error.`,
       );
     }
 
@@ -754,10 +754,10 @@ export function ${frontendDashboardPageName}() {
   return <${frontendDashboardComponentName} />;
 }
 `;
-    // O projeto usa um único shell (`AdminShell`) e um único menu de navegação no
-    // layout do grupo (private). As páginas do módulo herdam esse shell — portanto
-    // NÃO geramos `layout.tsx` por módulo. A entrada do módulo é registrada em
-    // `NAVIGATION_SECTIONS` via ensureFrontendNavigationMenuEntry.
+    // The project uses a single shell (`AdminShell`) and a single navigation menu in
+    // the (private) group layout. The module's pages inherit that shell, so NO
+    // per-module `layout.tsx` is generated. The module's entry is registered in
+    // `NAVIGATION_SECTIONS` by ensureFrontendNavigationMenuEntry.
     const frontendModuleIndexPath = path.join(frontendModuleDir, 'index.ts');
     const backendPrismaPath = path.join(backendModuleDir, `${moduleName}.prisma.ts`);
     const backendControllerPath = path.join(backendModuleDir, `${moduleName}.controller.ts`);
@@ -829,18 +829,18 @@ describe('${moduleName} (e2e)', () => {
     const perfConfigPath = path.join(rootDir, 'perf.config.json');
 
     await activeRunOps.ensureDir(path.join(targetDir, 'src'), {
-      note: 'estrutura base de pacote',
+      note: 'package base structure',
     });
     await activeRunOps.ensureDir(path.join(targetDir, 'test'), {
-      note: 'estrutura base de pacote',
+      note: 'package base structure',
     });
 
     await writeFile(path.join(targetDir, 'package.json'), stringifyJson(packageJson));
-    logger.step(`criou arquivo: ${path.join(targetDir, 'package.json')}`);
+    logger.step(`created file: ${path.join(targetDir, 'package.json')}`);
     await writeFile(path.join(targetDir, 'tsconfig.json'), stringifyJson(tsconfigJson));
-    logger.step(`criou arquivo: ${path.join(targetDir, 'tsconfig.json')}`);
+    logger.step(`created file: ${path.join(targetDir, 'tsconfig.json')}`);
     await writeFile(path.join(targetDir, 'vitest.config.ts'), vitestConfig);
-    logger.step(`criou arquivo: ${path.join(targetDir, 'vitest.config.ts')}`);
+    logger.step(`created file: ${path.join(targetDir, 'vitest.config.ts')}`);
     // mutation testing of this module alone (npm run mutation -- <module>): the thresholds inform, they do not break
     await writeFile(
       path.join(targetDir, 'stryker.config.json'),
@@ -855,30 +855,30 @@ describe('${moduleName} (e2e)', () => {
         tempDirName: '.stryker-tmp',
       }),
     );
-    logger.step(`criou arquivo: ${path.join(targetDir, 'stryker.config.json')}`);
+    logger.step(`created file: ${path.join(targetDir, 'stryker.config.json')}`);
     await writeFile(path.join(targetDir, 'src', 'index.ts'), indexTs);
-    logger.step(`criou arquivo: ${path.join(targetDir, 'src', 'index.ts')}`);
+    logger.step(`created file: ${path.join(targetDir, 'src', 'index.ts')}`);
     await writeFile(path.join(targetDir, 'test', 'index.test.ts'), indexTest);
-    logger.step(`criou arquivo: ${path.join(targetDir, 'test', 'index.test.ts')}`);
+    logger.step(`created file: ${path.join(targetDir, 'test', 'index.test.ts')}`);
 
-    logger.step(`Estrutura base criada em ${targetDir}.`);
-    logger.step(`Dependência compartilhada configurada: ${sharedDependency}.`);
+    logger.step(`Base structure created at ${targetDir}.`);
+    logger.step(`Shared dependency configured: ${sharedDependency}.`);
 
     if (!backendOnly) {
       await writeFile(backendControllerPath, backendControllerTs);
-      logger.step(`criou arquivo: ${backendControllerPath}`);
+      logger.step(`created file: ${backendControllerPath}`);
       await writeFile(backendPrismaPath, backendPrismaTs);
-      logger.step(`criou arquivo: ${backendPrismaPath}`);
+      logger.step(`created file: ${backendPrismaPath}`);
     }
     await writeFile(backendModulePath, backendModuleTs);
-    logger.step(`criou arquivo: ${backendModulePath}`);
+    logger.step(`created file: ${backendModulePath}`);
     await writeFile(backendModuleIndexPath, backendModuleIndexTs);
-    logger.step(`criou arquivo: ${backendModuleIndexPath}`);
+    logger.step(`created file: ${backendModuleIndexPath}`);
     await writeFile(backendPrismaModelPath, backendPrismaModel);
-    logger.step(`criou arquivo: ${backendPrismaModelPath}`);
+    logger.step(`created file: ${backendPrismaModelPath}`);
     if (!backendOnly) {
       await writeFile(backendE2eSpecPath, backendE2eSpecTs);
-      logger.step(`criou arquivo: ${backendE2eSpecPath}`);
+      logger.step(`created file: ${backendE2eSpecPath}`);
     }
     // the list route enters the latency budget the day it is born; a route outside perf.config.json is a review finding
     if (!backendOnly && (await pathExists(perfConfigPath))) {
@@ -888,7 +888,7 @@ describe('${moduleName} (e2e)', () => {
         // `modules`: every module whose code the request runs; a composition route lists all of them, or perf --changed skips it
         perfConfig.routes.push({ path: `/${moduleName}`, modules: [moduleName], auth: true, p95Ms: 200 });
         await writeFile(perfConfigPath, stringifyJson(perfConfig));
-        logger.step(`rota /${moduleName} adicionada ao orçamento de p95: ${perfConfigPath}`);
+        logger.step(`route /${moduleName} added to the p95 budget: ${perfConfigPath}`);
       }
     }
     await ensureBackendModuleImportedInAppModule({
@@ -897,27 +897,27 @@ describe('${moduleName} (e2e)', () => {
       moduleClassName,
       logger,
     });
-    logger.step(`Estrutura backend criada em ${backendModuleDir}.`);
+    logger.step(`Backend structure created at ${backendModuleDir}.`);
 
     if (backendOnly) {
-      logger.step('--backend-only: frontend, rota e menu não gerados.');
+      logger.step('--backend-only: frontend, route and menu not generated.');
     } else {
     await writeFile(frontendDashboardComponentPath, frontendDashboardComponentTsx);
-    logger.step(`criou arquivo: ${frontendDashboardComponentPath}`);
+    logger.step(`created file: ${frontendDashboardComponentPath}`);
     await writeFile(frontendDataIndexPath, `// Frontend-only API clients, schemas, hooks and browser state for ${moduleName}.\nexport {};\n`);
-    logger.step(`criou arquivo: ${frontendDataIndexPath}`);
+    logger.step(`created file: ${frontendDataIndexPath}`);
     await writeFile(frontendDashboardPagePath, frontendDashboardPageTsx);
-    logger.step(`criou arquivo: ${frontendDashboardPagePath}`);
+    logger.step(`created file: ${frontendDashboardPagePath}`);
     await writeFile(frontendModuleIndexPath, frontendModuleIndexTs);
-    logger.step(`criou arquivo: ${frontendModuleIndexPath}`);
+    logger.step(`created file: ${frontendModuleIndexPath}`);
     await writeFile(frontendAppRoutePagePath, frontendAppRoutePageTsx);
-    logger.step(`criou arquivo: ${frontendAppRoutePagePath}`);
+    logger.step(`created file: ${frontendAppRoutePagePath}`);
     await ensureFrontendNavigationMenuEntry({
       navigationLayoutPath: frontendNavigationLayoutPath,
       moduleName,
       logger,
     });
-    logger.step(`Estrutura frontend criada em ${frontendModuleDir}.`);
+    logger.step(`Frontend structure created at ${frontendModuleDir}.`);
     }
 
     await ensurePackageDependency({

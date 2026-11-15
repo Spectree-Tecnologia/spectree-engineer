@@ -1,10 +1,10 @@
 import { Card } from '@/shared/components/ui/card';
 
 /**
- * Dashboard de exemplo (rota `/dashboard`, grupo private).
+ * Example dashboard (route `/dashboard`, private group).
  *
- * Renderizado dentro do AdminShell (ver layout do grupo private). É uma rota
- * aberta — não há bloqueio de autenticação. Substitua os cards por widgets reais.
+ * Rendered inside the AdminShell (see the private group's layout). It is an open
+ * route: there is no authentication gate. Replace the cards with real widgets.
  */
 export default function DashboardPage() {
   return (

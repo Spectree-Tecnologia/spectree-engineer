@@ -1,5 +1,5 @@
-// The tickets of a goal are a graph, read by a script (the Founder's "engenharia de grafo", approved on 2026-11-13).
-// Measured on PILOT the same day: the squad ran almost serially (parallelism 1.14 to 1.33) and the Engineer chose the
+// The tickets of a goal are a graph, read by a script (the Founder's "graph engineering", approved on 2026-11-13).
+// Measured on the pilot project the same day: the squad ran almost serially (parallelism 1.14 to 1.33) and the Engineer chose the
 // next ticket by reading prose. `goal graph` says by exit code what the plan gate used to read by eye: no cycle, every
 // criterion has a ticket, two tickets with no order between them never write the same place; and it names the
 // frontier, the tickets free to start. Run, not read:
@@ -218,7 +218,7 @@ test('no skill sends an agent to a user it cannot reach, or to a command the flo
   assert.doesNotMatch(read('commands/engineer.md'), /test:e2e`\); `npm run check:pr`/);
 });
 
-// Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on PILOT on 2026-11-13: tickets 02
+// Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on the pilot project on 2026-11-13: tickets 02
 // and 06 of ci-time took three verification rounds each, every re-verification hunted again and found new things,
 // and the quality-engineer verified a checkout the next full-stack-developer was already changing.
 test('a ticket closes whole: nobody writes while it is verified, the builder fixes, whoever found re-checks, once', () => {
@@ -256,7 +256,7 @@ test('a proof written `in ci:` is run by the pull request\'s run, and by nothing
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /An `in ci:` proof is run by the pull request's run \(the CI step `Goal proofs written in ci`/);
 });
 
-// 0.33.0, from PILOT's ci-time-20 (2026-11-14): the wording of a by-hand half of a proof held a second `run:`, and the
+// 0.33.0, from the pilot project's ci-time-20 (2026-11-14): the wording of a by-hand half of a proof held a second `run:`, and the
 // pull request's own step would have run it. The quality-engineer found it; the author can see it when it writes.
 test('goal check prints every command a contract will run, as the script reads the cell', () => {
   const two = contract().replace('| 3 | a thing is archived | run: `node -e "process.exit(0)"` |', '| 3 | a thing is archived | in ci: run: `node a.mjs` exits 0; by hand, on the runner, the step\'s run: `node b.mjs` shows it |');
@@ -276,7 +276,7 @@ test('whoever plans does not build: the first ticket is a new full-stack-develop
   assert.doesNotMatch(read('README.md'), /quem planeja constrói o primeiro ticket/);
 });
 
-// Delivery 3 (0.34.0): two lanes. Measured on PILOT's ci-time-20 (2026-11-14): ticket 02 sat free for the 40 minutes of
+// Delivery 3 (0.34.0): two lanes. Measured on the pilot project's ci-time-20 (2026-11-14): ticket 02 sat free for the 40 minutes of
 // ticket 01 and ticket 03 for the 77 minutes of ticket 02, with the usage limit never reached in 3.8 hours.
 test('the graph says which tickets of the frontier may be built at the same time', () => {
   const dir = project({ ...good, '01-create': { ...good['01-create'], status: 'done' } });

@@ -92,12 +92,12 @@ export function planProgress(plan: Plan): {
   const current = plan.tasks.find(one => one.status === 'in_progress')
   const next = plan.tasks.find(one => one.status === 'pending')
   const now = current
-    ? `Agora: ${current.activeForm || current.subject}`
+    ? `Now: ${current.activeForm || current.subject}`
     : next
-      ? `A seguir: ${next.subject}`
-      : 'Plano concluído'
+      ? `Next: ${next.subject}`
+      : 'Plan done'
   return {
-    title: plan.title || 'Plano',
+    title: plan.title || 'Plan',
     done,
     total,
     percent: total === 0 ? 0 : Math.round((done / total) * 100),

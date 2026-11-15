@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The start of a goal without an agent: the branch, the squad's tooling and the green baseline are commands with an
-// exit code, and waiting for a command costs no token. Measured on PILOT: the agent mission that did this took 27
+// exit code, and waiting for a command costs no token. Measured on the pilot project: the agent mission that did this took 27
 // minutes and 9.3M tokens in one goal and 60 minutes and 9.2M in the next, with the full-stack-developer waiting for
 // it; the part this script does took 5 of those 60 minutes. Run from the project root, by the orchestrator.
 //

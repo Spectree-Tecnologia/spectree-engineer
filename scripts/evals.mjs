@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Evals do squad: roda `claude plugin eval` sobre este plugin e imprime uma tabela por caso.
-// Cada caso em evals/<caso>/ monta um fixture de evals/fixtures/ (scaffold) e aprova por regex /
-// tool_used / file_exists — nada de "parece bom". Sai 1 se algum caso ficar abaixo do threshold (1.0).
+// The squad's evals: runs `claude plugin eval` over this plugin and prints one table row per case.
+// Each case in evals/<case>/ builds a fixture from evals/fixtures/ (scaffold) and passes by regex /
+// tool_used / file_exists, never by "looks good". Exits 1 if any case scores below the threshold (1.0).
 //
-//   node scripts/evals.mjs                 a suíte inteira (1 run por caso; --runs 3 para medir variância)
-//   node scripts/evals.mjs --case 'qe-*'   qualquer flag extra vai direto para o `claude plugin eval`
-//   node scripts/evals.mjs --control       prova que a suíte mede: copia o plugin com o card do
-//                                          quality-engineer SEM o procedimento nem as regras (do `## Criteria` em diante) e exige que o caso do UpdateAccount FALHE
+//   node scripts/evals.mjs                 the whole suite (1 run per case; --runs 3 to measure variance)
+//   node scripts/evals.mjs --case 'qe-*'   any extra flag goes straight to `claude plugin eval`
+//   node scripts/evals.mjs --control       proves the suite measures something: copies the plugin with the
+//                                          quality-engineer card WITHOUT its procedure and rules (from `## Criteria` on) and requires the UpdateAccount case to FAIL
 //
-// Precisa do Claude Code logado (o eval roda como você, na sua credencial); não roda em CI sem chave.
+// Needs Claude Code logged in (the eval runs as you, on your credentials); it does not run in CI without a key.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -32,13 +32,13 @@ if (control) {
   });
   const card = path.join(target, 'agents', 'quality-engineer.md');
   const original = fs.readFileSync(card, 'utf8');
-  // corta do bloco `## Criteria` até o fim: somem o procedimento por critério e os vereditos, as regras do monólito,
-  // a lista do que a leitura pega e o vocabulário de achado (severidade, arquivo:linha); fica só o nome dos três blocos
+  // cut from the `## Criteria` block to the end: the per-criterion procedure and verdicts, the monolith rules,
+  // the list of what reading catches and the finding vocabulary (severity, file:line) go; only the three block names stay
   const stripped = original.replace(/\n## Criteria — o contrato, critério por critério[\s\S]*$/, '\n');
-  if (stripped === original) throw new Error('control: a âncora do card do quality-engineer mudou; ajuste o corte');
+  if (stripped === original) throw new Error('control: the anchor in the quality-engineer card changed; adjust the cut');
   fs.writeFileSync(card, stripped);
   if (!extra.includes('--case')) extra.push('--case', CONTROL_CASE);
-  console.log(`control plugin: ${target} (card do quality-engineer sem o procedimento nem as regras)`);
+  console.log(`control plugin: ${target} (quality-engineer card without its procedure and rules)`);
 }
 
 fs.mkdirSync(outDir, { recursive: true });
@@ -57,12 +57,12 @@ const res = spawnSync(cmd, { cwd: plugin, shell: true, stdio: 'inherit', env: { 
 const wall = Math.round((Date.now() - t0) / 1000);
 
 if (!fs.existsSync(json)) {
-  console.error(`\nsem ${json}: o eval não chegou a rodar (exit ${res.status})`);
+  console.error(`\nno ${json}: the eval never ran (exit ${res.status})`);
   process.exit(res.status || 1);
 }
 const result = JSON.parse(fs.readFileSync(json, 'utf8'));
 
-console.log(`\n| caso | score | graders | turnos | s | US$ |\n|---|---|---|---|---|---|`);
+console.log(`\n| case | score | graders | turns | s | US$ |\n|---|---|---|---|---|---|`);
 let anyBelow = false;
 for (const c of result.cases) {
   const runs = c.arms.with;
@@ -79,14 +79,14 @@ for (const c of result.cases) {
     for (const g of r.graders.filter((g) => g.scored && !g.passed)) console.log(`    ✗ ${g.name}: ${g.explanation}`);
   }
 }
-console.log(`\ntotal: ${result.aggregates.casesPassed}/${result.aggregates.casesTotal} casos, ${wall}s de parede, US$ ${(result.costUsd ?? 0).toFixed(2)} · ${json}`);
+console.log(`\ntotal: ${result.aggregates.casesPassed}/${result.aggregates.casesTotal} cases, ${wall}s wall, US$ ${(result.costUsd ?? 0).toFixed(2)} · ${json}`);
 
 if (control) {
   const c = result.cases.find((x) => x.name === CONTROL_CASE);
   const failed = !!c && c.aggregates.score < 1;
   console.log(failed
-    ? `\nCONTROLE OK: sem a lista de regras, ${CONTROL_CASE} falhou (score ${c.aggregates.score.toFixed(2)}) — a suíte mede o card.`
-    : `\nCONTROLE FALHOU: ${CONTROL_CASE} passou mesmo sem a lista de regras — o caso não distingue o card.`);
+    ? `\nCONTROL OK: without the rules list, ${CONTROL_CASE} failed (score ${c.aggregates.score.toFixed(2)}): the suite measures the card.`
+    : `\nCONTROL FAILED: ${CONTROL_CASE} passed even without the rules list: the case does not tell the card apart.`);
   fs.rmSync(target, { recursive: true, force: true });
   process.exit(failed ? 0 : 1);
 }

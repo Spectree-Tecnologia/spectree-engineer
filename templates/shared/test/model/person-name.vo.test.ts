@@ -1,33 +1,33 @@
 import { PersonName, ValidationError } from '../../src/index.js';
 
-test('Deve lançar erro ao tentar criar nome vazio', () => {
+test('throws when creating an empty name', () => {
   expect(() => new PersonName()).toThrow();
   expect(() => new PersonName('')).toThrow();
 });
 
-test('Deve lançar vários erros ao tentar criar nome vazio', () => {
+test('throws several errors when creating an empty name', () => {
   expect(() => new PersonName()).toThrow();
 });
 
-test('Deve lançar erro ao tentar criar nome menor que 3 caracteres', () => {
+test('throws when creating a name shorter than 3 characters', () => {
   expect(() => new PersonName('L Z')).toThrow();
 });
 
-test('Deve lançar erro ao tentar criar nome maior que 120 caracteres', () => {
+test('throws when creating a name longer than 120 characters', () => {
   const bigName =
     'Pedro de Alcântara João Carlos Leopoldo Salvador Bibiano Francisco Xavier de Paula Leocádio Miguel Gabriel Rafael Gonzaga de Bragança e Habsburgo';
   expect(() => new PersonName(bigName)).toThrow();
 });
 
-test('Deve lançar erro ao tentar criar nome sem sobrenome', () => {
+test('throws when creating a name without a surname', () => {
   expect(() => new PersonName('Guilherme')).toThrow();
 });
 
-test('Deve lançar erro ao tentar criar nome com caracteres especiais', () => {
+test('throws when creating a name with special characters', () => {
   expect(() => new PersonName('João @OOOJoao')).toThrow();
 });
 
-test('Deve criar nome e dois sobrenomes', () => {
+test('creates a first name and two surnames', () => {
   const name = new PersonName('João Silva Pereira');
   expect(name.value).toBe('João Silva Pereira');
   expect(name.firstName).toBe('João');
@@ -35,23 +35,23 @@ test('Deve criar nome e dois sobrenomes', () => {
   expect(name.lastName).toBe('Pereira');
 });
 
-test('Deve criar nome com apostrofo', () => {
+test('creates a name with an apostrophe', () => {
   const nameExample = "João D'Ávila";
   const name = new PersonName(nameExample);
   expect(name.value).toBe(nameExample);
 });
 
-test('Deve retornar as iniciais do nome', () => {
+test('returns the initials of the name', () => {
   const name = new PersonName('João Silva Pereira');
   expect(name.initials).toBe('JP');
 });
 
-test('Deve tentar criar um nome com sucesso', () => {
+test('tries to create a name and succeeds', () => {
   const name = PersonName.tryCreate('João Silva Pereira');
   expect(name.isOk).toBe(true);
 });
 
-test('Deve tentar criar um nome inválido', () => {
+test('tries to create an invalid name', () => {
   const name = PersonName.tryCreate('João');
   expect(name.isOk).toBe(false);
   expect(name.errors[0]?.code).toBe('person-name.surname-missing');

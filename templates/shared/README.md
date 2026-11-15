@@ -1,105 +1,105 @@
 # shared
 
-Biblioteca de infraestrutura compartilhada para projetos com arquitetura orientada ao domínio. Fornece os blocos de construção do DDD — `Result`, `Entity`, `ValueObject`, `UseCase` — além de contratos de repositório, sistema de erros estruturados e uma biblioteca de Value Objects prontos para uso.
+Shared infrastructure library for domain-driven projects. It provides the DDD building blocks (`Result`, `Entity`, `ValueObject`, `UseCase`), repository contracts, a structured error system and a library of ready-to-use Value Objects.
 
 ---
 
-## Padrão Result
+## The Result pattern
 
-O núcleo da biblioteca. Torna sucesso e falha parte da assinatura de retorno das funções, eliminando exceções no fluxo de domínio.
+The core of the library. It makes success and failure part of a function's return type, so the domain flow has no exceptions.
 
 ```typescript
-// Fábricas estáticas
-Result.ok(value); // sucesso com valor
-Result.ok(); // sucesso sem valor (void)
-Result.empty<T>(); // sucesso com instance null
-Result.fail('ERR_CODE'); // falha com um erro
-Result.fail(['E1', 'E2']); // falha com múltiplos erros
+// Static factories
+Result.ok(value); // success with a value
+Result.ok(); // success with no value (void)
+Result.empty<T>(); // success with a null instance
+Result.fail('ERR_CODE'); // failure with one error
+Result.fail(['E1', 'E2']); // failure with several errors
 
-// Captura automática de exceções
-Result.try(() => new MeuVO(value)); // síncrono
-await Result.tryAsync(() => repositorio.findById(id)); // assíncrono
+// Automatic exception capture
+Result.try(() => new MyVO(value)); // synchronous
+await Result.tryAsync(() => repository.findById(id)); // asynchronous
 
-// Combina múltiplos Results — agrega todos os erros se algum falhar
+// Combine several Results; collects every error if any fails
 Result.combine([r1, r2, r3] as const);
 await Result.combineAsync([promise1, promise2]);
 ```
 
-### `ResultValidator` — guard clauses fluentes
+### `ResultValidator`: fluent guard clauses
 
 ```typescript
 result.validator
-  .throwsIfFailed() // lança se result.isFailure
-  .throwsIfNull('ERR') // lança se instance == null
-  .throwsIfTrue('ERR').result; // lança se instance === true // devolve o Result original
+  .throwsIfFailed() // throws if result.isFailure
+  .throwsIfNull('ERR') // throws if instance == null
+  .throwsIfTrue('ERR').result; // throws if instance === true // returns the original Result
 ```
 
-Todos os métodos aceitam um segundo parâmetro `exceptionFactory` para substituir o `ResultError` padrão por qualquer tipo de exceção.
+Every method takes an optional second parameter, `exceptionFactory`, to replace the default `ResultError` with any exception type.
 
-### Extensões em `String.prototype`
+### `String.prototype` extensions
 
-O módulo `Result` adiciona três propriedades ao tipo primitivo `string`:
+The `Result` module adds three properties to the primitive `string` type:
 
-| Extensão         | Comportamento                                                                           |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| `.code`          | Mapeia constantes de erro para códigos semânticos (`INVALID_EMAIL` → `'email.invalid'`) |
-| `.value`         | Retorna `this.toString()` — compatibilidade com a interface de VOs                      |
-| `.equals(other)` | Compara com string ou com `{ value: string }`                                           |
+| Extension        | Behavior                                                                          |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `.code`          | Maps error constants to semantic codes (`INVALID_EMAIL` → `'email.invalid'`)      |
+| `.value`         | Returns `this.toString()`, for compatibility with the VO interface                |
+| `.equals(other)` | Compares with a string or with `{ value: string }`                                |
 
 ---
 
-## Blocos de construção do domínio
+## Domain building blocks
 
 ### `Entity<Type, Props>`
 
-Classe abstrata para objetos com identidade persistente (ID UUID). Inicializa automaticamente `id`, `createdAt`, `updatedAt` e `deletedAt` quando não fornecidos.
+Abstract class for objects with a persistent identity (a UUID). It fills in `id`, `createdAt`, `updatedAt` and `deletedAt` when they are not given.
 
-**Clonagem com rastreamento de diff:**
+**Cloning with a diff:**
 
 ```typescript
-// Retorna as novas props e um diff tipado do que mudou
-const { props, diff } = entity.cloneProps({ name: 'novo' });
-// diff = { name: { previous: 'antigo', current: 'novo' } }
+// Returns the new props and a typed diff of what changed
+const { props, diff } = entity.cloneProps({ name: 'new' });
+// diff = { name: { previous: 'old', current: 'new' } }
 
-// Cria nova instância a partir dos overrides, retornando Result
+// Builds a new instance from the overrides and returns a Result
 const result = entity.clone({ status: 'active' });
 ```
 
-`clone` chama `tryCreate` da subclasse se disponível, respeitando as invariantes da entidade.
+`clone` calls the subclass's `tryCreate` when there is one, so the entity's invariants hold.
 
 ### `ValueObject<T, Config>`
 
-Objetos imutáveis identificados pelo valor, não por referência. `equals` compara `value`; `config` carrega metadados de contexto.
+Immutable objects identified by value, not by reference. `equals` compares `value`; `config` carries context metadata.
 
 ### `UseCase<IN, OUT>`
 
-Contrato padrão da camada de aplicação:
+The standard contract of the application layer:
 
 ```typescript
-class CriarUsuario implements UseCase<CriarUsuarioDto, Usuario> {
-  async execute(dto: CriarUsuarioDto): Promise<Result<Usuario>> { ... }
+class CreateUser implements UseCase<CreateUserDto, User> {
+  async execute(dto: CreateUserDto): Promise<Result<User>> { ... }
 }
 ```
 
 ---
 
-## Sistema de erros estruturados
+## Structured errors
 
 ### `Metadata`
 
-Contexto imutável e fluente para enriquecer erros de validação.
+Immutable, fluent context that enriches validation errors.
 
 ```typescript
 const meta = new Metadata({ module: 'auth', object: 'user' });
-const emailMeta = meta.to('email', 'valor-invalido');
-// { module: 'auth', object: 'user', attribute: 'email', value: 'valor-invalido' }
+const emailMeta = meta.to('email', 'invalid-value');
+// { module: 'auth', object: 'user', attribute: 'email', value: 'invalid-value' }
 ```
 
-Campos: `module`, `object`, `attribute`, `value`, `id`. Métodos: `withModule/Object/Attribute/Value/Id`, `to(attribute, value?)`.
+Fields: `module`, `object`, `attribute`, `value`, `id`. Methods: `withModule/Object/Attribute/Value/Id`, `to(attribute, value?)`.
 
 ### `ValidationError`
 
-Exceção que carrega `Message[]` (código + metadados) e status HTTP. Usada pelos VOs que precisam de contexto rico.
+An exception that carries `Message[]` (code + metadata) and an HTTP status. Used by VOs that need rich context.
 
 ```typescript
 throw new ValidationError({ code: 'cpf.invalid', meta: meta.props }, 422);
@@ -107,65 +107,65 @@ throw new ValidationError({ code: 'cpf.invalid', meta: meta.props }, 422);
 
 ### `ResultError`
 
-Exceção simples com `errors: string[]`. Usada pela `ResultValidator` como padrão quando não há `exceptionFactory`.
+A simple exception with `errors: string[]`. `ResultValidator` uses it by default when no `exceptionFactory` is given.
 
 ---
 
-## Padrão `create` / `tryCreate`
+## The `create` / `tryCreate` pattern
 
-Todos os VOs e entidades seguem este contrato:
+Every VO and entity follows this contract:
 
-| Método           | Retorno     | Ao falhar                              |
-| ---------------- | ----------- | -------------------------------------- |
-| `tryCreate(...)` | `Result<T>` | Retorna `Result.fail` — nunca lança    |
-| `create(...)`    | `T`         | Lança via `validator.throwsIfFailed()` |
+| Method           | Returns     | On failure                              |
+| ---------------- | ----------- | --------------------------------------- |
+| `tryCreate(...)` | `Result<T>` | Returns `Result.fail`; never throws     |
+| `create(...)`    | `T`         | Throws through `validator.throwsIfFailed()` |
 
 ---
 
 ## Value Objects
 
-### Identidade e texto
+### Identity and text
 
-| VO                 | Regras principais                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `Id`               | UUID v4; auto-gera quando omitido; `createUUID()` gera string avulsa                                       |
-| `Email`            | Normaliza trim + lowercase; expõe `local`, `domain`, `username`                                            |
-| `Alias`            | Slug `[a-z0-9]+(-[a-z0-9]+)*`; método estático `format(value)` converte texto livre                        |
-| `PersonName`       | 3–50 chars; primeiro e último nome obrigatórios (≥2 chars cada); expõe `firstName`, `lastName`, `initials` |
-| `Text`             | String com `minLength`/`maxLength` configuráveis via `TextConfig`                                          |
-| `ShortDescription` | Estende `Text`; padrão 15–80 chars                                                                         |
-| `Description`      | Estende `Text`; padrão 20–2000 chars                                                                       |
+| VO                 | Main rules                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `Id`               | UUID v4; generated when omitted; `createUUID()` returns a standalone string                                    |
+| `Email`            | Trims and lowercases; exposes `local`, `domain`, `username`                                                    |
+| `Alias`            | Slug `[a-z0-9]+(-[a-z0-9]+)*`; the static `format(value)` converts free text                                   |
+| `PersonName`       | 3–50 chars; first and last name required (≥2 chars each); exposes `firstName`, `lastName`, `initials`          |
+| `Text`             | String with `minLength`/`maxLength` set through `TextConfig`                                                   |
+| `ShortDescription` | Extends `Text`; 15–80 chars by default                                                                         |
+| `Description`      | Extends `Text`; 20–2000 chars by default                                                                       |
 
-### Senhas
+### Passwords
 
-| VO                  | Propósito                                                                        |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `Password`          | Senha plana não-vazia (sem regras de força)                                      |
-| `StrongPassword`    | Mín. 8 chars, maiúscula, minúscula, número, caractere especial                   |
-| `HashPassword`      | Hash bcrypt validado por regex (`$2[aby]$...`)                                   |
-| `EncryptedPassword` | Mesmo formato que `HashPassword`; nome semântico para contextos de armazenamento |
+| VO                  | Purpose                                                                     |
+| ------------------- | --------------------------------------------------------------------------- |
+| `Password`          | Non-empty plain password (no strength rules)                                |
+| `StrongPassword`    | At least 8 chars, an uppercase letter, a lowercase letter, a digit, a symbol |
+| `HashPassword`      | bcrypt hash validated by a regex (`$2[aby]$...`)                            |
+| `EncryptedPassword` | Same format as `HashPassword`; a semantic name for storage contexts         |
 
-### Números e datas
+### Numbers and dates
 
-| VO                | Regras                                                                                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PositiveInteger` | Inteiro finito ≥ 1                                                                                                                                            |
-| `NonNegative`     | Número ≥ 0                                                                                                                                                    |
-| `DayOfMonth`      | Inteiro 1–31                                                                                                                                                  |
-| `DateOnly`        | Data sem hora; aceita `string` ou `Date`; normaliza para `YYYY-MM-DD`; expõe `asDate`                                                                         |
-| `Duration`        | Tempo em segundos; fábricas `from({ d, h, m, s })`, `inSeconds(n)`, `zero()`; getters `inMinutes/Hours/Days`, `toHMS`, `toHM`, `toMS`; método `add(duration)` |
+| VO                | Rules                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PositiveInteger` | Finite integer ≥ 1                                                                                                                                        |
+| `NonNegative`     | Number ≥ 0                                                                                                                                                |
+| `DayOfMonth`      | Integer 1–31                                                                                                                                              |
+| `DateOnly`        | A date with no time; accepts a `string` or a `Date`; normalizes to `YYYY-MM-DD`; exposes `asDate`                                                        |
+| `Duration`        | Time in seconds; factories `from({ d, h, m, s })`, `inSeconds(n)`, `zero()`; getters `inMinutes/Hours/Days`, `toHMS`, `toHM`, `toMS`; method `add(duration)` |
 
-### Outros
+### Others
 
-| VO         | Regras                                                                              |
-| ---------- | ----------------------------------------------------------------------------------- |
-| `HexColor` | Formatos `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`; normaliza para maiúsculas com `#` |
-| `Cpf`      | Validação aritmética dos dígitos verificadores; expõe `formatted` e `unformatted`   |
-| `Url`      | HTTP/HTTPS; expõe `domain`, `protocol`, `pathname`, `parameters`                    |
+| VO         | Rules                                                                           |
+| ---------- | ------------------------------------------------------------------------------- |
+| `HexColor` | `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`; normalized to uppercase with `#`       |
+| `Cpf`      | Brazilian taxpayer ID; checks the verification digits; exposes `formatted` and `unformatted` |
+| `Url`      | HTTP/HTTPS; exposes `domain`, `protocol`, `pathname`, `parameters`              |
 
 ---
 
-## Contratos de repositório
+## Repository contracts
 
 ```typescript
 interface CreateRepository<T> {
@@ -181,18 +181,18 @@ interface DeleteRepository {
   delete(id: string, tx?): Promise<Result<void>>;
 }
 
-// Compõe todos os quatro
+// Composes all four
 interface CrudRepository<T extends Entity<any, any>>
   extends CreateRepository<T>, UpdateRepository<T>, FindByIdRepository<T>, DeleteRepository {}
 ```
 
-`TransactionManager<CTX>` abstrai transações: `runInTransaction(fn)` injeta um `TransactionContext` na operação sem expor o ORM.
+`TransactionManager<CTX>` abstracts transactions: `runInTransaction(fn)` passes a `TransactionContext` to the operation without exposing the ORM.
 
 ---
 
-## Eventos de domínio
+## Domain events
 
-A única porta entre módulos (regra 13 de `docs/architecture.md`): quem publica não conhece quem assina.
+The only door between modules (rule 13 of `docs/architecture.md`): the publisher does not know who subscribes.
 
 ```typescript
 interface DomainEvent<Payload> {
@@ -203,19 +203,19 @@ interface DomainEvent<Payload> {
 }
 interface EventPublisher {
   publish(event: DomainEvent): Promise<void>;
-} // o port que o use case recebe
+} // the port a use case receives
 interface EventSubscriptions {
   subscribe(name, subscriber): () => void;
-} // o que o wiring do outro módulo usa
+} // what the other module's wiring uses
 
-new InMemoryEventBus(); // implementa os dois; in-process, sequencial
+new InMemoryEventBus(); // implements both; in-process, sequential
 ```
 
-O use case publica **depois** que `runInTransaction` devolveu `ok`; o assinante vive em `apps/backend/src/modules/<b>/`, nunca no core.
+A use case publishes **after** `runInTransaction` returns `ok`; the subscriber lives in `apps/backend/src/modules/<b>/`, never in the core.
 
 ---
 
-## DTOs de paginação
+## Pagination DTOs
 
 ```typescript
 interface PaginatedInputDTO {
@@ -239,14 +239,14 @@ interface PaginatedResultDTO<T> {
 ## Scripts
 
 ```bash
-npm run build        # Compila para dist/
+npm run build        # Compiles to dist/
 npm run dev          # Watch mode
-npm test             # Testes (Vitest)
-npm run test:cov     # Testes com cobertura
+npm test             # Tests (Vitest)
+npm run test:cov     # Tests with coverage
 ```
 
-## Dependências
+## Dependencies
 
-| Pacote | Uso                        |
-| ------ | -------------------------- |
-| `uuid` | Geração de UUID v4 em `Id` |
+| Package | Use                          |
+| ------- | ---------------------------- |
+| `uuid`  | UUID v4 generation in `Id`   |

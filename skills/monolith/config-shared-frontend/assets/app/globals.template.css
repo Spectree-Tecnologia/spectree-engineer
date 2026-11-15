@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* App em modo escuro fixo: o variante `dark:` sempre resolve para o tema escuro. */
+/* App fixed in dark mode: the `dark:` variant always resolves to the dark theme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Tokens do design system — apenas modo escuro. */
+/* Design system tokens, dark mode only. */
 :root {
   color-scheme: dark;
 
@@ -61,10 +61,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Tailwind v4 mudou a cor padrão de `border`/`outline` de gray-200 para
-   `currentColor`. Em modo escuro o texto é quase branco, então qualquer borda
-   sem classe de cor explícita ficava branca. Aqui restauramos o padrão usando
-   o token do design system. */
+/* Tailwind v4 changed the default `border`/`outline` colour from gray-200 to
+   `currentColor`. In dark mode the text is almost white, so any border without
+   an explicit colour class turned white. This restores a default using the
+   design system token. */
 @layer base {
   *,
   ::after,

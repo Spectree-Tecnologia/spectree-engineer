@@ -3,14 +3,20 @@
   "owner": {
     "name": "Spectree Tecnologia"
   },
-  "description": "Marketplace da Spectree Tecnologia: o Engineer, orquestrador em pt-BR para monólitos modulares em Goal Driven Development.",
+  "description": "Spectree Tecnologia marketplace: the Engineer, an orchestrator and autonomous agent squad for modular monoliths in Goal-Driven Development (GDD).",
   "plugins": [
     {
       "name": "spectree-engineer",
       "source": "./",
-      "description": "Orquestrador em pt-BR com sub-agentes especialistas: Goal Driven Development como processo (contrato, tickets em grafo, verificação independente), skills de monólito modular da Spectree como padrão de arquitetura.",
+      "description": "Goal-Driven Development (GDD) and graph engineering for modular monoliths: an orchestrator and seven specialist agents with goal contracts, ticket graphs and independent verification, and Spectree modular monolith skills as the architecture.",
       "category": "engineering",
-      "keywords": ["orchestrator", "goal-driven", "modular-monolith", "tdd"]
+      "keywords": [
+        "orchestrator",
+        "multi-agent",
+        "goal-driven",
+        "modular-monolith",
+        "tdd"
+      ]
     }
   ]
 }

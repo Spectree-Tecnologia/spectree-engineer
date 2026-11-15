@@ -1,4 +1,4 @@
-// The generated CI runs by moment (decided by the Founder on 2026-11-13, measured on PILOT): fast checks on every push
+// The generated CI runs by moment (decided by the Founder on 2026-11-13, measured on the pilot project): fast checks on every push
 // to a pull request, the merge gate on a ready one, everything every night on main with the latency budget reporting,
 // and the latency budget as a gate only in the `pre-release` run. A red p95 never sends a goal back for another round.
 // Run, not only read: the scope step and the latency step of the template are executed in bash.

@@ -5,11 +5,11 @@ import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 
 /**
- * Tela de autenticação de exemplo (rota `/join`).
+ * Example authentication screen (route `/join`).
  *
- * Ainda sem formulário — apenas o esqueleto da tela com os caminhos de
- * navegação: voltar para a landing page e seguir para o dashboard.
- * Substitua o conteúdo pelo formulário real de login quando definido.
+ * No form yet: only the skeleton of the screen with its navigation paths,
+ * back to the landing page and on to the dashboard.
+ * Replace the content with the real login form once it is defined.
  */
 export default function AuthPage() {
   return (

@@ -1,42 +1,42 @@
 import { Cpf, ValidationError } from '../../src/index.js';
 
-test('Deve validar um CPF', () => {
+test('validates a CPF', () => {
   const cpf = new Cpf('12345678909');
   expect(cpf.formatted).toBe('123.456.789-09');
   expect(cpf.value).toBe('123.456.789-09');
 });
 
-test('Deve lançar erro ao tentar criar um CPF inválido', () => {
+test('throws when creating an invalid CPF', () => {
   expect(() => new Cpf('12345678900')).toThrow('cpf.invalid');
 });
 
-test('Deve desformatar um CPF', () => {
+test('unformats a CPF', () => {
   const cpf = new Cpf('123.456.789-09');
   expect(cpf.unformatted).toBe('12345678909');
 });
 
-test('Deve validar um CPF', () => {
+test('validates a CPF', () => {
   expect(Cpf.isValid(null as any)).toBe(false);
   expect(Cpf.isValid('')).toBe(false);
   expect(Cpf.isValid('123')).toBe(false);
   expect(Cpf.isValid('12345678909')).toBe(true);
 });
 
-test('Deve criar um CPF válido via create', () => {
+test('creates a valid CPF through create', () => {
   const cpf = Cpf.create('12345678909');
   expect(cpf.formatted).toBe('123.456.789-09');
 });
 
-test('Deve lançar ao criar um CPF inválido via create', () => {
+test('throws when creating an invalid CPF through create', () => {
   expect(() => Cpf.create('12345678900')).toThrow();
 });
 
-test('Deve tentar criar um CPF com sucesso', () => {
+test('tries to create a CPF and succeeds', () => {
   const cpf = Cpf.tryCreate('12345678909');
   expect(cpf.isOk).toBe(true);
 });
 
-test('Deve tentar criar um CPF inválido', () => {
+test('tries to create an invalid CPF', () => {
   const cpf = Cpf.tryCreate('12345678900');
   expect(cpf.isOk).toBe(false);
   expect(cpf.errors[0]?.code).toBe('cpf.invalid');

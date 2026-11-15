@@ -893,7 +893,7 @@ async function main() {
     } else {
       const seedMainContent = await fsp.readFile(seedMainPath, 'utf8');
       if (shouldReplaceLegacySeedMain(seedMainContent)) {
-        logger.risk(`seed legado sera sobrescrito: ${toPosix(path.relative(rootDir, seedMainPath))}`);
+        logger.risk(`legacy seed will be overwritten: ${toPosix(path.relative(rootDir, seedMainPath))}`);
         await writeFileIfChanged(seedMainPath, renderSeedMainTs(), ctx);
       }
     }
@@ -927,11 +927,11 @@ async function main() {
 
     if (ctx.changes.length === 0) {
       console.log('No changes required. Prisma init is already up to date.');
-      logger.step('Nenhuma alteracao necessaria (estado convergente).');
+      logger.step('No change needed (state already converged).');
     } else {
       const modeLabel = args.dryRun ? 'Dry-run changes' : 'Applied changes';
       console.log(`\n${modeLabel}:`);
-      logger.step(`${modeLabel}: ${ctx.changes.length} alteracoes.`);
+      logger.step(`${modeLabel}: ${ctx.changes.length} changes.`);
       for (const change of ctx.changes) {
         console.log(`- ${change}`);
         logger.step(change, 'CHANGE');
@@ -941,7 +941,7 @@ async function main() {
     if (args.install) {
       if (args.dryRun) {
         console.log('\nDry-run: skipped dependency installation.');
-        logger.step('Instalacao ignorada em dry-run.');
+        logger.step('Install skipped in dry-run.');
       } else {
         console.log('\nInstalling backend dependencies...');
         await runInstall(rootDir, backendWorkspace, ops);
@@ -952,7 +952,7 @@ async function main() {
     if (args.startDb) {
       if (args.dryRun) {
         console.log('\nDry-run: skipped docker compose up.');
-        logger.step('Subida de banco ignorada em dry-run.');
+        logger.step('Database start skipped in dry-run.');
       } else {
         console.log('\nStarting postgres with docker compose...');
         await runStartDb(backendDir, ops);
@@ -962,7 +962,7 @@ async function main() {
 
     if (args.dryRun) {
       console.log('\nRun again with --apply to persist these changes.');
-      logger.step('Dry-run concluido. Execute com --apply para persistir.');
+      logger.step('Dry-run done. Run with --apply to write the changes.');
     }
 
     await logger.success();

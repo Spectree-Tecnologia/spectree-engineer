@@ -1,7 +1,7 @@
 {
   "name": "spectree-engineer",
-  "version": "0.36.0",
-  "description": "Orquestrador em pt-BR com sub-agentes especialistas para monólitos modulares em Goal Driven Development: o fundador dá o resultado que quer, o Engineer escreve o contrato com os critérios de sucesso, e o squad decide o como; skills de engenharia de Matt Pocock no processo, as skills de monólito modular da Spectree como padrão de arquitetura.",
+  "version": "0.36.1",
+  "description": "Goal-Driven Development (GDD), Spectree's own methodology, and graph engineering for modular monoliths: an orchestrator (the Engineer) and seven specialist agents. You state the outcome, the Engineer writes a contract with provable success criteria, the squad plans it as a ticket graph, builds it test-first and verifies it independently, and only four kinds of decision come back to you. Process skills by Matt Pocock; Spectree modular monolith skills as the architecture. The Engineer converses in pt-BR.",
   "author": {
     "name": "Spectree Tecnologia"
   },
@@ -12,9 +12,14 @@
   "keywords": [
     "orchestrator",
     "multi-agent",
+    "autonomous-agents",
     "goal-driven",
     "modular-monolith",
+    "ddd",
     "tdd",
+    "nestjs",
+    "nextjs",
+    "prisma",
     "pt-br"
   ],
   "skills": [
