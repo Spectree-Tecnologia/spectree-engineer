@@ -221,10 +221,16 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
   await step('check-pr', () => {
     const base = run('check-pr-base', 'git rev-parse HEAD').trim();
     const commit = 'git -c user.name=smoke -c user.email=smoke@example.com commit -qm';
-    run('check-pr-branch', `git checkout -q -b feat/check-pr && ${commit} "feat: nothing" --allow-empty`);
+    // the project has a module, so the branch carries the product index generated from it
+    run('check-pr-branch', `git checkout -q -b feat/check-pr && npm run goal -- map && git add docs/index.md && ${commit} "feat: nothing" --allow-empty`);
     const clean = run('check-pr-clean', `npm run check:pr -- --base ${base} --title "feat(probe): a thing"`);
-    if (!/ok\s+gitleaks/.test(clean) || !/ok\s+squawk/.test(clean) || !/ok\s+title/.test(clean) || !/ok\s+up to date/.test(clean)) throw new Error(`check:pr did not report its checks:${clean.slice(-400)}`);
+    if (!/ok\s+gitleaks/.test(clean) || !/ok\s+squawk/.test(clean) || !/ok\s+title/.test(clean) || !/ok\s+up to date/.test(clean) || !/ok\s+product index/.test(clean)) throw new Error(`check:pr did not report its checks:${clean.slice(-400)}`);
     refuse('check-pr-bad-title', `npm run check:pr -- --base ${base} --title "added a thing"`, /FAIL\s+title/);
+    // an index edited by hand no longer says what the code says
+    fs.appendFileSync(path.join(root, 'docs', 'index.md'), 'The probe module is the heart of the product.\n');
+    run('check-pr-stale-index', `git add docs/index.md && ${commit} "docs: hand edit"`);
+    refuse('check-pr-stale-index-refused', `npm run check:pr -- --base ${base}`, /FAIL\s+product index/);
+    run('check-pr-index-restored', 'git reset -q --hard HEAD~1');
     // a token-shaped value, assembled here so this file never holds one
     fs.writeFileSync(path.join(root, 'leak.txt'), `aws_secret_access_key = ${['wJalrXUtnFEMI', 'K7MDENG', 'bPxRfiCYzEXAMPLEKEY'].join('/')}${String.fromCharCode(10)}github_token = ghp_${'a1B2c3D4e5F6g7H8i9J0'.repeat(2).slice(0, 36)}${String.fromCharCode(10)}`);
     run('check-pr-leak-commit', `git add leak.txt && ${commit} "feat: leak"`);
@@ -280,6 +286,7 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     const amended = { evidence: ['| 1 | 1 | met | `npm run goal -- prove probe-thing` exit 0 |', '| 2 | 1 | not met | exit 1 |', '| 2 | 2 | met | exit 0 |', '| 3 | 2 | waived | founder |'], amendments: ['| 2026-11-11 | 3 | waived: the list ships without the artboard check | founder | `probe-thing-visual` in the roadmap |'] };
     write(amended);
     run('goal-ready', 'npm run goal -- check --ready probe-thing');
+    run('goal-index', 'npm run goal -- map && git add docs/index.md');
     run('goal-commit-ready', `${commit} "docs(probe): evidence"`);
     const ready = run('goal-check-pr-ready', `npm run check:pr -- --base ${base}`);
     if (!/ok\s+goal contract/.test(ready)) throw new Error(`check:pr did not check the goal contract:${ready.slice(-400)}`);
