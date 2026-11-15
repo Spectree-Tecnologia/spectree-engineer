@@ -17,7 +17,7 @@ import { SidebarMenu, type SidebarMenuSection } from '@/shared/components/ui/sid
 const NAVIGATION_SECTIONS: SidebarMenuSection[] = [
   {
     id: 'main',
-    label: 'Navegação',
+    label: 'Navigation',
     items: [{ id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, match: 'prefix' }],
   },
 ];

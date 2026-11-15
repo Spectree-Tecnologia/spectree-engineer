@@ -2,17 +2,17 @@ import { Description } from '../../src/index.js';
 
 describe('Description', () => {
   test('should create valid description with tryCreate', () => {
-    const result = Description.tryCreate('Esta descricao possui tamanho suficiente para ser valida.');
+    const result = Description.tryCreate('This description is long enough to be valid.');
 
     expect(result.isOk).toBe(true);
-    expect(result.instance.value).toBe('Esta descricao possui tamanho suficiente para ser valida.');
+    expect(result.instance.value).toBe('This description is long enough to be valid.');
   });
 
   test('should trim description before creating', () => {
-    const result = Description.tryCreate('   Esta descricao tambem possui tamanho minimo valido.   ');
+    const result = Description.tryCreate('   This description also meets the minimum length.   ');
 
     expect(result.isOk).toBe(true);
-    expect(result.instance.value).toBe('Esta descricao tambem possui tamanho minimo valido.');
+    expect(result.instance.value).toBe('This description also meets the minimum length.');
   });
 
   test('should fail when description is shorter than minimum length', () => {
@@ -44,12 +44,12 @@ describe('Description', () => {
   });
 
   test('should create with create method', () => {
-    const description = Description.create('  Esta descricao foi criada com o metodo create com sucesso.  ');
+    const description = Description.create('  This description was created with the create method.  ');
 
-    expect(description.value).toBe('Esta descricao foi criada com o metodo create com sucesso.');
+    expect(description.value).toBe('This description was created with the create method.');
   });
 
   test('should throw when create receives invalid description', () => {
-    expect(() => Description.create('descricao curta')).toThrow();
+    expect(() => Description.create('short text')).toThrow();
   });
 });

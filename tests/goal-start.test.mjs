@@ -103,13 +103,13 @@ test('--baseline runs build and test by exit code, writes the record, and a red 
 
 test('the Engineer starts a goal by the script, and the plan does not wait for the baseline', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /goal-start\.mjs <slug> --branch <tipo>\/<slug>/);
+  assert.match(command, /goal-start\.mjs <slug> --branch <type>\/<slug>/);
   assert.match(command, /goal-start\.mjs <slug> --baseline/);
-  assert.match(command, /em segundo plano/);
-  assert.match(command, /O plano não espera a baseline/);
+  assert.match(command, /\*\*in the background\*\*/);
+  assert.match(command, /The plan does not wait for the baseline/);
   assert.match(command, /Exit 4[^\n]*platform-engineer/);
   // the mission that used to do it is now only the hand merge of a script the project changed, and the worktree
   const card = read('agents/platform-engineer.md');
-  assert.match(card, /\*\*Tooling que difere\.\*\*/);
-  assert.doesNotMatch(card, /Depois rode `npm run build`, `npm test` e `npm audit --audit-level=high`, e grave a saída/);
+  assert.match(card, /\*\*Tooling that differs\.\*\*/);
+  assert.doesNotMatch(card, /Then run `npm run build`, `npm test` and `npm audit --audit-level=high`, and record the output/);
 });

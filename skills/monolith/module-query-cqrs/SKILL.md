@@ -1,37 +1,36 @@
 ---
 name: module-query-cqrs
 user-invocable: false
-description: Criar, revisar ou orientar queries de módulo no padrão CQRS de leitura no projeto. Usar quando o pedido envolver interfaces `*Query`, arquivos `*.query.ts`, projeções/DTOs para consumo da API/front, paginação/filtros/agregações, separação entre leitura (query) e escrita (repository/comando) ou a skill `module-query-cqrs`.
+description: Create, review or guide module queries in the project's CQRS read pattern. Use when the request involves `*Query` interfaces, `*.query.ts` files, projections/DTOs for API/front-end consumption, pagination/filters/aggregations, separation between read (query) and write (repository/command), or the `module-query-cqrs` skill.
 ---
 
 # Module Query CQRS
 
 ## Overview
 
-Aplicar o padrão de consultas de leitura desacopladas dos comandos, retornando DTOs/projeções adequadas ao consumo da API sem expor entidades quando não necessário.
+Apply the pattern of read queries decoupled from commands, returning DTOs/projections suited to API consumption without exposing entities when not needed.
 
 ## Guidelines
 
-- Usar Query para leitura/projeção; usar Repository/entidade para fluxos de comando (create/update/delete e invariantes de escrita).
-- Definir interfaces de query em `modules/<domain>/src/<feature>/query/` (`*.query.ts`, `execute(...) => Promise<Result<DTO>>`).
-- Implementar query no adapter de infraestrutura (ex.: Prisma) retornando DTO.
-- Leitura nunca passa por use case (regra 4 de `docs/architecture.md`, cobrada pelo `check-boundaries`): o controller chama a query direto.
-- Não acoplar query a regras de domínio de escrita.
-- DTO de query:
-  - pode derivar de `*Props` (ex.: `UserProps`, `RoleProps`) com `Omit`/campos adicionais;
-  - ou ser DTO totalmente independente, conforme necessidade da projeção.
-  - não estender a classe da entidade.
+- Use a Query for reads/projections; use a Repository/entity for command flows (create/update/delete and write invariants).
+- Define query interfaces in `modules/<domain>/src/<feature>/query/` (`*.query.ts`, `execute(...) => Promise<Result<DTO>>`).
+- Implement the query in the infrastructure adapter (e.g. Prisma), returning a DTO.
+- A read never goes through a use case (rule 4 of `docs/architecture.md`, enforced by `check-boundaries`): the controller calls the query directly.
+- Do not couple a query to write-side domain rules.
+- Query DTO:
+  - may derive from `*Props` (e.g. `UserProps`, `RoleProps`) with `Omit`/additional fields;
+  - or be a fully independent DTO, as the projection requires.
+  - must not extend the entity class.
 
 ## Workflow
 
-1. Identificar se o caso é leitura (query) ou comando (repository).
-2. Definir contrato da query (`FindXxxQuery`) e DTO de saída.
-3. Implementar query no adapter (Prisma/in-memory), incluindo filtros/paginação quando aplicável.
-4. Chamar a query direto do controller e mapear as falhas para HTTP.
-5. Validar formato final do DTO para o consumidor (API/front).
-6. Criar testes cobrindo sucesso, vazio/not found e falhas.
+1. Identify whether the case is a read (query) or a command (repository).
+2. Define the query contract (`FindXxxQuery`) and the output DTO.
+3. Implement the query in the adapter (Prisma/in-memory), including filters/pagination when applicable.
+4. Call the query directly from the controller and map the failures to HTTP.
+5. Validate the final DTO shape for the consumer (API/front end).
+6. Create tests covering success, empty/not found and failures.
 
 ## References
 
-Consultar `references/query-cqrs-pattern.md` para exemplos reais, checklist e critérios de modelagem de DTO.
-
+See `references/query-cqrs-pattern.md` for real examples, checklist and DTO modeling criteria.

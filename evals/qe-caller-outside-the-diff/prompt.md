@@ -1,14 +1,14 @@
 ---
-description: O quality-engineer verifica um objetivo cujo diff muda o tipo de um campo do DTO (número para string) e quebra um chamador que o diff não toca (a ordenação do extrato passa a ser alfabética), e que traz um use case que nenhum critério pede — o chamador é `blocking` com arquivo:linha, e o use case aparece no bloco `## Lean`.
+description: The quality-engineer verifies a goal whose diff changes the type of a DTO field (number to string) and breaks a caller the diff does not touch (the statement's sorting becomes alphabetical), and that brings a use case no criterion asks for — the caller is `blocking` with file:line, and the use case shows up in the `## Lean` block.
 tags: [quality-engineer, review, lean]
 max_turns: 14
 timeout_seconds: 900
 allowed_tools: [Agent, Read, Glob, Grep, Skill]
 ---
-Despache o agente `spectree-engineer:quality-engineer` com a missão abaixo, textualmente, e responda com o relato dele na íntegra — sem resumir, sem comentar, sem acrescentar nada.
+Dispatch the agent `spectree-engineer:quality-engineer` with the mission below, verbatim, and answer with its report in full — without summarizing, without commenting, without adding anything.
 
-**Missão:** verificar o objetivo `docs/goals/money-as-string.md` na branch do objetivo deste projeto.
-**Critério de saída verificável:** o relato no formato do seu card, um veredito por critério e um achado por item.
-**Leitura obrigatória:** `docs/architecture.md`; o contrato; `change.diff` (o diff de três pontos da branch contra a baseline, já gerado: este workspace não tem git nem Bash, então não tente rodar comandos — julgue cada prova lendo o teste e o código que ele exercita, diga que não a rodou, e o que o `check-boundaries` cobraria, verifique lendo); `modules/billing/`.
-**Guard-rails:** só leitura; nada fora de `modules/billing/` e `docs/goals/`.
-**Teto:** 3 tentativas.
+**Mission:** verify the goal `docs/goals/money-as-string.md` on this project's goal branch.
+**Verifiable exit criterion:** the report in your card's format, one verdict per criterion and one finding per item.
+**Required reading:** `docs/architecture.md`; the contract; `change.diff` (the three-dot diff of the branch against the baseline, already generated: this workspace has no git and no Bash, so do not try to run commands — judge each proof by reading the test and the code it exercises, say that you did not run it, and what `check-boundaries` would enforce, verify by reading); `modules/billing/`.
+**Guard-rails:** read only; nothing outside `modules/billing/` and `docs/goals/`.
+**Ceiling:** 3 attempts.

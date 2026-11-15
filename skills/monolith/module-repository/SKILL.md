@@ -1,38 +1,37 @@
 ---
 name: module-repository
 user-invocable: false
-description: 'Criar, revisar ou orientar contratos e implementações de repositório de módulo no padrão do projeto. Usar quando o pedido envolver arquivos `*.repository.ts`, operações de persistência de entidades (create/update/findById/findAll/delete), adaptação de infraestrutura (ex.: Prisma) para contratos de módulo, tratamento de erros com `Result`, mapeamentos `toDomain/fromDomain` ou a skill `module-repository`.'
+description: 'Create, review or guide module repository contracts and implementations in the project''s pattern. Use when the request involves `*.repository.ts` files, entity persistence operations (create/update/findById/findAll/delete), adapting infrastructure (e.g. Prisma) to module contracts, error handling with `Result`, `toDomain/fromDomain` mappings, or the `module-repository` skill.'
 ---
 
 # Module Repository
 
 ## Overview
 
-Aplicar o padrão de repositório para escrita e leitura de entidades de domínio com contratos no `dominio` e implementação desacoplada em infraestrutura.
+Apply the repository pattern for writing and reading domain entities, with contracts in the domain and a decoupled implementation in infrastructure.
 
 ## Guidelines
 
-- Definir contrato em `modules/*/src/**/provider/*.repository.ts`.
-- Reutilizar bases de shared quando aplicável (`CrudRepository`, `CreateRepository`, etc.).
-- Implementar em adapter de infraestrutura (ex.: `apps/backend/src/**/*.prisma.ts`) retornando `Result`.
-- Mapear domínio explicitamente:
-  - `toDomain`: payload do banco -> entidade.
-  - `fromDomain`: entidade -> payload de persistência.
-- Tratar falhas com `Result.fail(...)` e não vazar exceção no fluxo normal.
-- Manter separação CQRS:
-  - Repository para comando/escrita e leitura orientada a entidade.
-  - Query para leitura/projeção DTO.
+- Define the contract in `modules/*/src/**/provider/*.repository.ts`.
+- Reuse shared bases when applicable (`CrudRepository`, `CreateRepository`, etc.).
+- Implement it in an infrastructure adapter (e.g. `apps/backend/src/**/*.prisma.ts`), returning `Result`.
+- Map the domain explicitly:
+  - `toDomain`: database payload -> entity.
+  - `fromDomain`: entity -> persistence payload.
+- Handle failures with `Result.fail(...)` and do not leak exceptions in the normal flow.
+- Keep the CQRS separation:
+  - Repository for commands/writes and entity-oriented reads.
+  - Query for reads/DTO projections.
 
 ## Workflow
 
-1. Confirmar agregados/entidades cobertos pelo repositório.
-2. Definir/ajustar contrato no dominio com métodos mínimos necessários.
-3. Implementar adapter de infraestrutura respeitando o contrato.
-4. Implementar mapeamento `toDomain`/`fromDomain`.
-5. Garantir consistência transacional para operações compostas.
-6. Criar/ajustar mocks in-memory para testes de use case.
+1. Confirm the aggregates/entities covered by the repository.
+2. Define/adjust the contract in the domain with the minimal methods needed.
+3. Implement the infrastructure adapter respecting the contract.
+4. Implement the `toDomain`/`fromDomain` mapping.
+5. Ensure transactional consistency for composite operations.
+6. Create/adjust in-memory mocks for use case tests.
 
 ## References
 
-Consultar `references/repository-pattern.md` para contratos, exemplos de implementação e checklist.
-
+See `references/repository-pattern.md` for contracts, implementation examples and checklist.

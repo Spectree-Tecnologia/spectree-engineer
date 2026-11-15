@@ -2,78 +2,78 @@
 
 ## Paths
 
-- Contrato base: `packages/shared/src/base/use-case.ts`
-- Use cases (exemplos):
+- Base contract: `packages/shared/src/base/use-case.ts`
+- Use cases (examples):
   - `modules/product/src/product/use-case/create-product.use-case.ts`
   - `modules/product/src/product/use-case/update-product.use-case.ts`
   - `modules/auth/src/user/use-case/update-user.use-case.ts`
   - `modules/auth/src/user/use-case/login.use-case.ts`
   - `modules/stock/src/movement/use-case/create-movement-out.use-case.ts`
-- Testes (exemplos):
+- Tests (examples):
   - `modules/branch/test/branch/create-branch.test.ts`
   - `modules/stock/test/movement/create-movement-in.test.ts`
   - `modules/stock/test/snapshot/get-stock-quantity.use-case.test.ts`
   - `modules/product/test/category/category.use-case.test.ts`
 
-## Estrutura esperada
+## Expected structure
 
-1. Definir `XxxIn` (e `XxxOut` quando necessário).
-2. Declarar a classe como verbo, sem sufixo: `CreateThing implements UseCase<CreateThingIn, void>`. Use case é comando e devolve `Result<void>`; leitura é query (`module-query-cqrs`).
-3. Injetar dependências via construtor (`Repository`, `Query`, `Checker`, `Provider`).
-4. Implementar `execute(data)` retornando `Promise<Result<...>>`.
-5. Aplicar validações de fluxo com retorno antecipado em falha.
-6. Delegar invariantes de domínio para entidade/VO (`tryCreate`, `cloneWith`).
-7. Retornar a falha do provider/repo ou `Result.ok()`: comando não devolve DTO nem agregado.
+1. Define `XxxIn` (and `XxxOut` when needed).
+2. Declare the class as a verb, with no suffix: `CreateThing implements UseCase<CreateThingIn, void>`. A use case is a command and returns `Result<void>`; a read is a query (`module-query-cqrs`).
+3. Inject dependencies through the constructor (`Repository`, `Query`, `Checker`, `Provider`).
+4. Implement `execute(data)` returning `Promise<Result<...>>`.
+5. Apply flow validations with an early return on failure.
+6. Delegate domain invariants to the entity/VO (`tryCreate`, `cloneWith`).
+7. Return the provider/repo failure or `Result.ok()`: a command returns neither a DTO nor an aggregate.
 
-## Padrões observados no código
+## Patterns observed in the code
 
-- Use case orquestra, não persiste diretamente.
-- Erros conhecidos são mapeados para constantes de domínio (`...Errors.NOT_FOUND`, etc.).
-- Dependência pode ser `Query` ou `Repository` conforme objetivo do caso:
-  - Leitura/projeção: preferir `Query` retornando DTO.
-  - Comando/escrita: preferir `Repository` e entidade de domínio.
-- Combinação de providers é comum:
-  - Exemplo: valida existência e cria dependência se necessário (`CreateMovementIn`).
-- Em update:
-  - Carregar estado atual (`findById`).
-  - Montar novo estado com fallback de campos atuais.
-  - Revalidar com entidade (`tryCreate`/`cloneWith`) antes de persistir.
+- The use case orchestrates; it does not persist directly.
+- Known errors are mapped to domain constants (`...Errors.NOT_FOUND`, etc.).
+- The dependency may be a `Query` or a `Repository` depending on the purpose of the case:
+  - Read/projection: prefer a `Query` returning a DTO.
+  - Command/write: prefer a `Repository` and a domain entity.
+- Combining providers is common:
+  - Example: validates existence and creates the dependency if needed (`CreateMovementIn`).
+- In an update:
+  - Load the current state (`findById`).
+  - Build the new state falling back to the current fields.
+  - Revalidate with the entity (`tryCreate`/`cloneWith`) before persisting.
 
-## Checklist de implementação
+## Implementation checklist
 
-- Contrato:
-  - `UseCase<IN, OUT>` implementado corretamente.
-  - `execute` com assinatura assíncrona e retorno `Result`.
-- Dependências:
-  - Tipadas por interfaces (não acoplar em infraestrutura concreta).
-  - Injetadas no construtor.
-- Erros:
-  - Tratar falha de cada dependência de forma explícita.
-  - Propagar `withFail` quando já estiver no formato esperado.
-- Domínio:
-  - Criar/atualizar entidades com `tryCreate` ou `cloneWith`.
-  - Evitar colocar regra de entidade dentro do use case.
-- Persistência/leitura:
-  - Usar `repo/query` apenas para acesso a dados.
-  - Em leitura para API/front, priorizar `Query` com DTO de saída.
-  - Em escrita, ler com `Repository` quando necessário para preservar invariantes e salvar entidade.
+- Contract:
+  - `UseCase<IN, OUT>` implemented correctly.
+  - `execute` with an asynchronous signature and a `Result` return.
+- Dependencies:
+  - Typed by interfaces (do not couple to concrete infrastructure).
+  - Injected in the constructor.
+- Errors:
+  - Handle each dependency's failure explicitly.
+  - Propagate `withFail` when it is already in the expected shape.
+- Domain:
+  - Create/update entities with `tryCreate` or `cloneWith`.
+  - Avoid putting entity rules inside the use case.
+- Persistence/reads:
+  - Use `repo/query` only for data access.
+  - For reads for the API/front end, prioritize a `Query` with an output DTO.
+  - For writes, read with a `Repository` when needed to preserve invariants and save the entity.
 
-## Estratégia de testes
+## Testing strategy
 
-- Cenário feliz completo.
-- Pré-condições inválidas (quantidade <= 0, input ausente, etc.).
-- Falhas de dependência (repo/query retornando `isFailure`).
-- Comportamento condicional (com snapshot/sem snapshot, item existente/inexistente).
-- Efeito colateral esperado (criação em repositório mock, update chamado com entidade válida).
+- Complete happy path.
+- Invalid preconditions (quantity <= 0, missing input, etc.).
+- Dependency failures (repo/query returning `isFailure`).
+- Conditional behavior (with snapshot/without snapshot, existing/nonexistent item).
+- Expected side effect (creation in the mock repository, update called with a valid entity).
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Misturar lógica de validação de entidade no use case sem reutilizar `tryCreate`.
-- Não mapear falhas de dependências para erro de domínio quando necessário.
-- Atualizar parcialmente sem preservar `props` existentes.
-- Retornar exceção em vez de `Result.fail` dentro do fluxo normal.
+- Mixing entity validation logic into the use case without reusing `tryCreate`.
+- Not mapping dependency failures to a domain error when needed.
+- Updating partially without preserving the existing `props`.
+- Throwing an exception instead of returning `Result.fail` within the normal flow.
 
-## Exemplo mínimo
+## Minimal example
 
 ```ts
 import { Result, UseCase } from '@namespace/shared';
@@ -98,7 +98,7 @@ export class CreateThing implements UseCase<CreateThingIn, void> {
 }
 ```
 
-## Exemplo completo com consulta (query) para criar um usuário
+## Complete example with a query to create a user
 
 ```ts
 import { Password, PasswordCryptoProvider, PasswordRepository } from 'fake/path';

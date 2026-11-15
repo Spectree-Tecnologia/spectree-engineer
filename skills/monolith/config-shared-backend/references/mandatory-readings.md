@@ -1,16 +1,16 @@
-# Leituras obrigatórias
+# Mandatory readings
 
-Antes de ajustar à mão qualquer parte da camada compartilhada do backend, leia:
+Before adjusting by hand any part of the backend's shared layer, read:
 
-1. `packages/shared/src/base/validation-error.ts` e `packages/shared/src/base/result.ts` — os erros que o filtro traduz.
-2. `packages/shared/src/dto/authenticated-user.dto.ts` — o shape de `request.user`.
-3. `apps/backend/src/app.module.ts` e `apps/backend/src/main.ts` — o que já está registrado globalmente.
-4. `apps/backend/src/shared/shared.module.ts` — guards globais (`APP_GUARD`), JWT, throttler.
+1. `packages/shared/src/base/validation-error.ts` and `packages/shared/src/base/result.ts` — the errors the filter translates.
+2. `packages/shared/src/dto/authenticated-user.dto.ts` — the shape of `request.user`.
+3. `apps/backend/src/app.module.ts` and `apps/backend/src/main.ts` — what is already registered globally.
+4. `apps/backend/src/shared/shared.module.ts` — global guards (`APP_GUARD`), JWT, throttler.
 
-Depois, localize o que o projeto já tem sobre autenticação antes de criar qualquer coisa nova:
+Then, find what the project already has on authentication before creating anything new:
 
 ```bash
 rg -n -S "jwt|token|claims|CurrentUser|request.user|req.user|passport|AuthGuard|Bearer|@Public" apps/backend/src modules --glob '!**/node_modules/**'
 ```
 
-Objetivo: reaproveitar a infraestrutura existente, confirmar os status HTTP que o filtro devolve e garantir que `AuthenticatedUser` (`id`, `name`, `email`, `roles`) cobre o que os controllers precisam. Arquivo obrigatório ausente: pare, encontre o equivalente, registre a suposição no relato.
+Goal: reuse the existing infrastructure, confirm the HTTP statuses the filter returns and ensure that `AuthenticatedUser` (`id`, `name`, `email`, `roles`) covers what the controllers need. A mandatory file is missing: stop, find the equivalent, record the assumption in the report.

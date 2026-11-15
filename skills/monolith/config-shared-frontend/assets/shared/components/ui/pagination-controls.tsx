@@ -37,7 +37,7 @@ export function PaginationControls({
   page,
   totalPages,
   totalItems,
-  totalLabel = 'itens',
+  totalLabel = 'items',
   onPageChange,
   disabled = false,
   siblingCount = 2,
@@ -58,7 +58,7 @@ export function PaginationControls({
       {showSummary ? (
         <div className="text-xs text-muted-foreground">
           <p>
-            Página {safePage} de {safeTotalPages}
+            Page {safePage} of {safeTotalPages}
           </p>
           {typeof totalItems === 'number' ? (
             <p>
@@ -76,7 +76,7 @@ export function PaginationControls({
           className="px-2"
           onClick={() => onPageChange(1)}
           disabled={disabled || isFirstPage}
-          aria-label="Ir para a primeira página"
+          aria-label="Go to the first page"
         >
           <ChevronsLeft className="size-4" />
         </Button>
@@ -87,7 +87,7 @@ export function PaginationControls({
           className="px-2"
           onClick={() => onPageChange(safePage - 1)}
           disabled={disabled || isFirstPage}
-          aria-label="Ir para a página anterior"
+          aria-label="Go to the previous page"
         >
           <ChevronLeft className="size-4" />
         </Button>
@@ -101,7 +101,7 @@ export function PaginationControls({
             onClick={() => onPageChange(pageNumber)}
             disabled={disabled}
             aria-current={pageNumber === safePage ? 'page' : undefined}
-            aria-label={`Ir para a página ${pageNumber}`}
+            aria-label={`Go to page ${pageNumber}`}
           >
             {pageNumber}
           </Button>
@@ -113,7 +113,7 @@ export function PaginationControls({
           className="px-2"
           onClick={() => onPageChange(safePage + 1)}
           disabled={disabled || isLastPage}
-          aria-label="Ir para a próxima página"
+          aria-label="Go to the next page"
         >
           <ChevronRight className="size-4" />
         </Button>
@@ -124,7 +124,7 @@ export function PaginationControls({
           className="px-2"
           onClick={() => onPageChange(safeTotalPages)}
           disabled={disabled || isLastPage}
-          aria-label="Ir para a última página"
+          aria-label="Go to the last page"
         >
           <ChevronsRight className="size-4" />
         </Button>

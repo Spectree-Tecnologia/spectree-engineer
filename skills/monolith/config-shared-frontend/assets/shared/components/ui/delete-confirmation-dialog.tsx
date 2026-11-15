@@ -29,13 +29,13 @@ export function DeleteConfirmationDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = 'Excluir registro',
-  description = 'Esta ação remove o registro selecionado de forma permanente.',
+  title = 'Delete record',
+  description = 'This permanently deletes the selected record.',
   itemLabel,
   itemValue,
-  confirmWord = 'excluir',
-  confirmLabel = 'Excluir',
-  cancelLabel = 'Cancelar',
+  confirmWord = 'delete',
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
   isConfirming = false,
   confirmDisabled = false,
   confirmDisabledMessage,
@@ -72,7 +72,7 @@ export function DeleteConfirmationDialog({
               onClick={onConfirm}
               disabled={!canConfirm}
             >
-              {isConfirming ? 'Excluindo...' : confirmLabel}
+              {isConfirming ? 'Deleting...' : confirmLabel}
             </Button>
           </>
         }
@@ -87,7 +87,7 @@ export function DeleteConfirmationDialog({
 
         <div className="space-y-2">
           <Label htmlFor={confirmationInputId}>
-            Digite <span className="font-bold">{confirmWord}</span> para confirmar
+            Type <span className="font-bold">{confirmWord}</span> to confirm
           </Label>
           <Input
             id={confirmationInputId}

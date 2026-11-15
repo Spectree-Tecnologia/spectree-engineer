@@ -1,31 +1,30 @@
 ---
 name: module-value-object
 user-invocable: false
-description: Criar, revisar ou orientar a implementação de Value Objects de módulo no projeto. Usar quando o pedido envolver "value object", "objeto de valor", "VO", regras de validação e normalização para atributos de domínio, criação de novos arquivos com padrão `ValueObject` + `Result`, ou a skill `module-value-object`.
+description: Create, review or guide the implementation of module Value Objects in the project. Use when the request involves "value object", "VO", validation and normalization rules for domain attributes, creating new files with the `ValueObject` + `Result` pattern, or the `module-value-object` skill.
 ---
 
 # Module Value Object
 
 ## Overview
 
-Aplicar o padrão de Value Object do projeto, garantindo imutabilidade, validação de invariantes, normalização de dados e a interface `create/tryCreate` com `Result`.
+Apply the project's Value Object pattern, ensuring immutability, validation of invariants, data normalization and the `create/tryCreate` interface with `Result`.
 
 ## Guidelines
 
-- Ler `references/vo-pattern.md` antes de criar ou modificar VOs.
-- Reutilizar o padrão existente de `ValueObject`, `Result` e `ValueObjectConfig`.
-- Preferir validações explícitas com códigos de erro estáticos (ex.: `INVALID_EMAIL`).
-- Expor métodos auxiliares apenas quando agregam valor (ex.: getters derivados).
+- Read `references/vo-pattern.md` before creating or modifying VOs.
+- Reuse the existing pattern of `ValueObject`, `Result` and `ValueObjectConfig`.
+- Prefer explicit validations with static error codes (e.g. `INVALID_EMAIL`).
+- Expose helper methods only when they add value (e.g. derived getters).
 
 ## Workflow
 
-1. Identificar o tipo base do VO (string, number, etc.) e invariantes.
-2. Verificar VOs existentes para evitar duplicação ou para alinhar regras.
-3. Implementar o VO seguindo o esqueleto padrão (ver referência).
-4. Adicionar testes em `packages/shared/test/vo` (VOs globais) ou `modules/<domain>/test/<feature>/` (VOs de módulo), espelhando os casos da referência.
-5. Revisar a API pública para manter consistência (`create`, `tryCreate`, erros).
+1. Identify the VO's base type (string, number, etc.) and its invariants.
+2. Check existing VOs to avoid duplication or to align rules.
+3. Implement the VO following the standard skeleton (see the reference).
+4. Add tests in `packages/shared/test/vo` (global VOs) or `modules/<domain>/test/<feature>/` (module VOs), mirroring the cases in the reference.
+5. Review the public API to keep it consistent (`create`, `tryCreate`, errors).
 
 ## References
 
-Consultar `references/vo-pattern.md` para padrões, exemplos e caminhos relevantes do projeto.
-
+See `references/vo-pattern.md` for patterns, examples and the project's relevant paths.

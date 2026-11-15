@@ -21,21 +21,21 @@ export default function AuthPage() {
           <AppLogo size="lg" priority />
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Autenticação</h1>
-            <p className="text-sm text-muted-foreground">Formulário de login em desenvolvimento.</p>
+            <h1 className="text-2xl font-semibold">Sign in</h1>
+            <p className="text-sm text-muted-foreground">The sign-in form is under construction.</p>
           </div>
 
           <div className="flex w-full flex-col gap-3">
             <Button asChild>
               <Link href="/dashboard">
-                Ir para o dashboard
+                Go to the dashboard
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/">
                 <ArrowLeft className="size-4" />
-                Voltar
+                Back
               </Link>
             </Button>
           </div>

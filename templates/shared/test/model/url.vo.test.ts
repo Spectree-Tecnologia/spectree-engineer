@@ -1,6 +1,6 @@
 import { URL, Url, ValidationError } from '../../src/index.js';
 
-const errPadrao = 'url.invalid';
+const defaultError = 'url.invalid';
 
 test('returns the full domain of the url', () => {
   const url = new Url('https://www.google.com/search?q=typescript');
@@ -25,10 +25,10 @@ test('returns the parameters of the url', () => {
 });
 
 test('throws on an invalid url', () => {
-  expect(() => new Url()).toThrow(errPadrao);
-  expect(() => new Url('')).toThrow(errPadrao);
-  expect(() => new Url('www.google.com')).toThrow(errPadrao);
-  expect(() => new Url('https//www.google.com')).toThrow(errPadrao);
+  expect(() => new Url()).toThrow(defaultError);
+  expect(() => new Url('')).toThrow(defaultError);
+  expect(() => new Url('www.google.com')).toThrow(defaultError);
+  expect(() => new Url('https//www.google.com')).toThrow(defaultError);
 });
 
 test('validates a url', () => {
@@ -44,7 +44,7 @@ test('tries to create a url and succeeds', () => {
 test('tries to create an invalid url', () => {
   const url = Url.tryCreate('www.google.com');
   expect(url.isOk).toBe(false);
-  expect(url.errors[0]?.code).toBe(errPadrao);
+  expect(url.errors[0]?.code).toBe(defaultError);
 });
 
 test('creates an instance through the URL subclass', () => {

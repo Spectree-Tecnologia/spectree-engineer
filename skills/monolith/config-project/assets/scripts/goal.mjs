@@ -647,7 +647,7 @@ function graph() {
   const tickets = every.filter((ticket) => !ticket.legacy);
   const byNumber = new Map(tickets.map((ticket) => [ticket.n, ticket]));
   const errors = [];
-  const notes = every.filter((ticket) => ticket.legacy).map((ticket) => `${ticket.file} has no "Criteria": a ticket from before Goal Driven, left out of the graph`);
+  const notes = every.filter((ticket) => ticket.legacy).map((ticket) => `${ticket.file} has no "Criteria": a ticket from before Goal-Driven, left out of the graph`);
   if (tickets.length === 0) errors.push('no ticket file (<NN>-<name>.md) in the folder');
   if (byNumber.size !== tickets.length) errors.push('two ticket files share a number');
 

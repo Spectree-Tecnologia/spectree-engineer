@@ -120,7 +120,7 @@ function main() {
 
   if (!mode) {
     fail(
-      'Provide --mode <crud|example>. If the request does not include it, ask: "Deseja criar a base de use cases em \\"crud\\" ou \\"example\\"?"',
+      'Provide --mode <crud|example>. If the request does not include it, ask: "Should the use-case base be \\"crud\\" or \\"example\\"?"',
     )
   }
 

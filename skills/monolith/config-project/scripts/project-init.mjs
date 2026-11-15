@@ -1171,11 +1171,11 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'which version of the squad scripts this project holds, read by tooling-sync.mjs',
   });
-  // Stryker's scratch and incremental report stay out of git
+  // Stryker's scratch and incremental report stay out of git, and so does .engineer.local.json: the Engineer keeps each person's conversation language there
   const rootGitignore = path.join(rootDir, '.gitignore');
   if (await pathExists(rootGitignore)) {
     const ignored = await fs.readFile(rootGitignore, 'utf8');
-    const missing = ['.stryker-tmp/', 'reports/stryker-incremental.json'].filter((line) => !ignored.split(/\r?\n/).includes(line));
+    const missing = ['.stryker-tmp/', 'reports/stryker-incremental.json', '.engineer.local.json'].filter((line) => !ignored.split(/\r?\n/).includes(line));
     if (missing.length > 0) await fs.writeFile(rootGitignore, `${ignored.replace(/\s*$/, '')}\n${missing.join('\n')}\n`);
   }
   // the squad runs unattended after the interview: without this allowlist every npm/git/gh/docker call stops for a prompt.

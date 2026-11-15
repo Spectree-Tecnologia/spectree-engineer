@@ -24,8 +24,8 @@ export function Combobox({
   options,
   value,
   onChange,
-  placeholder = 'Selecionar...',
-  emptyText = 'Nenhum item encontrado.',
+  placeholder = 'Select...',
+  emptyText = 'No items found.',
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -49,7 +49,7 @@ export function Combobox({
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Filtrar..."
+          placeholder="Filter..."
           className="mb-2"
         />
         <div className="max-h-56 space-y-1 overflow-auto">

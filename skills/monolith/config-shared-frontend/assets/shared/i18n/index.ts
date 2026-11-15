@@ -1,15 +1,15 @@
 import { errorMessagesEn } from './messages.en';
 import { errorMessagesPt } from './messages.pt';
-import type { ErrorMessageKey, ErrorMessages } from './messages.pt';
+import type { ErrorMessageKey, ErrorMessages } from './messages.en';
 
-export type I18nLocale = 'pt' | 'en';
+export type I18nLocale = 'en' | 'pt';
 export type MessageParams = Record<string, string | number>;
 
-const DEFAULT_LOCALE: I18nLocale = 'pt';
+const DEFAULT_LOCALE: I18nLocale = 'en';
 
 const ERROR_MESSAGES_BY_LOCALE: Record<I18nLocale, ErrorMessages> = {
-  pt: errorMessagesPt,
   en: errorMessagesEn,
+  pt: errorMessagesPt,
 };
 
 let forcedLocale: I18nLocale | null = null;

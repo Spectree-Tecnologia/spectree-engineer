@@ -2,14 +2,14 @@
 
 import * as React from 'react';
 import { DayPicker } from 'react-day-picker';
-import { ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/class-name.util';
 import 'react-day-picker/dist/style.css';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-export function Calendar({ className, classNames, showOutsideDays = true, locale = ptBR, ...props }: CalendarProps) {
+export function Calendar({ className, classNames, showOutsideDays = true, locale = enUS, ...props }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}

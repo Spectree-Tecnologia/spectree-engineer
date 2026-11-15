@@ -2,17 +2,17 @@ import { Text } from '../../src/index.js';
 
 describe('Text', () => {
   test('should create valid text with tryCreate', () => {
-    const result = Text.tryCreate('Texto valido');
+    const result = Text.tryCreate('Valid text');
 
     expect(result.isOk).toBe(true);
-    expect(result.instance.value).toBe('Texto valido');
+    expect(result.instance.value).toBe('Valid text');
   });
 
   test('should trim text before creating', () => {
-    const result = Text.tryCreate('   Texto com espacos   ');
+    const result = Text.tryCreate('   Text with spaces   ');
 
     expect(result.isOk).toBe(true);
-    expect(result.instance.value).toBe('Texto com espacos');
+    expect(result.instance.value).toBe('Text with spaces');
   });
 
   test('should fail when text is shorter than minLength', () => {

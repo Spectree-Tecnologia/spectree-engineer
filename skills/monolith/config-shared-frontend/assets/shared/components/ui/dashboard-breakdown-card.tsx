@@ -76,9 +76,9 @@ export function DashboardBreakdownCard({
               height={340}
               showLegend={false}
               valueFormatter={(value) =>
-                new Intl.NumberFormat('pt-BR', {
+                new Intl.NumberFormat('en-US', {
                   style: 'currency',
-                  currency: 'BRL',
+                  currency: 'USD',
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 }).format(value)
@@ -86,8 +86,8 @@ export function DashboardBreakdownCard({
               emptyState={
                 <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-6 text-sm text-zinc-500">
                   {isLoading
-                    ? `Carregando ${title.toLowerCase()}...`
-                    : `Nenhum dado disponivel para os ultimos ${selectedMonths} meses.`}
+                    ? `Loading ${title.toLowerCase()}...`
+                    : `No data available for the last ${selectedMonths} months.`}
                 </div>
               }
             />

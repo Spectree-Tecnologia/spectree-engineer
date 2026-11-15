@@ -1,75 +1,75 @@
 # Domain Service Pattern
 
-## Escopo (fronteira)
+## Scope (boundary)
 
-- Considerar **serviço de domínio** apenas em caminhos `modules/*/src/**`.
-- Exemplo válido:
+- Consider a **domain service** only in `modules/*/src/**` paths.
+- Valid example:
   - `modules/auth/src/permission/model/permission-policy.service.ts`
   - `modules/stock/src/service/stock-calculator.service.ts`
-- Exemplo inválido para esta skill:
-  - qualquer pasta de UI/browser dentro de um pacote de domínio
+- Invalid example for this skill:
+  - any UI/browser folder inside a domain package
   - `apps/frontend/**`
-  - `apps/backend/**` (infra/controllers/providers HTTP)
+  - `apps/backend/**` (infra/controllers/HTTP providers)
 
-## Quando criar um Domain Service
+## When to create a Domain Service
 
-- Regra de negócio não pertence claramente a uma única entidade.
-- Regra combina múltiplos objetos de domínio e precisa ser reutilizável.
-- Regra deve ser pura e previsível, sem dependência de I/O.
+- The business rule does not clearly belong to a single entity.
+- The rule combines multiple domain objects and needs to be reusable.
+- The rule must be pure and predictable, with no I/O dependency.
 
-## Estrutura esperada
+## Expected structure
 
-1. Nome orientado à regra (`*Policy`, `*Calculator`, etc.).
-2. API enxuta:
+1. Name oriented to the rule (`*Policy`, `*Calculator`, etc.).
+2. Lean API:
 
-- classe com método de instância simples (ex.: `PermissionPolicy.check`)
-- ou método estático para cálculo (ex.: `StockCalculator.execute`)
+- class with a simple instance method (e.g. `PermissionPolicy.check`)
+- or a static method for calculation (e.g. `StockCalculator.execute`)
 
-3. Entradas explícitas e tipadas.
-4. Saída objetiva (boolean, number, ou tipo de domínio).
-5. Sem acesso a banco, rede, filesystem, env, framework.
+3. Explicit, typed inputs.
+4. Objective output (boolean, number, or domain type).
+5. No access to database, network, filesystem, env, framework.
 
-## Exemplos do projeto
+## Project examples
 
 ### PermissionPolicy
 
-- Arquivo: `modules/auth/src/permission/model/permission-policy.service.ts`
-- Papel:
-  - receber permissões do usuário
-  - validar se conjunto exigido está contido no conjunto do usuário
-- Características:
-  - sem side effect
-  - operação booleana simples
+- File: `modules/auth/src/permission/model/permission-policy.service.ts`
+- Role:
+  - receive the user's permissions
+  - validate whether the required set is contained in the user's set
+- Characteristics:
+  - no side effect
+  - simple boolean operation
 
 ### StockCalculator
 
-- Arquivo: `modules/stock/src/service/stock-calculator.service.ts`
-- Papel:
-  - calcular saldo atual baseado em `snapshot` + lista de `movements`
-- Características:
-  - sem side effect
-  - cálculo determinístico
-  - facilmente mockável em teste de use case
+- File: `modules/stock/src/service/stock-calculator.service.ts`
+- Role:
+  - calculate the current balance based on `snapshot` + list of `movements`
+- Characteristics:
+  - no side effect
+  - deterministic calculation
+  - easy to mock in a use case test
 
-## Checklist de implementação
+## Implementation checklist
 
-- [ ] Arquivo em `modules/<domain>/src/**`.
-- [ ] Sem dependência de framework (Nest/React/etc.).
-- [ ] Sem I/O (db/http/fs).
-- [ ] Assinatura clara e coesa.
-- [ ] Regra de domínio isolada e reutilizável.
-- [ ] Cobertura de testes com casos normais e bordas.
+- [ ] File in `modules/<domain>/src/**`.
+- [ ] No framework dependency (Nest/React/etc.).
+- [ ] No I/O (db/http/fs).
+- [ ] Clear, cohesive signature.
+- [ ] Domain rule isolated and reusable.
+- [ ] Test coverage with normal and edge cases.
 
-## Estratégia de testes
+## Testing strategy
 
-- Testar entrada mínima.
-- Testar variação de cenários de negócio.
-- Testar casos limite e vazios.
-- Garantir determinismo (mesma entrada, mesma saída).
+- Test the minimal input.
+- Test variations of business scenarios.
+- Test limit and empty cases.
+- Ensure determinism (same input, same output).
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Colocar lógica de aplicação no serviço de domínio.
-- Acoplar serviço de domínio a repositório ou provider externo.
-- Duplicar regra já existente em entidade/VO.
-- Criar serviço quando método de entidade resolveria melhor.
+- Putting application logic in the domain service.
+- Coupling the domain service to a repository or external provider.
+- Duplicating a rule that already exists in an entity/VO.
+- Creating a service when an entity method would solve it better.

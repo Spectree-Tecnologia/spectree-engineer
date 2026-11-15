@@ -21,9 +21,9 @@ describe('Alias', () => {
     });
 
     test('should collapse consecutive separators into a single hyphen and trim edges', () => {
-      const result = Alias.format('---Minha___Categoria@@@Teste---');
+      const result = Alias.format('---My___Category@@@Test---');
 
-      expect(result).toBe('minha-categoria-teste');
+      expect(result).toBe('my-category-test');
     });
 
     test('should remove leading and trailing hyphens after normalization', () => {

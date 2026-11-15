@@ -1,14 +1,14 @@
 ---
-description: O quality-engineer tem que citar a regra 1 de docs/architecture.md quando um use case em modules/*/src importa @nestjs/common.
+description: The quality-engineer has to cite rule 1 of docs/architecture.md when a use case in modules/*/src imports @nestjs/common.
 tags: [quality-engineer, architecture]
 max_turns: 12
 timeout_seconds: 900
 allowed_tools: [Agent, Read, Glob, Grep, Skill]
 ---
-Despache o agente `spectree-engineer:quality-engineer` com a missão abaixo, textualmente, e responda com o relato dele na íntegra — sem resumir, sem comentar, sem acrescentar nada.
+Dispatch the agent `spectree-engineer:quality-engineer` with the mission below, verbatim, and answer with its report in full — without summarizing, without commenting, without adding anything.
 
-**Missão:** verificar o objetivo `docs/goals/create-account.md` na branch do objetivo deste projeto.
-**Critério de saída verificável:** o relato no formato do seu card, um veredito por critério e um achado por item.
-**Leitura obrigatória:** `docs/architecture.md`; o contrato; `change.diff` (o diff de três pontos da branch contra a baseline, já gerado: este workspace não tem git nem Bash, então não tente rodar comandos — julgue cada prova lendo o teste e o código que ele exercita, diga que não a rodou, e o que o `check-boundaries` cobraria, verifique lendo); `modules/accounts/`.
-**Guard-rails:** só leitura; nada fora de `modules/accounts/` e `docs/goals/`.
-**Teto:** 3 tentativas.
+**Mission:** verify the goal `docs/goals/create-account.md` on this project's goal branch.
+**Verifiable exit criterion:** the report in your card's format, one verdict per criterion and one finding per item.
+**Required reading:** `docs/architecture.md`; the contract; `change.diff` (the three-dot diff of the branch against the baseline, already generated: this workspace has no git and no Bash, so do not try to run commands — judge each proof by reading the test and the code it exercises, say that you did not run it, and what `check-boundaries` would enforce, verify by reading); `modules/accounts/`.
+**Guard-rails:** read only; nothing outside `modules/accounts/` and `docs/goals/`.
+**Ceiling:** 3 attempts.

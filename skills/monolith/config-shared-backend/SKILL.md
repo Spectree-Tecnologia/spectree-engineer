@@ -1,58 +1,58 @@
 ---
 name: config-shared-backend
 user-invocable: false
-description: Reconstrói deterministicamente a camada compartilhada do backend NestJS em `apps/backend/src/shared/` — autenticação JWT (passport) como guard global, rotas públicas por `@Public()`, `@CurrentUser()`, filtro global de exceções, rate limit, helmet, `ValidationPipe` estrita, log JSON (pino) com `requestId`/`userId`, validação do `.env` no boot (zod), `GET /health` e `GET /ready`, graceful shutdown — compatível com `packages/shared`. Também adiciona `AuthenticatedUser` ao pacote compartilhado.
+description: Deterministically rebuilds the NestJS backend's shared layer in `apps/backend/src/shared/` — JWT authentication (passport) as a global guard, public routes via `@Public()`, `@CurrentUser()`, a global exception filter, rate limiting, helmet, a strict `ValidationPipe`, JSON logging (pino) with `requestId`/`userId`, `.env` validation at boot (zod), `GET /health` and `GET /ready`, graceful shutdown — compatible with `packages/shared`. Also adds `AuthenticatedUser` to the shared package.
 ---
 
 # Backend shared layer
 
-## Objetivo
+## Goal
 
-Reconstruir `apps/backend/src/shared/` a partir dos assets desta skill, deixando o backend **fechado por padrão**:
+Rebuild `apps/backend/src/shared/` from this skill's assets, leaving the backend **closed by default**:
 
-- `JwtGuard` registrado como `APP_GUARD`: toda rota exige Bearer token válido, salvo as marcadas com `@Public()`.
-- `ThrottlerGuard` como `APP_GUARD` com limite global (100 req/min por cliente).
-- `JWT_SECRET` sem valor padrão (`ConfigService.getOrThrow`): o app não sobe sem ele.
-- `ApiExceptionFilter` global: `ValidationError` → status da própria exceção (default 400), `HttpException` → status preservado, resto → 500 genérico para o cliente e causa completa no log.
-- `helmet()` e `ValidationPipe({ whitelist, forbidNonWhitelisted })` em `main.ts`; CORS restrito a `FRONTEND_URL` (sem a variável, CORS fechado).
-- `@CurrentUser()` / `@CurrentUser('id')` para ler o usuário do token; `userId` nunca vem do body.
-- `AuthenticatedUser` (`id`, `name`, `email`, `roles`) em `packages/shared/src/dto/`; `@Roles('admin')` fecha a rota a essas claims por cima do JWT (403 `FORBIDDEN_ROLE`).
+- `JwtGuard` registered as `APP_GUARD`: every route requires a valid Bearer token, except those marked with `@Public()`.
+- `ThrottlerGuard` as `APP_GUARD` with a global limit (100 req/min per client).
+- `JWT_SECRET` with no default value (`ConfigService.getOrThrow`): the app does not start without it.
+- Global `ApiExceptionFilter`: `ValidationError` → the exception's own status (default 400), `HttpException` → status preserved, everything else → a generic 500 for the client and the full cause in the log.
+- `helmet()` and `ValidationPipe({ whitelist, forbidNonWhitelisted })` in `main.ts`; CORS restricted to `FRONTEND_URL` (without the variable, CORS is closed).
+- `@CurrentUser()` / `@CurrentUser('id')` to read the user from the token; `userId` never comes from the body.
+- `AuthenticatedUser` (`id`, `name`, `email`, `roles`) in `packages/shared/src/dto/`; `@Roles('admin')` closes the route to those claims on top of the JWT (403 `FORBIDDEN_ROLE`).
 
-E **operável em produção**:
+And **operable in production**:
 
-- Log JSON por `nestjs-pino`: uma linha por requisição com `requestId` (header `x-request-id` recebido ou UUID, devolvido no response), `userId` assinado pelo `JwtGuard` quando há token, `authorization`/`cookie` redigidos, `/health` e `/ready` fora do auto-log; nível por `LOG_LEVEL` (default `info`). `Logger` do Nest passa a sair em JSON (`app.useLogger`).
-- `.env` inteiro validado no boot por `config/env.schema.ts` (zod) via `ConfigModule.forRoot({ validate })`: `PORT` (número, default da config), `DATABASE_URL` (`postgresql://`), `JWT_SECRET` (32+ caracteres), `FRONTEND_URL` (opcional), `LOG_LEVEL` (enum). Variável faltando ou inválida derruba o app com `Invalid environment:` e a lista de problemas.
-- `GET /health` (processo vivo) e `GET /ready` (`SELECT 1` no `PrismaService`; 503 se o banco não responde), ambas `@Public()` e `@SkipThrottle()`.
-- `app.enableShutdownHooks()` em `main.ts`: SIGTERM fecha conexões (Prisma `onModuleDestroy`) antes de sair.
+- JSON logging via `nestjs-pino`: one line per request with `requestId` (the received `x-request-id` header or a UUID, returned in the response), `userId` set by `JwtGuard` when there is a token, `authorization`/`cookie` redacted, `/health` and `/ready` excluded from auto-logging; level via `LOG_LEVEL` (default `info`). Nest's `Logger` now outputs JSON (`app.useLogger`).
+- The whole `.env` validated at boot by `config/env.schema.ts` (zod) via `ConfigModule.forRoot({ validate })`: `PORT` (number, default from the config), `DATABASE_URL` (`postgresql://`), `JWT_SECRET` (32+ characters), `FRONTEND_URL` (optional), `LOG_LEVEL` (enum). A missing or invalid variable brings the app down with `Invalid environment:` and the list of problems.
+- `GET /health` (process alive) and `GET /ready` (`SELECT 1` on `PrismaService`; 503 if the database does not respond), both `@Public()` and `@SkipThrottle()`.
+- `app.enableShutdownHooks()` in `main.ts`: SIGTERM closes connections (Prisma `onModuleDestroy`) before exiting.
 
-Identificadores, arquivos e classes em inglês. Imports relativos com sufixo `.js` (backend é ESM/`nodenext`).
+Identifiers, files and classes in English. Relative imports with the `.js` suffix (the backend is ESM/`nodenext`).
 
-## Uso
+## Usage
 
-Da raiz do monorepo, depois de `config-project` e do `packages/shared` instalado. Roda **depois** de `config-prisma`: `shared.module.ts` importa `DbModule` e `health.controller.ts` importa `PrismaService`, que só existem depois dele; na ordem inversa o passo nunca termina com build verde.
+From the monorepo root, after `config-project` and with `packages/shared` installed. Runs **after** `config-prisma`: `shared.module.ts` imports `DbModule` and `health.controller.ts` imports `PrismaService`, which only exist after it; in the reverse order the step never ends with a green build.
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-backend/scripts/apply.js
 ```
 
-`--force` sobrescreve mesmo arquivos sem alteração. O script:
+`--force` overwrites even unchanged files. The script:
 
-1. Resolve o nome do pacote shared pelo `skills.config.json` (`utils/resolve-skill-config.mjs`).
-2. Instala no workspace do backend o que faltar: `@nestjs/jwt`, `@nestjs/passport`, `@nestjs/config`, `@nestjs/throttler`, `passport`, `passport-jwt`, `helmet`, `class-validator`, `class-transformer`, `nestjs-pino`, `pino-http`, `pino`, `zod` (e `@types/passport-jwt` como dev).
-3. Remove arquivos legados com nomes em português, se existirem.
-4. Copia `packages/shared/src/dto/authenticated-user.dto.ts` e garante os exports em `dto/index.ts` e `src/index.ts`; builda o shared.
-5. Copia os 16 arquivos de `apps/backend/src/shared/`, trocando `{{SHARED_PACKAGE}}`, `{{BACKEND_PORT_ENV_VAR}}` e `{{BACKEND_PORT}}` pelos valores do `skills.config.json`.
-6. Patcha `app.module.ts` (`SharedModule` em `imports`) e `main.ts` (`bufferLogs`, `app.useLogger(app.get(Logger))`, helmet, `ValidationPipe`, `ApiExceptionFilter`, `enableShutdownHooks`, CORS restrito). Idempotente.
+1. Resolves the shared package name from `skills.config.json` (`utils/resolve-skill-config.mjs`).
+2. Installs in the backend workspace whatever is missing: `@nestjs/jwt`, `@nestjs/passport`, `@nestjs/config`, `@nestjs/throttler`, `passport`, `passport-jwt`, `helmet`, `class-validator`, `class-transformer`, `nestjs-pino`, `pino-http`, `pino`, `zod` (and `@types/passport-jwt` as dev).
+3. Removes legacy files with Portuguese names, if they exist.
+4. Copies `packages/shared/src/dto/authenticated-user.dto.ts` and ensures the exports in `dto/index.ts` and `src/index.ts`; builds shared.
+5. Copies the 16 files of `apps/backend/src/shared/`, replacing `{{SHARED_PACKAGE}}`, `{{BACKEND_PORT_ENV_VAR}}` and `{{BACKEND_PORT}}` with the values from `skills.config.json`.
+6. Patches `app.module.ts` (`SharedModule` in `imports`) and `main.ts` (`bufferLogs`, `app.useLogger(app.get(Logger))`, helmet, `ValidationPipe`, `ApiExceptionFilter`, `enableShutdownHooks`, restricted CORS). Idempotent.
 
-Formatação fica para o `npm run format` da raiz (o `config-shared-frontend` roda no fim do bootstrap).
+Formatting is left to the root `npm run format` (`config-shared-frontend` runs it at the end of the bootstrap).
 
-## Estrutura criada
+## Structure created
 
 ```text
 packages/shared/src/dto/authenticated-user.dto.ts   AuthenticatedUser { id, name, email }
 
 apps/backend/src/shared/
-  auth/        jwt.strategy.ts, jwt.guard.ts (respeita @Public), auth-user.mapper.ts
+  auth/        jwt.strategy.ts, jwt.guard.ts (respects @Public), auth-user.mapper.ts
   decorators/  public.decorator.ts (@Public, PUBLIC_ROUTE), current-user.decorator.ts (@CurrentUser)
   errors/      api-exception.filter.ts, api-error-response.type.ts
   types/       jwt-payload.type.ts, authenticated-request.type.ts
@@ -61,11 +61,11 @@ apps/backend/src/shared/
   shared.module.ts   @Global: ConfigModule (validate), LoggerModule (pino), DbModule, PassportModule, JwtModule, ThrottlerModule, HealthController, APP_GUARD × 2
 ```
 
-`ApiErrorResponse.message` é sempre `string[]`, mesmo com um erro só.
+`ApiErrorResponse.message` is always `string[]`, even with a single error.
 
-## CLI de operação
+## Operations CLI
 
-Comando de operador (onboarding de tenant, rename, backfill) não sobe o `AppModule` — ele traria guard, listeners e senders que recusam boot sem credencial real — e não roda por `tsx`, que não emite metadata de decorator e quebra a DI do Nest. O padrão é `src/cli/run-cli.ts` (`runCli`): contexto Nest só com os módulos que o comando usa, `.env` validado pelo mesmo `envSchema` mas restrito às chaves que ele lê, exit code 0/1/2. Compila junto com o app e roda do `dist`:
+An operator command (tenant onboarding, rename, backfill) does not boot `AppModule` — it would bring guards, listeners and senders that refuse to boot without real credentials — and does not run through `tsx`, which does not emit decorator metadata and breaks Nest's DI. The pattern is `src/cli/run-cli.ts` (`runCli`): a Nest context with only the modules the command uses, `.env` validated by the same `envSchema` but restricted to the keys it reads, exit code 0/1/2. It compiles together with the app and runs from `dist`:
 
 ```ts
 // apps/backend/src/cli/onboard.ts
@@ -88,19 +88,19 @@ await runCli({
 npm run build && node apps/backend/dist/cli/onboard.js <name>
 ```
 
-O e2e do comando faz `spawnSync('node', ['dist/cli/onboard.js', ...])` com `NODE_ENV=production` e confere o exit code.
+The command's e2e does `spawnSync('node', ['dist/cli/onboard.js', ...])` with `NODE_ENV=production` and checks the exit code.
 
 ## Guardrails
 
-- Nunca importar de `modules/` dentro de `apps/backend/src/shared/`.
-- Nunca acrescentar campos de um módulo específico a `AuthenticatedUser`.
-- Nunca dar valor padrão a `JWT_SECRET` nem registrar rota aberta sem `@Public()`.
-- Variável de ambiente nova entra em `config/env.schema.ts`; `process.env.X` solto fora do schema é um 500 esperando acontecer.
-- Nunca logar token, cookie ou body: o `redact` cobre os headers, o resto é disciplina de quem loga.
-- Nunca duplicar classes de erro que já existem em `packages/shared`.
+- Never import from `modules/` inside `apps/backend/src/shared/`.
+- Never add a specific module's fields to `AuthenticatedUser`.
+- Never give `JWT_SECRET` a default value nor register an open route without `@Public()`.
+- A new environment variable goes into `config/env.schema.ts`; a loose `process.env.X` outside the schema is a 500 waiting to happen.
+- Never log a token, cookie or body: `redact` covers the headers, the rest is the discipline of whoever logs.
+- Never duplicate error classes that already exist in `packages/shared`.
 
-## Referências internas
+## Internal references
 
-- `assets/` — arquivos canônicos.
-- `scripts/apply.js` — aplicação determinística.
-- `references/mandatory-readings.md` — o que ler antes de ajustar à mão.
+- `assets/` — canonical files.
+- `scripts/apply.js` — deterministic application.
+- `references/mandatory-readings.md` — what to read before adjusting by hand.

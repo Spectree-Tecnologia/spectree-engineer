@@ -34,7 +34,7 @@ if (control) {
   const original = fs.readFileSync(card, 'utf8');
   // cut from the `## Criteria` block to the end: the per-criterion procedure and verdicts, the monolith rules,
   // the list of what reading catches and the finding vocabulary (severity, file:line) go; only the three block names stay
-  const stripped = original.replace(/\n## Criteria — o contrato, critério por critério[\s\S]*$/, '\n');
+  const stripped = original.replace(/\n## Criteria — the contract, criterion by criterion[\s\S]*$/, '\n');
   if (stripped === original) throw new Error('control: the anchor in the quality-engineer card changed; adjust the cut');
   fs.writeFileSync(card, stripped);
   if (!extra.includes('--case')) extra.push('--case', CONTROL_CASE);

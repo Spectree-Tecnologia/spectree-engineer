@@ -1,35 +1,34 @@
 ---
 name: module-entity
 user-invocable: false
-description: Criar, revisar ou orientar a implementação de entidades. Usar quando o pedido envolver "entidade", "entity", "module-entity", arquivos `*.entity.ts`, modelagem de regras de negócio com `Entity`, validação com `Result`, composição com Value Objects/Entidades aninhadas, ou criação/ajuste de testes de entidade.
+description: Create, review or guide the implementation of entities. Use when the request involves "entity", "module-entity", `*.entity.ts` files, modeling business rules with `Entity`, validation with `Result`, composition with Value Objects/nested entities, or creating/adjusting entity tests.
 ---
 
 # Module Entity
 
 ## Overview
 
-Aplicar o padrão de Entidades do projeto com foco em identidade (`id`), invariantes, imutabilidade prática (sem setters), validação no `tryCreate` e operações seguras com `cloneWith`.
+Apply the project's entity pattern, focused on identity (`id`), invariants, practical immutability (no setters), validation in `tryCreate` and safe operations with `cloneWith`.
 
 ## Guidelines
 
-- Ler `references/entity-pattern.md` antes de criar/alterar entidades.
-- Estender `Entity<Type, Props>` de `@namespace/shared` e manter construtor `private` ou `protected`.
-- Expor API consistente: `create` (throw) e `tryCreate` (`Result`).
-- Validar invariantes com VOs (`Id`, `Name`, `Text`, `Number`, `Sku`, etc.) e `Result.combine`.
-- Persistir no `props` apenas valores normalizados (`instance.value`, `instance.props` quando aplicável).
-- Implementar getters para propriedades de domínio; evitar acesso externo direto a `props` fora da entidade.
-- Preferir métodos de domínio explícitos (ex.: `deactivate`, `createMovementIn`) para comportamento relevante.
+- Read `references/entity-pattern.md` before creating/changing entities.
+- Extend `Entity<Type, Props>` from `@namespace/shared` and keep the constructor `private` or `protected`.
+- Expose a consistent API: `create` (throws) and `tryCreate` (`Result`).
+- Validate invariants with VOs (`Id`, `Name`, `Text`, `Number`, `Sku`, etc.) and `Result.combine`.
+- Store in `props` only normalized values (`instance.value`, `instance.props` when applicable).
+- Implement getters for domain properties; avoid direct external access to `props` outside the entity.
+- Prefer explicit domain methods (e.g. `deactivate`, `createMovementIn`) for relevant behavior.
 
 ## Workflow
 
-1. Identificar invariantes e tipo de identidade da entidade (`Id.tryCreate`/`Id.required`).
-2. Mapear dependências de VOs e entidades aninhadas para validação.
-3. Implementar `Props`, classe, getters e `create/tryCreate` no padrão do projeto.
-4. Adicionar métodos de domínio quando houver transição de estado/comportamento.
-5. Criar ou atualizar testes em `modules/*/test/**` cobrindo criação válida, inválida, `cloneWith` e igualdade por `id`.
-6. Revisar consistência de mapeamento com repositórios/DTOs para novos campos.
+1. Identify the entity's invariants and identity type (`Id.tryCreate`/`Id.required`).
+2. Map the VO and nested entity dependencies for validation.
+3. Implement `Props`, the class, getters and `create/tryCreate` in the project's pattern.
+4. Add domain methods when there is a state transition/behavior.
+5. Create or update tests in `modules/*/test/**` covering valid creation, invalid creation, `cloneWith` and equality by `id`.
+6. Review mapping consistency with repositories/DTOs for new fields.
 
 ## References
 
-Consultar `references/entity-pattern.md` para paths, checklist, exemplos e armadilhas comuns observadas no código atual.
-
+See `references/entity-pattern.md` for paths, checklist, examples and common pitfalls observed in the current code.

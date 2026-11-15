@@ -1,4 +1,6 @@
-export const errorMessagesPt = {
+import type { ErrorMessages } from './messages.en';
+
+export const errorMessagesPt: ErrorMessages = {
   ADMIN_PERMISSION_REQUIRED: 'Apenas administradores podem realizar esta ação.',
   ACCOUNT_NOT_FOUND: 'Conta não encontrada.',
   AUTH_ADMIN_REQUIRED: 'Você precisa ser administrador para realizar esta ação.',
@@ -95,7 +97,4 @@ export const errorMessagesPt = {
   USER_UNAUTHORIZED: 'Não autorizado. Faça login novamente.',
   USER_UPDATE_EMPTY_PAYLOAD: 'Informe ao menos nome ou e-mail para atualizar o usuário.',
   WEAK_PASSWORD: 'A senha é muito fraca.',
-} as const;
-
-export type ErrorMessageKey = keyof typeof errorMessagesPt;
-export type ErrorMessages = Record<ErrorMessageKey, string>;
+};
