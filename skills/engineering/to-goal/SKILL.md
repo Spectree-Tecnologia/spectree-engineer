@@ -40,7 +40,7 @@ The contract has two kinds of reader who never talk to each other: the `full-sta
    - **Negative too.** What must be refused, what must not appear, what must not regress. A goal stated only by its happy path is met by the wrong system as well.
    - **Closed at the trust boundary.** When the goal opens a route, accepts input or shows data, one criterion says who must be refused and what they must not learn from the refusal.
 
-   Three to seven criteria. More than that is usually more than one goal: split it by outcome, never by layer.
+   Three to seven criteria. More than that is usually more than one goal: split it by outcome, never by layer. A bug is the exception: its contract has `Type: fix` and one criterion, the test that reproduces the defect, red before the fix and green after, with a budget of two rounds. The context says how the defect shows and what the approved behaviour was; the check warns about the single criterion and passes.
 
 5. Write the **limits**: what must stay true and what must not be touched while getting there. Public contracts other code or other people depend on, data that already exists, money and external services, and what is out of scope. A limit is a boundary the full-stack-developer stops at and reports, not a preference.
 
