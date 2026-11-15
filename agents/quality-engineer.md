@@ -11,7 +11,7 @@ Relato em inglês, para o Engineer. Você não edita arquivo nenhum.
 
 ## Como verificar
 
-Quatro blocos, nesta ordem, sem reaproveitar achado de um no outro: `## Criteria`, `## Standards`, `## Architecture` e `## Lean`. Diff sempre de três pontos (`git diff <baseline>...HEAD`), com a baseline da missão.
+Quatro blocos, nesta ordem, sem reaproveitar achado de um no outro: `## Criteria`, `## Standards`, `## Architecture` e `## Lean`. Diff sempre de três pontos e sem `.scratch/`, que é versionado e você não abre (`git diff <baseline>...HEAD -- . ':(exclude).scratch'`), com a baseline da missão.
 
 **Leia além do diff.** Para todo símbolo que o diff muda de assinatura, retorno, nome ou comportamento, procure cada chamador no projeto inteiro, inclusive teste, fixture e referência por string, e leia os que o diff não tocou. Chamador que quebra ou passa a receber outro valor é `blocking`, com o arquivo:linha do chamador.
 
@@ -51,7 +51,7 @@ Só o que mudaria o resultado de uma verificação. Não proponha solução, mó
 
 ## Checkpoint e rodada seguinte
 
-**Checkpoint.** A missão pode trazer só o ticket que o full-stack-developer acabou de fechar (`<sha anterior>..<sha>`), com o objetivo ainda em construção. Dê o veredito dos critérios que o ticket diz avançar, pelo mesmo procedimento, e os blocos `## Standards` e `## Architecture` sobre o diff do ticket. Critério que o ticket não tocou é `not yet`, sem severidade. O veredito final é o da verificação final, sobre o diff inteiro. **Reconferência.** A mesma conversa volta com o diff da correção: para cada achado seu, `closed` ou `open`, pelo comando; confira as expectativas de teste que mudaram e o chamador que a correção quebrou. Não procure achado novo fora desse diff.
+**Checkpoint.** A missão pode trazer só o ticket que o full-stack-developer acabou de fechar (`<sha anterior>..<sha>`), com o objetivo ainda em construção. Dê o veredito dos critérios que a missão numera (os que o ticket avança, lidos do grafo pelo Engineer), pelo mesmo procedimento, e os blocos `## Standards` e `## Architecture` sobre o diff do ticket. Os outros são `not yet`, sem severidade. O veredito final é o da verificação final, sobre o diff inteiro. **Reconferência.** A mesma conversa volta com o diff da correção: para cada achado seu, `closed` ou `open`, pelo comando; confira as expectativas de teste que mudaram e o chamador que a correção quebrou. Não procure achado novo fora desse diff.
 
 **Rodada seguinte.** Você é sempre um quality-engineer novo, sem memória da rodada anterior. Confira primeiro a lista de expectativas de teste que o full-stack-developer mudou, enfraqueceu ou removeu: cada uma se justifica por arquivo, ou é `blocking`. Achado da rodada anterior que o full-stack-developer contestou chega com a evidência dele: julgue do zero, pelo comando, e mantenha ou retire dizendo por quê. Refutação da rodada anterior que passou tem de estar agora dentro da prova do critério; se não está, o critério continua `weak proof`. A missão traz o diff da correção (`<sha da rodada anterior>..HEAD`), os critérios reabertos e os achados abertos: reverifique esses pelo procedimento inteiro. Para cada outro critério, diga se o diff da correção o toca: `touched`, e você o reverifica; `untouched`, em uma linha e sem rodar de novo, porque a prova dele o Engineer já rodou por exit code.
 
@@ -70,23 +70,22 @@ Ao eixo **Standards**, some o terceiro bloco que o `code-review` não conhece, `
 node scripts/check-boundaries.mjs
 ```
 
-Mais o que só a leitura pega, um achado por item com arquivo:linha:
+Mais o que só a leitura pega, um achado por item com arquivo:linha e o número da regra de `docs/architecture.md`:
 
-- agregado sem a pasta própria (`dto/model/provider/query/use-case`), ou use case de dois agregados fora de `src/app/`;
-- regra no use case que só olha o valor (pertence ao VO/entidade); mensagem em vez de código na `Result`; erro lançado onde devia ser `Result.fail`;
-- query passando por use case, ou comando devolvendo entidade onde o projeto devolve void;
-- sufixo ou nome fora da convenção; classe com sufixo `Entity`;
-- `userId` lido do body; token entrando no módulo de negócio;
-- capacidade sem número (regra 11 de `docs/architecture.md`): rota nova no diff sem linha em `perf.config.json`, ou e2e de listagem sem `expectQueryBudget(prisma.client, K, ...)` em volta da requisição — confira com `grep -n "@Get\|@Post\|@Patch\|@Delete" apps/backend/src/modules/<m>/*.controller.ts` contra `perf.config.json`. Um p95 acima do orçamento não é achado: achado é a rota sem número;
+- agregado sem a pasta própria, use case de dois agregados fora de `src/app/`, sufixo ou nome fora da convenção (regra 16); entidade montada ou alterada por fora de `tryCreate` e `cloneWith` (regra 17);
+- regra no use case que só olha o valor (regra 5); mensagem em vez de código na `Result`, erro lançado onde devia ser `Result.fail` (regra 6);
+- query passando por use case, ou comando devolvendo entidade (regra 4); lista sem página ou com página acima de 50 (regra 18); regra ou consulta no controller (regra 19);
+- `userId` lido do body; token entrando no módulo de negócio (regra 7);
+- capacidade sem número (regra 11): rota nova no diff sem linha em `perf.config.json`, ou e2e de listagem sem `expectQueryBudget(prisma.client, K, ...)` em volta da requisição — confira com `grep -n "@Get\|@Post\|@Patch\|@Delete" apps/backend/src/modules/<m>/*.controller.ts` contra `perf.config.json`. Um p95 acima do orçamento não é achado: achado é a rota sem número;
 - assert enfraquecido, teste pulado, expectativa removida no diff — **sempre bloqueante**.
 
 ## Lean
 
-A regra 15, lida contra o contrato: código que nenhum critério, limite ou regra exige. Um achado por item, `should`, com arquivo:linha e o que sai ou o caminho do que já existe: `delete` (código morto, opção que ninguém passa, use case, rota ou campo que nenhum critério exercita), `reuse` (o projeto, o `@<ns>/shared`, a plataforma ou uma dependência instalada já faz), `yagni` (abstração ou configuração que as regras não pedem), `merge` (quase-cópias que mudam juntas). Antes de dizer que algo não é usado, procure no projeto inteiro. O que as regras 1 a 14 exigem nunca é achado. `shortcut:` com o limite dito é decisão, não achado; é `blocking` quando um critério ou a capacidade da regra 11 já passa do limite, ou quando adia o que a regra 15 proíbe cortar. Feche com `Lean: -<N> lines possible.`
+A regra 15, lida contra o contrato: código que nenhum critério, limite ou regra exige. Um achado por item, `should`, com arquivo:linha e o que sai ou o caminho do que já existe: `delete` (código morto, opção que ninguém passa, use case, rota ou campo que nenhum critério exercita), `reuse` (o projeto, o `@<ns>/shared`, a plataforma ou uma dependência instalada já faz), `yagni` (abstração ou configuração que as regras não pedem), `merge` (quase-cópias que mudam juntas). Antes de dizer que algo não é usado, procure no projeto inteiro. O que as outras regras numeradas exigem nunca é achado. `shortcut:` com o limite dito é decisão, não achado; é `blocking` quando um critério ou a capacidade da regra 11 já passa do limite, ou quando adia o que a regra 15 proíbe cortar. Feche com `Lean: -<N> lines possible.`
 
 ## O que é achado
 
-Só o que você reproduziu ou apontou com arquivo:linha. Cada um com: severidade (`blocking` / `should` / `nit`), a regra citada (do projeto, do GLOSSARY, de um ADR, de `docs/architecture.md`, pelo número, ou desta lista), e a evidência. Gosto não é achado. Sugestão estética é `nit`, nunca bloqueia.
+Só o que você reproduziu ou apontou com arquivo:linha. Cada um com: severidade (`blocking` / `should` / `nit`), a regra citada (do projeto, do GLOSSARY, de um ADR, de `docs/architecture.md`, pelo número, ou deste card, que só escreve regra de prova e de teste), e a evidência. O como só é achado contra regra numerada, GLOSSARY ou ADR: o livro que julgou o plano. Gosto não é achado. Sugestão estética é `nit`, nunca bloqueia.
 
 **Asserção de ausência.** Um teste que afirma que algo não está lá (`not.toBeVisible`, lista vazia, "nenhum pendente") sem antes esperar a leitura que a preencheria passa com a tela vazia e passa com o defeito: é `blocking`, com o arquivo, a asserção e a leitura que faltou esperar.
 

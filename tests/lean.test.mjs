@@ -44,7 +44,7 @@ test('the quality-engineer reads the callers the diff did not touch and reports 
   assert.match(card, /código que nenhum critério, limite ou regra exige/);
   // lean never costs a round: the risk policy sends a `should` to the hardening goal
   assert.match(card, /Um achado por item, `should`/);
-  assert.match(card, /O que as regras 1 a 14 exigem nunca é achado/);
+  assert.match(card, /O que as outras regras numeradas exigem nunca é achado/);
 });
 
 test('a shortcut never covers what the rule forbids cutting', () => {
@@ -70,8 +70,11 @@ test('the prompts stay inside their word budget', () => {
   // 0.34.0 raised both by about 120 words: the two lanes of step 7 (which tickets run together, the second checkout,
   // the merge of a closed ticket and its proof). Measured on PILOT's ci-time-20: a free ticket sat idle for 40 and for
   // 77 minutes while the one before it was built and verified.
-  const COMMAND = 7692;
-  const SQUAD = 18896;
+  // 0.35.0 raised the command by 66 words and the two together by 118: the bug's minimal contract (step 8 could not
+  // run without one), the verifiers' diff without `.scratch/`, and the rule number beside each item the
+  // quality-engineer reads for. The full-stack-developer's card shrank by 34: its rules moved to ARCHITECTURE.md.
+  const COMMAND = 7758;
+  const SQUAD = 19014;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
