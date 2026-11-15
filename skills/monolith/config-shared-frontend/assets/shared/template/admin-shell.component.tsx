@@ -33,8 +33,8 @@ export function AdminShell({
   sidebar,
   children,
   logoHref = '/dashboard',
-  userName = 'Usuario',
-  userEmail = 'usuario@aplicacao.local',
+  userName = 'User',
+  userEmail = 'user@app.local',
   userAvatarUrl,
   profileHref = '/join/profile',
   onLogout,
@@ -78,7 +78,7 @@ export function AdminShell({
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(245,158,11,0.06),transparent_38%),radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.03),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.015),transparent_18%)]" />
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/8 bg-black/35 px-4 backdrop-blur-xl md:px-6">
             <div className="flex min-w-0 items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Alternar menu lateral">
+              <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Toggle sidebar">
                 <Menu className="size-5" />
               </Button>
             </div>
@@ -90,7 +90,7 @@ export function AdminShell({
                     {resolvedAvatarUrl ? (
                       <Image
                         src={resolvedAvatarUrl}
-                        alt={`Avatar de ${userName}`}
+                        alt={`${userName} avatar`}
                         className="size-8 rounded-full border border-border object-cover"
                         onError={() => setFailedAvatarUrl(userAvatarUrl ?? null)}
                         width={32}
@@ -117,11 +117,11 @@ export function AdminShell({
                   <Separator className="my-1" />
                   <DropdownMenuItem onSelect={() => router.push(profileHref)}>
                     <UserRound className="mr-2 size-4" />
-                    Perfil
+                    Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={onLogout} className="text-red-500 focus:bg-red-500/10 focus:text-red-400">
                     <LogOut className="mr-2 size-4" />
-                    Sair
+                    Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

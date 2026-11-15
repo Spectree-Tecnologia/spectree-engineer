@@ -70,7 +70,7 @@ function engine(on: any, agentId: string, model = 'model') {
 }
 
 const steps = (done: number, total = 4) =>
-  Array.from({ length: total }, (_, i) => ({ text: `Passo ${i + 1}`, status: i < done ? 'completed' : i === done ? 'in_progress' : 'pending' }))
+  Array.from({ length: total }, (_, i) => ({ text: `Step ${i + 1}`, status: i < done ? 'completed' : i === done ? 'in_progress' : 'pending' }))
 
 test('a finished subagent is a card with its role, steps, tokens and status', async ($, on) => {
   engine(on, 'a1')
@@ -89,12 +89,12 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
 
   for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
-    expect(await ui.find({ type: 'Text', text: /Concluído · 2 passos/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Done · 2 steps/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^spectree-engineer:quality-engineer · model$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /6\.2M tokens/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Running: npm test/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Engineer em repouso/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Engineer at rest/ })).toBeDefined()
     if (surface !== 'terminal') {
       // The card's avatar is the mascot's smiling visor once done, round, and still: no frame.
       const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
@@ -107,7 +107,7 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
       expect(avatar?.props?.isInteractive).toBe(false)
       expect(source).not.toContain('<image')
       // Idle with no plan, the centre is the mascot itself, inside its ring.
-      const hero = String(svgs.find(one => one?.props?.alt === 'Engineer em repouso')?.props?.source ?? '')
+      const hero = String(svgs.find(one => one?.props?.alt === 'Engineer at rest')?.props?.source ?? '')
       expect(hero).toContain('viewBox="0 0 341 341"')
       expect(hero).toContain('<ellipse')
       expect(hero.length).toBeLessThanOrEqual(131072)
@@ -122,8 +122,8 @@ test("the specialist at work takes the mascot's place, the last one dispatched i
 
   let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   const platform = String(((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.alt === 'Platform Engineer' && one?.props?.width === 130)?.props?.source ?? '')
-  expect(await ui.find({ type: 'Text', text: /Despachando Platform Engineer/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Em execução · 1/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Dispatching Platform Engineer/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Running · 1/ })).toBeDefined()
   // One drawing, floating in the glow; a specialist wears no ring; still on reduced motion.
   expect(platform).toContain('@keyframes fl')
   expect(platform).toContain('#8fc3ff')
@@ -144,7 +144,7 @@ test("the specialist at work takes the mascot's place, the last one dispatched i
   expect(hero?.props?.alt).toBe('Solutions Architect')
   expect(hero?.props?.height).toBe(120)
   expect(String(hero?.props?.source ?? '')).not.toBe(platform)
-  expect(await ui.find({ type: 'Text', text: /Despachando Platform Engineer, Solutions Architect/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Dispatching Platform Engineer, Solutions Architect/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -152,15 +152,15 @@ test('alone with a live plan the Engineer itself is at the centre; a failure lea
   engine(on, 'd1')
   await $.tool.call({ tool: PLAN_TOOL, title: 'Identity', steps: steps(1) } as any)
   let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /^Engineer trabalhando$/ })).toBeDefined()
-  expect((await svgSource(ui, 'Engineer trabalhando')).length).toBeGreaterThan(10_000)
+  expect(await ui.find({ type: 'Text', text: /^Engineer working$/ })).toBeDefined()
+  expect((await svgSource(ui, 'Engineer working')).length).toBeGreaterThan(10_000)
   await ui.unmount()
 
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'ticket 01')
   await $.turn.complete({ answer: '', durationMs: 1, isAborted: true, turnId: 't', agentId: 'd1', reason: 'aborted' } as any)
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /^Engineer em alerta$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Interrompido · 0 passos/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Engineer on alert$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Interrupted · 0 steps/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -211,7 +211,7 @@ test('a long session stays in budget: each step writes its own subagent, the pan
   expect(sources.reduce((sum, source) => sum + source.length, 0)).toBeLessThan(250_000)
   // A frame only for what moves: the centre and the avatar and spinner of each running card.
   expect(svgs.filter(one => one?.props?.isInteractive).length).toBe(1 + 2 * 8)
-  expect(await ui.find({ type: 'Text', text: /Concluídos · 50/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Finished · 50/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^early run$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 59$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 55$/ })).toBeUndefined()
@@ -326,7 +326,7 @@ test('a drawing that fails leaves a pane that says so', async ($, on) => {
   // A row the drawing cannot read: no type to name its drawing by.
   await spawn($, 'x1', undefined as any, 'PE')
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /Painel do Engineer em recuperação/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Engineer panel recovering/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -335,8 +335,8 @@ test('the main loop adds no card and its task list fills the plan bar', async ($
   await $.tool.call({ tool: 'Bash', command: 'ls' } as any)
 
   let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /Nenhum subagente/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Nenhum plano em andamento/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /No subagent/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /No plan under way/ })).toBeDefined()
   await ui.unmount()
 
   for (const subject of ['Bump plugin', 'Identity', 'Review', 'Close']) {
@@ -351,12 +351,12 @@ test('the main loop adds no card and its task list fills the plan bar', async ($
 
   for (const surface of ['terminal', 'desktop'] as const) {
     ui = await $.ui.mount({ ...PANE, surface })
-    expect(await ui.find({ type: 'Text', text: /^Tarefas 1\/3 · 33%$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^Agora: Doing Identity$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Tasks 1\/3 · 33%$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Now: Doing Identity$/ })).toBeDefined()
     await ui.unmount()
   }
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  const bar = await svgSource(ui, 'Tarefas 1 de 3')
+  const bar = await svgSource(ui, 'Tasks 1 of 3')
   expect(bar).toContain('viewBox="0 0 300 14"')
   expect(bar).toContain('class="lv"')
   for (const shade of ['#2b5b9c', '#8fc3ff']) expect(bar).toContain(shade)
@@ -366,40 +366,40 @@ test('the main loop adds no card and its task list fills the plan bar', async ($
   await $.tool.call({ tool: 'TaskUpdate', taskId: '3', status: 'completed' } as any)
   await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 't', agentId: 'd1', reason: 'answer' } as any)
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /^Plano concluído$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Plan done$/ })).toBeDefined()
   // A plan done with nobody running: the mascot smiles in its ring, and the bar is still.
-  expect(await ui.find({ type: 'Text', text: /^Engineer em repouso$/ })).toBeDefined()
-  expect(await svgSource(ui, 'Engineer em repouso')).toContain(happyHero)
-  expect(await svgSource(ui, 'Tarefas 3 de 3')).not.toContain('@keyframes')
+  expect(await ui.find({ type: 'Text', text: /^Engineer at rest$/ })).toBeDefined()
+  expect(await svgSource(ui, 'Engineer at rest')).toContain(happyHero)
+  expect(await svgSource(ui, 'Tasks 3 of 3')).not.toContain('@keyframes')
   await ui.unmount()
 })
 
 test("the plan tool keeps the main loop's plan, refuses a subagent's, and shows above the terminal prompt", async ($, on) => {
   engine(on, 'd1')
-  const saved = await $.tool.call({ tool: PLAN_TOOL, title: 'Módulo identity', steps: steps(2) } as any)
+  const saved = await $.tool.call({ tool: PLAN_TOOL, title: 'Identity module', steps: steps(2) } as any)
   expect(String((saved as any).result)).toBe('Plan saved: 2 of 4 steps done.')
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'ticket')
   const refused = await $.tool.call({ tool: PLAN_TOOL, steps: steps(0), agentId: 'd1' } as any)
   expect(String((refused as any).deny ?? (refused as any).result ?? '')).toContain('Only the main loop')
 
   let band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
-  expect(await band.find({ type: 'Text', text: /^Módulo identity$/ })).toBeDefined()
-  expect(await band.find({ type: 'Text', text: /^Tarefas 2\/4$/ })).toBeDefined()
-  expect(await band.find({ type: 'Text', text: /^Agora: Passo 3$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^Identity module$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^Tasks 2\/4$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^Now: Step 3$/ })).toBeDefined()
   await band.unmount()
   // The desktop keeps the plan in the panel.
   band = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
-  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  expect(await band.find({ type: 'Text', text: /^Tasks/ })).toBeUndefined()
   await band.unmount()
 
   // Done, it stays for the turn that finished it and goes once the person writes.
   await $.tool.call({ tool: PLAN_TOOL, steps: steps(4) } as any)
   band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
-  expect(await band.find({ type: 'Text', text: /^Tarefas 4\/4$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^Tasks 4\/4$/ })).toBeDefined()
   await band.unmount()
-  await $.prompt.submit({ text: 'próximo', origin: { kind: 'composer' } } as any)
+  await $.prompt.submit({ text: 'next', origin: { kind: 'composer' } } as any)
   band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
-  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  expect(await band.find({ type: 'Text', text: /^Tasks/ })).toBeUndefined()
   await band.unmount()
 })
 
@@ -454,8 +454,8 @@ test('a session stopped at the usage limit is resumed once, a minute after the w
   expect(session.sent).toEqual([])
   await session.clock.advance(2 * MINUTE)
   expect(session.sent.length).toBe(1)
-  expect(session.sent[0]).toContain('limite de uso do plano')
-  expect(session.sent[0]).toContain('repita a pergunta e pare')
+  expect(session.sent[0]).toContain("the plan's usage limit")
+  expect(session.sent[0]).toContain('repeat the question and stop')
   await session.clock.advance(600 * MINUTE)
   expect(session.sent.length).toBe(1)
 })
@@ -468,7 +468,7 @@ test('after an API error the panel tries again at growing intervals, and an answ
   expect(session.sent).toEqual([])
   await session.clock.advance(1 * MINUTE)
   expect(session.sent.length).toBe(1)
-  expect(session.sent[0]).toContain('erro da API')
+  expect(session.sent[0]).toContain('an API error')
   // the resumed turn dies too: the second try waits five minutes
   await turnEnds($, 'error')
   await session.clock.advance(4 * MINUTE)
@@ -555,5 +555,5 @@ test('the panel gives up after nine tries and says so', async ($, on) => {
   await turnEnds($, 'error')
   await session.clock.advance(600 * MINUTE)
   expect(session.sent.length).toBe(9)
-  expect(session.logged.join('\n')).toContain('segue parada depois de 9 tentativas')
+  expect(session.logged.join('\n')).toContain('still stopped after 9 resume attempts')
 })

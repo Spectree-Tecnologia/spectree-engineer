@@ -1,29 +1,127 @@
+<div align="center">
+
+<img src=".github/social-preview.png" alt="The spectree-engineer squad: the Engineer and seven specialist agents" width="840">
+
 # spectree-engineer
 
-Plugin Claude Code da Spectree Tecnologia: um orquestrador em pt-BR (`/engineer`) com sub-agentes especialistas, para **monólitos modulares seguros e escaláveis na stack atual**.
+**Goal-Driven Development (GDD) and graph engineering for modular monoliths, run by an autonomous squad of AI agents.**
 
-- **Processo: Goal Driven Development.** Você diz o resultado que quer. O Engineer o transforma num contrato (`docs/goals/<slug>.md`): o objetivo, os critérios de sucesso, cada um com a prova que o decide, os limites e um orçamento de rodadas. O **como** (módulos, agregados, tickets) é do full-stack-developer, que decide olhando o código: ele quebra o objetivo em tickets, que formam um grafo lido por script (`npm run goal -- graph <slug>`), e cada ticket é construído por um full-stack-developer novo, que retoma do plano. Todo o squad roda em Opus; só a terceira rodada de verificação de um objetivo, quando duas em Opus não fecharam um critério, sobe para Fable. O `quality-engineer` e o `security-engineer` verificam sem ter construído: rodam cada prova, julgam se ela prova o critério e tentam refutá-la, até cumprir. Ninguém escreve spec, e quem quebra o trabalho em tickets é o full-stack-developer, nunca o Engineer. O fluxo: entrevista → roadmap de objetivos → **protótipo** → contrato → construção → verificação → PR (branch, commits e título em Conventional Commits) → **merge automático com CI verde** → próximo objetivo. A tela é prototipada no artefato Design antes do contrato, **em rodadas com você até aprovar**. Fora da entrevista e do protótipo, o squad anda sozinho: a sessão em que você abriu o projeto coordena até o fim dele, e cada objetivo do roadmap roda numa sessão de item linkada a ela, com contexto zerado (Claude Code Desktop); só sobem a você dinheiro/plataforma, mudança de escopo, impacto irreversível e o que nenhuma melhor prática decide. As skills de engenharia de [Matt Pocock](https://github.com/mattpocock/skills) (grilling, domain modeling, TDD, code review, PR, retro) seguem no processo.
-- **Arquitetura:** as skills de monólito modular da Spectree — `config-*`, `module-*`, `backend-*`, `frontend-*` — e as regras de DDD tático que elas encodam: módulos puros em `modules/<m>/src/<agregado>/{dto,model,provider,query,use-case}`, um repositório por raiz de agregado, regra no VO > entidade > domain service, erro como código numa `Result`, `userId` do JWT. O documento canônico é [ARCHITECTURE.md](ARCHITECTURE.md), copiado para `docs/architecture.md` de todo projeto gerado e leitura obrigatória de toda missão.
+A [Claude Code](https://code.claude.com) plugin built on **Goal-Driven Development**, Spectree's own methodology for software built by AI agents. You state the outcome you want. An orchestrator turns it into a contract with provable success criteria. A squad of seven specialist agents plans the work as a graph of tickets, builds it test-first, and gets it verified by agents that did not build it. You come back in only for the decisions that are yours to make.
 
-## Stack gerada
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FSpectree-Tecnologia%2Fspectree-engineer%2Fmain%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&color=informational)](CHANGELOG.md)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](https://code.claude.com/docs/en/plugins)
 
-Só majors com suporte, instalados como `@latest`, nunca pinados: Turborepo, **NestJS (ESM, `nodenext`, Vitest)**, **Next.js com Cache Components**, Prisma + PostgreSQL, Node LTS (`.nvmrc`), pacote `@<ns>/shared` em ESM + Vitest.
+[Quick Start](#quick-start) · [How it works](docs/how-it-works.md) · [Architecture rules](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
 
-Seguro por padrão no que o bootstrap gera:
+</div>
 
-- `JwtGuard` como `APP_GUARD` — toda rota fechada salvo `@Public()`; `JWT_SECRET` sem valor padrão (o app não sobe sem ele).
-- `@nestjs/throttler` com limite global, `helmet`, CORS restrito a `FRONTEND_URL`, `ValidationPipe` com `whitelist` + `forbidNonWhitelisted`, `ApiExceptionFilter` logando a causa dos 500.
-- Review de segurança em toda mudança (`security-engineer`, em paralelo ao review de padrões) e auditoria completa em seis fases antes da primeira exposição pública e a cada cinco itens do roadmap — `confirmed` vira objetivo de correção, `needs_validation` vira critério de teste.
-- Supply chain: `.npmrc` com `min-release-age=3`, `.github/dependabot.yml` com o mesmo cooldown, `npm audit --audit-level=high` no CI.
-- Um banco descartável por comando, `npm run db:scratch -- <nome> -- <comando>`: cria ao lado do de desenvolvimento, migra, aplica os papéis, semeia, entrega ao comando e dropa no fim, qualquer que seja o exit code. O `quality-engineer`, o `security-engineer`, o perf e cada suíte rodam cada um no seu.
-- O orçamento de latência pergunta à base antes de bloquear: rota duas vezes acima do p95 é medida também no código da base, na mesma máquina. Só falha a que ficou mais de 1,25 vez mais lenta; a que a base serve igual de devagar vira um aviso e uma linha do roadmap. Rota nova continua presa ao orçamento.
-- CI que cabe no plano Free: um workflow, um job, nunca em push (`.github/workflows/ci.yml`, do scaffold), por momento: checks rápidos a cada push no PR, e2e e smoke do Playwright no PR pronto, tudo toda noite na main com o p95 só reportando, e o p95 como gate no run `pre-release` antes do deploy; um PR do Dependabot por mês e `npm run check:pr` rodando local o que o CI só roda no PR.
-- Scanners OSS como passos desse job: gitleaks (MIT) na história do git, `npm audit` e osv-scanner (Apache 2.0) no lockfile quando ele muda, squawk (GPL 3) nas migrations que o PR adiciona; o `security-engineer` lê o run antes do diff. Mutation testing por módulo com StrykerJS (Apache 2.0), `npm run mutation -- <módulo>`, que o `quality-engineer` roda nos módulos do diff.
-- Fronteiras do monólito verificadas por `scripts/check-boundaries.mjs` no projeto gerado (`npm test` e CI): core puro em `modules/*/src`, módulo depende só do shared, teste fora de `src/`, rota do Next só importa a página do módulo, read é query, toda tabela com a mesma espinha (uuid, `createdAt`, `updatedAt`, `Decimal` e nunca `Float`).
-- Fundação decidida uma vez, não por agregado: módulos conversam por `DomainEvent` (`InMemoryEventBus` no shared), o token carrega `roles` e `@Roles()` fecha rotas, `identity` é o primeiro item de todo roadmap, e tenants, papéis e tipo de login são perguntas fixas da entrevista.
-- Autonomia de verdade: o bootstrap grava `.claude/settings.json` com a allowlist de `npm`, `git`, `gh`, `docker` (e nega `push --force`, `reset --hard`, `clean`); o release faz `pg_dump` antes de migrar e a primeira exposição pública exige restore provado.
+> **Your language, English artifacts.** On first contact the Engineer asks, in English, which language you want to talk in, and talks to you in that language from then on. Everything else the squad produces is in English: contracts, code, tests, docs, commits and PRs.
 
-## Instalação
+## Goal-Driven Development (GDD)
+
+GDD is the methodology at the core of spectree-engineer. Spectree developed it by running the squad on real projects, and it replaced the earlier flow of specs and planned tickets in version 0.18.0. Spec-driven work hands an agent a plan to follow and accepts its report that the plan is done. GDD hands the agents **only the goal and the way to prove it**, and never takes an agent's word for the result.
+
+1. **The outcome is the input.** You say what should be true when the work is done, never the steps to get there.
+2. **A contract, not a spec.** The Engineer writes the goal into `docs/goals/<slug>.md`: the objective, the context, three to seven success criteria each paired with the proof that decides it, the limits, and a budget of verification rounds. It contains no plan.
+3. **Whoever builds decides how.** The `full-stack-developer` reads the code and chooses the modules, aggregates and tickets, inside the written architecture rules and nowhere outside them.
+4. **Proof is executable.** Each criterion is decided by a command's exit code. `npm run goal -- prove <slug>` runs every proof, and all agents run the same line.
+5. **Whoever builds never verifies.** Independent agents attack the contract before any code exists, then attack the proofs and the code after. They never see the builder's plan or report.
+6. **Failure narrows; it does not negotiate.** Each round costs budget. A criterion that fails twice must have its whole class of defect closed by construction. A criterion only changes through a dated amendment, and "met with reservations" does not exist.
+7. **People decide only what is theirs.** Scope, money, irreversible impact and the undefined go to you. Every other decision is made, recorded in `decisions.md`, and the work moves on.
+
+Abridged example of a contract:
+
+```markdown
+# Goal: create-account
+Status: approved by engineer under the roadmap approved on 2026-10-30
+
+## Success criteria
+| # | Criterion | Proof |
+|---|-----------|-------|
+| 1 | A signed-in user creates an account with a name, a type and an initial balance, and gets its id back. | run: `npm -w modules/accounts test -- create-account` |
+| 2 | A second account with the same name for the same user, in any letter case, is refused with `ACCOUNT_NAME_ALREADY_EXISTS`. | run: `npm -w modules/accounts test -- create-account` |
+
+## Limits
+- Out of scope: editing and deactivating accounts.
+
+## Budget
+Verification rounds: 3.
+```
+
+The full mechanics are in [docs/how-it-works.md](docs/how-it-works.md).
+
+## Why it is different
+
+Most coding agents take a prompt and return a diff. spectree-engineer runs GDD on top of two graphs, and a script checks each one, not a model's opinion.
+
+- **The module graph stays acyclic.** Every generated project follows [19 numbered architecture rules](ARCHITECTURE.md): pure domain modules, one repository per aggregate root, CQRS, errors as codes in a `Result`, and modules that talk through domain events. `scripts/check-boundaries.mjs` enforces the structural rules in `npm test` and in CI. The other rules are checked at the plan gate and in review.
+- **The work is a graph of tickets.** A goal is split into vertical-slice tickets with blocking edges. `npm run goal -- graph <slug>` rejects cycles, criteria with no ticket, and parallel tickets that share a folder. It prints the frontier, meaning the tickets free to start. When two tickets on the frontier are independent, they run at the same time in two lanes.
+- **The graphs are checked twice.** Before any code, the `solutions-architect` judges the ticket plan against the numbered rules, and `goal graph --plan` must exit 0. At every ticket checkpoint and in final verification, `check-boundaries` runs again on the code.
+- **Autonomy has explicit edges.** Outside the interview and the screen prototypes, the squad goes from contract to merged PR on its own. Only four kinds of decision come back to you (see [Where you come in](#where-you-come-in)).
+
+## The squad
+
+| Role | Does | Never does |
+|---|---|---|
+| **Engineer** (the `/engineer` command) | Talks to you, writes the goal contract, dispatches agents, runs the deterministic gates, records the verdicts | Writes product code, or tells the builder how to build |
+| `solutions-architect` | Maps what exists and the seams where a criterion can be proved. At the plan gate, judges the plan against the numbered rules | Writes files |
+| `ui-ux-designer` | Prototypes new screens as artboards in a Claude Design artifact, in rounds with you until you approve | Business rules, code |
+| `full-stack-developer` | Decides modules, aggregates and tickets, then builds test-first with the monolith scaffolding skills. One fresh agent per ticket | Crosses a contract limit or an architecture rule |
+| `quality-engineer` | Runs and attacks every proof, reviews the diff against the project standards and the module boundaries | Edits code; sees the builder's plan |
+| `security-engineer` | Reviews the diff as an attacker, using Cloudflare's [security-audit](https://github.com/cloudflare/security-audit-skill) skill | Edits code; reports a finding without a broken trust boundary and a proved impact |
+| `platform-engineer` | Bootstrap, CI, Prisma, releases, and git work that needs judgment (conflicts, PRs, merges) | Module code |
+| `integration-engineer` | The squad's only route to the web: facts about external APIs, SDKs and versions, always with a source | States a fact from memory |
+
+Every role runs on Claude Opus. A goal moves up to a stronger model only from its third verification round, after two rounds on Opus left a criterion open.
+
+## How a goal flows
+
+```mermaid
+flowchart LR
+    I([Interview]):::human --> R[Goal roadmap]:::human
+    R --> P([Screen prototype]):::human
+    P --> C[Contract<br/>criteria + proofs]
+    C --> A{{Contract attack<br/>quality-engineer}}
+    A --> PL[Plan as a ticket graph<br/>full-stack-developer]
+    PL --> G{{Architecture gate<br/>solutions-architect}}
+    G --> B[Build ticket by ticket<br/>checkpoint per ticket]
+    B --> V{{Final verification<br/>deterministic + QE + SE}}
+    V -- not met --> B
+    V -- met --> PR[PR, CI green,<br/>auto-merge]
+    PR --> N[Retro, next goal]
+    N --> C
+    classDef human fill:#fde68a,stroke:#b45309,color:#111;
+```
+
+Yellow steps involve you. Everything else runs on its own. The full mechanics are in [docs/how-it-works.md](docs/how-it-works.md): the contract, checkpoints, the two lanes, the risk policy, size budgets, and resuming after a usage limit.
+
+### Where you come in
+
+1. **The interview**, once per project: the problem, the first modules, the stack, and three questions the first migration locks in (tenants, roles, password vs. external login). It also covers a risk policy for what may stay open when a goal's round budget runs out.
+2. **The roadmap**, approved once. Each goal on it is then approved, and the Engineer writes the success criteria itself.
+3. **Screen prototypes**, in as many rounds as you need, before any contract or code.
+4. **The four gates**, and nothing else:
+   1. **Money and platform:** paid services, paid API keys, infrastructure, deploys.
+   2. **Product scope:** anything that changes the approved roadmap or adds a business rule nobody decided.
+   3. **Irreversible impact:** destructive migrations on real data, first public exposure, secrets, history rewrites.
+   4. **Undefined:** no named best practice decides it, for example a round budget spent with a residue your risk policy does not cover.
+
+Each question comes alone, with a recommendation, so a "yes" moves the squad on.
+
+## Quick Start
+
+### Prerequisites
+
+| | Why |
+|---|---|
+| [Claude Code](https://code.claude.com) with access to Claude Opus | Runs the orchestrator and the agents |
+| Node.js LTS and npm | The generated monorepo and the plugin scripts |
+| git, and the [GitHub CLI](https://cli.github.com) (`gh auth login`) | Branches, PRs, CI and auto-merge |
+| Docker | PostgreSQL for the generated backend, scratch databases, CI scanners |
+| *Recommended:* the Claude desktop app | Runs each roadmap goal in its own linked session; elsewhere the whole project runs in one session. The Engineer panel opens in the desktop app and in VS Code, and screen prototypes are published as Claude Design artifacts |
+
+### 1. Install the plugin
 
 ```bash
 claude plugin marketplace add Spectree-Tecnologia/spectree-engineer
@@ -33,126 +131,99 @@ claude plugin marketplace add Spectree-Tecnologia/spectree-engineer
 claude plugin install spectree-engineer@spectree-engineer
 ```
 
-## Uso
-
-```
-/engineer                                estado do projeto, próximo passo, decisões pendentes
-/engineer <o resultado que você quer>    vira objetivo com critérios de sucesso; o squad decide o como e prova
-```
-
-Na primeira vez num repositório, o Engineer roda o `setup-matt-pocock-skills` (tracker, labels, layout de domínio) antes de qualquer outra coisa.
-
-### Goal Driven Development
-
-| | |
-|---|---|
-| O que você dá | o resultado que quer; na entrevista, o roadmap de objetivos; para tela nova, a aprovação do protótipo |
-| O que desce para quem constrói | um contrato e mais nada: objetivo, **contexto** (atores e cenários, o que já foi decidido e por quê, o que existe hoje, fatos externos com fonte, o que não se sabe, prioridades), de três a sete critérios de sucesso com a prova de cada um, limites e orçamento de rodadas. Nenhum plano |
-| Quem escreve o contrato | só o Engineer, pela skill `to-goal`; o painel recusa a skill e a escrita em `docs/goals/` a qualquer subagente |
-| Quem decide o como | o full-stack-developer (`full-stack-developer`), olhando o código; o plano fica em `.scratch/<slug>/plan.md`, com um arquivo por ticket em `.scratch/<slug>/issues/` (skill `to-tickets`, de Matt Pocock, adaptada: fatia vertical que cabe num contexto novo, com os tickets que a bloqueiam). É a memória do objetivo: quem planeja só planeja, e cada ticket é de um full-stack-developer novo, que também corrige o próprio ticket, que retoma dela |
-| Gate de arquitetura | do Engineer, **antes do código**: o plano do full-stack-developer é julgado contra as regras numeradas de `docs/architecture.md`. Só regra escrita reprova; preferência não. Critério que só se cumpre violando uma regra sobe a você |
-| Loop | checkpoint por ticket: o ticket fecha antes de o próximo começar. Gate barato por exit code, com a prova do ticket; o `quality-engineer` revisa o commit do ticket, e o `security-engineer` quando ele toca fronteira de confiança, com o checkout parado; quem construiu corrige e quem achou reconfere, uma vez; o que sobra aberto vai à verificação final. Quando o grafo mostra dois tickets livres sem pasta em comum (`parallel:`), eles rodam ao mesmo tempo em duas pistas: o checkout principal e uma worktree; o ticket fechado na segunda pista é mergeado com a primeira parada |
-| Gate adversário | o pipeline de qualidade e segurança, antes do PR: camada determinística por exit code, `quality-engineer` (roda a prova, julga se prova, tenta refutar, mutantes) e `security-engineer` (atacante), sem ver o plano nem o relato do full-stack-developer. O Engineer não rebaixa severidade nem dispensa camada |
-| Provas executáveis | a prova que um comando decide vai no contrato como ``run: `<comando>` ``, e `npm run goal -- prove <slug>` roda todas, em UTC como o CI. O full-stack-developer, o quality-engineer, o security-engineer e o Engineer rodam a mesma linha, e o exit code é a evidência |
-| Contrato pronto | `npm run goal -- check --ready` exige o contrato aprovado e todo critério `met`, ou dispensado por emenda. Roda no `check:pr` e no CI: sem isso o PR não abre |
-| Ataque ao contrato | antes do código, o `quality-engineer` lê só o contrato e diz, por critério, o sistema errado que passaria na prova, o caso que falta e a prova que não decide. Uma passada: prova fraca achada ali custa uma leitura, não uma rodada |
-| Fechar a classe | critério reprovado pela segunda vez não recebe remendo: o `full-stack-developer` nomeia a classe do defeito e a construção que a torna impossível, e a rodada seguinte julga a construção |
-| Rodada seguinte | a camada determinística roda inteira de novo; os agentes adversários olham o diff da correção e os critérios reabertos, e o que não foi tocado segue `met` pela prova |
-| Política de risco | decidida uma vez na entrevista, em `docs/risk-policy.md`: com o orçamento gasto, resíduo `low` do `security-engineer` ou `should` do `quality-engineer` vira critério de um objetivo de hardening e o PR segue, sem perguntar |
-| Prova depois do merge | o que só o run do PR ou a main mergeada provam vai como `in ci:` (o CI a roda no passo `Goal proofs written in ci`) ou `after merge:`, fica `pending`, e o contrato é `landed` até a prova rodar (`npm run goal -- prove <slug> --after-merge`) |
-| Números | `npm run goal -- stats` lê os contratos: rodadas por objetivo, quantos passaram na primeira, quantos gastaram o orçamento, decisões que subiram a você, subidas para Fable, linhas e minutos de CI |
-| Código enxuto | regra 15 da arquitetura: nada existe que o objetivo não peça. O plano do `full-stack-developer` diz o que reusa e o que cria, o gate de arquitetura recusa criar o que já existe, o `quality-engineer` lê os chamadores que o diff não tocou e aponta, no bloco `Lean`, o código que nenhum critério exige. Atalho consciente fica no código como `shortcut: <limite>, <quando subir>`. Validação em fronteira de confiança, erro que evita perda de dado, segurança e acessibilidade nunca se cortam |
-| Começo do objetivo | um script, não um agente: `goal-start.mjs <slug> --branch <tipo>/<slug>` corta a branch e alinha as ferramentas, e `--baseline` roda build, testes e audit em segundo plano e grava `.scratch/<slug>/baseline.md`. O `full-stack-developer` começa o plano sem esperar a baseline |
-| Tickets em grafo | `npm run goal -- graph <slug>` lê os tickets do objetivo como grafo: sem ciclo, todo critério com ticket, dois tickets que podem rodar juntos nunca na mesma pasta. Imprime a frontier, os tickets livres para começar; `--plan` é o gate do plano e `--prove <ticket>` roda a prova do ticket |
-| Custo do objetivo | `npm run goal -- spent <slug>` lê os transcripts do Claude Code desta máquina: relógio, horas paradas no limite de uso do plano, horas paradas por erro da API, horas esperando você, a parte dos tokens em correção depois de verificação, tokens e turnos por papel. `--write` grava a linha `Spent:` no contrato, `--agents` imprime uma linha por agente (turnos, quanto o contexto cresceu, o que o encheu), e o `goal stats` soma os objetivos |
-| Missão curta | cada chamada de ferramenta relê o contexto inteiro, e missão longa custa mais por chamada. Na 60ª chamada de um `full-stack-developer`, o painel recusa a chamada uma vez, como aviso: ele fecha o que tem na mão, grava no ticket o que falta e relata `handoff`, e um novo continua o ticket. No checkpoint voltam `blocking`, `should` e `confirmed`; depois da primeira rodada final, o `should` que a política de risco cobre segue para o objetivo de hardening |
-| Retomada automática | sessão de objetivo que parou no limite de uso ou por erro da API é retomada pelo painel, sem você: um minuto depois de a janela reabrir, ou em intervalos de 2 a 60 minutos, até nove tentativas. Só em projeto do Engineer com plano em andamento. Turno que terminou em resposta nunca é retomado, porque pode ser uma pergunta sua; escrever qualquer coisa cancela |
-| Ataque à prova | no gate do plano, em objetivo de mais de um ticket, o `quality-engineer` lê o contrato e os tickets e diz o que a prova planejada deixaria passar. O achado vira critério do ticket antes de existir código |
-| Ferramentas em dia | `tooling-sync.mjs` leva a um projeto antigo os scripts do squad que vieram depois, no primeiro commit da branch do objetivo. Script que o projeto alterou nunca é sobrescrito |
-| Emenda | um critério só muda por uma linha em `## Amendments`, com data, quem decidiu e onde o resto continua. Não existe "cumprido com ressalva" |
-| Tamanho | o contrato tem orçamento de linhas alteradas de código de produto (4 000 por padrão; teste, documento e lockfile não contam), medido em todo checkpoint. Estourou, o que está cumprido vai a PR e o resto vira um objetivo de continuação. Cada parte é um run de CI, então o orçamento não é para fatiar miúdo |
-| Quando você é perguntado | pedido fora do roadmap, critério que cria regra de negócio nova, estreitar ou dispensar um critério fora da política de risco, orçamento de rodadas esgotado com resíduo que a política não cobre, e os quatro gates |
-
-**O que substituiu o quê.** O contrato substitui a spec (`to-spec`); os tickets continuam, mas mudaram de dono: quem os escreve é o full-stack-developer, a partir do contrato e olhando o código (`to-tickets`, adaptada), nunca o Engineer a partir de uma spec; o card do full-stack-developer substitui o `implement`. `to-spec` e `implement` continuam instaladas só para redirecionar uma sessão antiga; `to-tickets` é a skill viva do plano.
-
-**Projeto em andamento.** Um projeto que começou com spec e tickets não quebra nem recomeça. No primeiro `/engineer` depois da atualização, cada item aberto é adotado como objetivo: o contrato nasce da spec e dos tickets, o que já foi construído entra como contexto, a mesma branch continua, e o item retoma do estágio em que estava. Nada é apagado, e você não é perguntado de novo pelo que já aprovou.
-
-### O painel do Engineer
-
-O plugin traz um módulo de hooks do Claude Code, `hooks/engineer-desk/`: um painel lateral que acompanha a orquestração. No centro flutua o mascote da Spectree dentro do seu anel; enquanto um subagente roda, o desenho do especialista toma o lugar dele (o último despachado na frente); sozinho com um plano em andamento, é o próprio Engineer que aparece; plano concluído, o mascote sorri; um subagente que falhou ou foi interrompido o deixa em alerta. Abaixo, a barra de progresso do plano e um card por subagente com o mascote pequeno (a expressão do papel enquanto roda, sorrindo ao concluir, alerta se falhou), papel, modelo, tokens, duração, status e passos. No terminal, o plano também fica acima do prompt.
-
-Abre sozinho uma vez por sessão no app desktop e no VS Code, numa pasta com `skills.config.json` ou `docs/roadmap.md`, ou no primeiro despacho de um especialista. `/engineer-desk` reabre. Não alcança rede e só recusa seis coisas: um despacho que cairia abaixo do Opus (sobe para `opus`); um comando Bash que roda um interpretador lendo a stdin, por heredoc, por pipe ou sozinho sem script (`python -`, `node -`, `python`), que no Windows fica preso para sempre; um subagente chamando a skill `to-goal` ou escrevendo em `docs/goals/`, porque o contrato do objetivo é do Engineer; um subagente usando `git stash`, cuja lista é compartilhada por todas as worktrees; a 60ª chamada de ferramenta de um `full-stack-developer`, uma vez, como aviso de handoff; e a ferramenta de plano a um subagente, porque só o Engineer mantém o plano. Function hooks são uma API em early access do Claude Code. Os desenhos são a arte do fundador (PNGs de 2048 px) vetorizada em polígonos, porque o app descarta `<image>` dentro de um `Svg`; para trocar um, troque o PNG e rode `node scripts/trace-art.cjs <pasta dos PNGs> <pasta com imagetracerjs instalado>`, que regrava `mascot-art.ts`.
-
-## O squad
-
-| Agente | Faz | Não faz |
-|---|---|---|
-| `engineer` (comando) | fala com você em pt-BR, transforma o pedido em contrato (`to-goal`), despacha, roda os critérios permanentes e registra os vereditos | código; dizer ao full-stack-developer como construir |
-| `solutions-architect` | para o Engineer escrever o contrato: o que já existe, seams onde um critério se prova, se cabe num full-stack-developer, fronteira de perguntas; em modo gate, julga o plano do full-stack-developer contra as regras da arquitetura | escrever arquivo; reescrever o plano |
-| `ui-ux-designer` | protótipo das telas no artefato Design antes do contrato, em rodadas com o fundador até a aprovação; design system do projeto; toda referência do fundador passa pelo `to-wireframe` antes do artboard | regra de negócio, código |
-| `full-stack-developer` | decide módulos, agregados e tickets, constrói test-first com scaffold pelas skills de monólito, entrega a evidência de cada critério | cruzar um limite do contrato ou uma regra da arquitetura; alterar o contrato |
-| `quality-engineer` | verifica cada critério de sucesso (roda a prova, julga se prova, tenta refutar) e revisa padrões e fronteiras do monólito | editar; ver o plano ou o relato do full-stack-developer |
-| `security-engineer` | review como atacante com o `security-audit` da Cloudflare (guidance); achados só com fronteira violada e impacto | editar, rodar o alvo |
-| `platform-engineer` | bootstrap, CI, tooling que difere do plugin, PR e merge, release | código de módulo; alterar o contrato |
-| `integration-engineer` | fatos sobre sistemas externos, com fonte; vigilância de suporte e advisories da stack | afirmar de memória |
-
-## Layout
-
-```
-ARCHITECTURE.md            as dezenove regras do monólito modular Spectree (vira docs/architecture.md no projeto)
-CHANGELOG.md               o que mudou por versão
-commands/engineer.md       o orquestrador
-agents/*.md                os sete especialistas
-hooks/engineer-desk/       o painel do Engineer (módulo de hooks do Claude Code); hooks/hooks.json o nomeia
-tests/                     guarda estrutural e scripts do projeto gerado (node --test); o painel pelo kit do Claude Code (claude plugin test)
-skills/                    ferramentas dos agentes: toda skill declara `user-invocable: false` e fica fora do menu de comandos
-skills/engineering/        skills de Matt Pocock (MIT, vendorizadas — ver THIRD-PARTY-LICENSES.md)
-skills/monolith/           skills de monólito modular (config-*, module-*, backend-*, frontend-*)
-skills/security/           security-audit da Cloudflare (MIT, vendorizada): review por mudança e auditoria completa
-skills/design/             to-wireframe de rtadewald (vendorizada, ver THIRD-PARTY-LICENSES.md): referência → wireframe tipado
-templates/shared           o pacote @<ns>/shared copiado no bootstrap
-scripts/smoke.mjs          prova: bootstrap inteiro num projeto temporário, build, testes, 401 sem token
-scripts/evals.mjs          prova: o julgamento dos agentes, com `claude plugin eval` sobre evals/
-scripts/desk-test.mjs      prova: o painel, com `claude plugin test` numa cópia sem os testes Vitest do template
-evals/                     um caso por diretório (prompt.md + graders/), fixtures sintéticos em evals/fixtures/
-```
-
-## Prova
+Check that it is enabled:
 
 ```bash
-node scripts/smoke.mjs
+claude plugin list
 ```
 
-Roda todas as skills de monólito a partir deste repo num projeto temporário (`project-init` → shared → Prisma → backend → frontend → módulo → agregado), `npm run build`, `npm test` (inclui `check-boundaries`) e, com Docker disponível, sobe o Postgres e o backend, exige `401` em `GET /` sem token, prova o `npm run worktree -- up/down` (worktree isolada com banco, portas e build próprios) e o `npm run perf -- --changed` (só as rotas dos módulos tocados), e roda o mutation testing do módulo de prova e os scanners gitleaks e osv-scanner pelas mesmas imagens Docker do `ci.yml` gerado, que passa pelo actionlint, o `npm run check:pr` (passa limpo, recusa segredo, título fora do padrão, branch atrás da base e contrato de objetivo que ainda não está pronto), o `npm run goal` (forma do contrato, provas em UTC, veredito com ressalva recusado, dispensa só com emenda, orçamento de tamanho), o `npm run db:scratch` (o comando vê o banco descartável como o papel de runtime, o banco some com qualquer exit code, nome em uso nunca é reaproveitado, o e2e passa nele) e o perf recusando medir numa máquina ocupada. `SMOKE_KEEP=1` preserva o projeto gerado.
+### 2. Start a project
 
 ```bash
-node scripts/evals.mjs
-```
-
-Prova o **julgamento** dos agentes, não o scaffold: é o [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) sobre `evals/`, um caso por diretório, cada um montando um projeto pequeno de `evals/fixtures/` num workspace vazio e aprovando por critério que o runner verifica (regex, ferramenta chamada, arquivo criado), nunca por "parece bom". Os casos: o `quality-engineer` dá `weak proof` ou `not met`, bloqueante e com `arquivo:linha`, a um `UpdateAccount` que zera o saldo num PATCH parcial e cuja prova passa com o defeito, e cita a regra 1 de `docs/architecture.md` para um use case que importa `@nestjs/common`; o `security-engineer` dá `confirmed` `high` a um controller que lê `userId` do body e zero `confirmed` ao mesmo controller lendo do JWT; o `solutions-architect` devolve mapa, grafo acíclico, seams, shared e fronteira sem gravar arquivo; o mesmo `solutions-architect`, em modo gate, reprova com a regra numerada um plano em que dois módulos importam o código um do outro e aponta o critério sem ticket; `/engineer`, diante de um pedido fora do roadmap, grava o contrato pelo `to-goal` e faz exatamente uma pergunta (gate 2); num projeto com um item em andamento por spec e tickets, adota o item como objetivo sem refazer nada; o `quality-engineer`, em modo contrato, aponta num contrato sem código o sistema errado que passa na prova, o caso que a lista de recusa não nomeia e a prova que não decide; e o mesmo `quality-engineer` acha, com `arquivo:linha`, o chamador que quebra num arquivo que o diff não tocou, e põe no bloco `Lean` o use case que nenhum critério pede; e, em modo prova, diz o que a prova planejada nos tickets deixaria passar.
-
-```bash
-node --test tests/engineer-desk.test.mjs
+mkdir my-app && cd my-app && git init
 ```
 
 ```bash
-node --test tests/vocabulary.test.mjs
+claude
 ```
+
+### 3. Run the first cycle
+
+In the Claude Code prompt, describe the outcome you want:
+
+```
+/spectree-engineer:engineer I want a small app where a single user keeps a list of books they have read, with a rating for each
+```
+
+The first time, the Engineer asks which language you want to talk in. It saves your answer in `.engineer.local.json`, which is gitignored because the choice is per person, then picks up your request. Next comes the interview: one question at a time, each with a recommendation, then writes `docs/roadmap.md` for your approval. After you approve, the `platform-engineer` bootstraps the monorepo (Turborepo, NestJS, Prisma + PostgreSQL, Next.js, Vitest), and the first goal, always the `identity` module, starts on its own branch.
+
+Run the command with no arguments at any time to see the project's state, the next step and any pending decision:
+
+```
+/spectree-engineer:engineer
+```
+
+`/engineer` also works as a short form when no other installed plugin defines a command with that name.
+
+To update later:
 
 ```bash
-node --test tests/models.test.mjs
+claude plugin update spectree-engineer
 ```
 
-```bash
-node scripts/desk-test.mjs
+## What the generated project gets
+
+- **Stack, never pinned:** Turborepo, NestJS (ESM, `nodenext`, Vitest), Next.js with Cache Components, Prisma + PostgreSQL, Node LTS via `.nvmrc`, and a shared `@<ns>/shared` package with the domain base types (`Entity`, `ValueObject`, `Result`, `UseCase`, repositories, `TransactionManager`, `DomainEvent`). Only supported majors, installed at `@latest`.
+- **Secure by default:** a global JWT guard (every route closed unless marked `@Public()`), a `JWT_SECRET` with no default, rate limiting, helmet, CORS limited to the frontend URL, a strict `ValidationPipe`, structured JSON logs, an env schema checked at boot, and `/health` and `/ready` probes.
+- **Supply chain:** a `.npmrc` with `min-release-age=3`, Dependabot with the same cooldown, `npm audit` in CI, gitleaks, osv-scanner, and squawk on new migrations.
+- **Capacity as a test:** a query budget per use case gated on every ready PR, and a p95 budget per route measured nightly and gated before release. The p95 is compared against the base branch on the same machine, so a slow runner does not fail anyone.
+- **CI that fits the GitHub Free plan:** one workflow, one job, never on push. Fast checks run on PR pushes, e2e and Playwright smoke run when a PR is ready, the full suite runs nightly, and a pre-release run gates the p95.
+- **Disposable databases:** `npm run db:scratch -- <name> -- <command>` creates, migrates, seeds and drops a database around any command, whatever its exit code.
+- **Mutation testing** per module with StrykerJS.
+- **English UI by default**, with error messages in English and Portuguese (`shared/i18n`) and a place for more locales.
+
+## Repository layout
+
+```
+ARCHITECTURE.md        the 19 rules of the modular monolith (copied to docs/architecture.md in every project)
+commands/engineer.md   the orchestrator
+agents/                the seven specialist agents
+skills/engineering/    process skills, vendored from Matt Pocock (MIT)
+skills/monolith/       scaffolding skills: config-*, module-*, backend-*, frontend-*
+skills/security/       security-audit, vendored from Cloudflare (MIT)
+templates/shared/      the @<ns>/shared package copied at bootstrap
+hooks/engineer-desk/   the Engineer panel (a Claude Code hooks module)
+scripts/               smoke test, eval runner, panel test, art tracer
+tests/                 structural guards and tests of the generated project's scripts
+evals/                 judgment evals for the agents, run with `claude plugin eval`
 ```
 
-O `tests/dev-tooling.test.mjs` roda as correções dos scripts do projeto gerado: offset de worktree fora das portas que o browser recusa, rota de criação medida pelo `perf` sem o 409 de chave duplicada, e `.next` limpo antes do build. O `tests/perf-base.test.mjs` roda a comparação do `perf` com a base: igual à base não bloqueia, mais lenta bloqueia, sem base vale o orçamento. O `tests/graph.test.mjs` roda o `goal graph`: ciclo, critério sem ticket, dois tickets livres na mesma pasta, ticket de antes do Goal Driven fora do grafo, frontier e prova do ticket. O `tests/tokens.test.mjs` guarda a regra de um `full-stack-developer` por ticket, a skill `to-tickets` e o comando `goal spent`. O `tests/lean.test.mjs` guarda a regra do código enxuto em cada papel e o orçamento de palavras do comando e dos cards: texto novo se paga com texto que sai. O `tests/skills.test.mjs` guarda as skills fora do menu de comandos. O teste de vocabulário guarda uma regra de linguagem: o comando e os cards chamam cada agente pelo nome do papel, nunca por apelido. O teste de modelos guarda a política de modelos: todo card declara Opus, o comando só pede Fable a partir da terceira rodada de verificação, e o piso do painel é Opus. Dos outros dois, o primeiro guarda a estrutura do painel (módulo nomeado, estado sob o nome do plugin, um desenho por card de `agents/`, arte vetorizada dentro dos limites do engine, nada de rede, sem colidir com `/engineer`). O segundo roda `tests/engineer-desk.test.tsx` com `claude plugin test` a partir de uma cópia só com manifesto, `hooks/` e `tests/`, porque o comando varre todo `*.test.ts` da pasta e os testes Vitest de `templates/shared` não carregam nele.
+## The Engineer panel
 
-Roda como você, na sua credencial do Claude Code — por isso não está no CI: custa cerca de US$ 5 por passada completa (onze casos, uma run cada): uns 4 minutos com `-j 4`, uns 15 em sequência. `--runs 3` mede variância; `--case se-*` filtra; qualquer outra flag vai para o `claude plugin eval`. `node scripts/evals.mjs --control` prova que a suíte mede o card: roda o caso do `UpdateAccount` contra uma cópia do plugin com o card do `quality-engineer` sem o procedimento de verificação nem a lista de regras e exige que ele **falhe**.
+The plugin ships a Claude Code hooks module, `hooks/engineer-desk/`, which adds a side panel in the desktop app and in VS Code. The panel shows the plan's progress and one card per running subagent, with its role, model, tokens, duration and status. The panel also enforces a few guardrails:
 
-## Versão
+- It raises any dispatch below Opus to Opus.
+- It blocks interpreters that would hang waiting on stdin, and `git stash`, whose list every worktree shares.
+- Only the Engineer may write a goal contract or keep the plan.
+- It warns a `full-stack-developer` to hand off at its 60th tool call.
+- It resumes a goal session that stopped on a usage limit or an API error.
 
-A versão vive em `.claude-plugin/plugin.json` e segue SemVer (regra no topo do [CHANGELOG.md](CHANGELOG.md)). **Todo merge na main é uma versão**, porque `claude plugin update` compara versão, não commit: o PR sobe `version` (`PATCH` para correção, `MINOR` para comportamento novo) e escreve a seção `## [x.y.z] - <data>` no CHANGELOG; depois do merge, a tag `v<versão>` vai no merge commit (`git tag v<versão> <merge> && git push origin v<versão>`). Antes de subir `MINOR` que toca skills, templates ou scripts, rode `claude plugin validate . --strict` e `node scripts/smoke.mjs`. Quem instalou atualiza com `claude plugin update spectree-engineer`.
+The panel never touches the network. Function hooks are an early-access Claude Code API, so the panel may change as that API does.
 
-Melhorias que o `/engineer` descobre nos projetos (retro) chegam aqui como [issues](https://github.com/Spectree-Tecnologia/spectree-engineer/issues).
+## Roadmap and limits
+
+Honest limits of the current release:
+
+- **One architecture.** The plugin generates one shape: the TypeScript modular monolith described in [ARCHITECTURE.md](ARCHITECTURE.md). It does not adapt to an existing codebase with a different layout.
+- **Some rules are read, not enforced.** Seven architecture rules are enforced by a script and one by the perf and e2e suites. The rest rely on the plan gate and review, and the [CHANGELOG](CHANGELOG.md) lists what each release did not prove.
+- **Cost.** A full goal spends many tokens on Opus. `npm run goal -- spent <slug>` reports where they went.
+
+## Contributing
+
+Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), which covers the test suites, the versioning rule (every merge to `main` is a release), and Conventional Commits. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report vulnerabilities as described in [SECURITY.md](SECURITY.md).
+
+## Credits and license
+
+The process skills in `skills/engineering/` come from [Matt Pocock's skills](https://github.com/mattpocock/skills). The security review uses [Cloudflare's security-audit skill](https://github.com/cloudflare/security-audit-skill). Rule 15 is adapted from [ponytail](https://github.com/DietrichGebert/ponytail). Details are in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+
+Released under the [MIT License](LICENSE). Copyright © 2026 Spectree Tecnologia.

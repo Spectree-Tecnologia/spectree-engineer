@@ -1,15 +1,15 @@
 # Prisma Pattern
 
-## Paths principais
+## Main paths
 
-- Schema e modelos:
+- Schema and models:
   - `apps/backend/prisma/schema.prisma`
   - `apps/backend/prisma/models/*.model.prisma`
-- Migrações:
+- Migrations:
   - `apps/backend/prisma/migrations/*/migration.sql`
-- Client gerado:
+- Generated client:
   - `apps/backend/prisma/generated/prisma/*`
-- Service de conexão:
+- Connection service:
   - `apps/backend/src/db/prisma.service.ts`
 - Adapters:
   - `apps/backend/src/**/*.prisma.ts`
@@ -17,56 +17,56 @@
   - `apps/backend/prisma/seed/main.ts`
   - `apps/backend/prisma/seed/*-module.ts`
 
-## Convenções observadas
+## Observed conventions
 
-- Schema modular por domínio (`auth.model.prisma`, `product.model.prisma`, `stock.model.prisma`, etc.).
-- Uso de `@map`/`@@map` para compatibilizar naming de banco.
-- `PrismaClient` com output local em `./generated/prisma`.
-- Adapters Prisma implementam contratos de dominio (repository/query) e retornam `Result`.
-- Mapeamento explícito de banco -> domínio/DTO dentro do adapter.
+- Modular schema per domain (`auth.model.prisma`, `product.model.prisma`, `stock.model.prisma`, etc.).
+- Use of `@map`/`@@map` to reconcile database naming.
+- `PrismaClient` with local output in `./generated/prisma`.
+- Prisma adapters implement domain contracts (repository/query) and return `Result`.
+- Explicit database -> domain/DTO mapping inside the adapter.
 
-## Checklist de alterações
+## Change checklist
 
-### 1. Modelagem
+### 1. Modeling
 
-- [ ] Alterar modelo no arquivo correto de `models/*.model.prisma`.
-- [ ] Definir/ajustar relações (`@relation`, `onDelete`) e índices.
-- [ ] Verificar naming com `@map`/`@@map`.
+- [ ] Change the model in the correct `models/*.model.prisma` file.
+- [ ] Define/adjust relations (`@relation`, `onDelete`) and indexes.
+- [ ] Check naming with `@map`/`@@map`.
 
-### 2. Migração e client
+### 2. Migration and client
 
-- [ ] Gerar/aplicar migração SQL.
-- [ ] Garantir client atualizado após mudança de schema.
-- [ ] Verificar se delegates esperados existem no client.
+- [ ] Generate/apply the SQL migration.
+- [ ] Ensure the client is updated after a schema change.
+- [ ] Check that the expected delegates exist in the client.
 
-### 3. Adapter Prisma
+### 3. Prisma adapter
 
-- [ ] Atualizar select/include conforme novo campo/relação.
-- [ ] Ajustar `toDomain` / `fromDomain`.
-- [ ] Ajustar DTO de query quando leitura for projetada.
-- [ ] Tratar falhas com `Result.fail`.
-- [ ] Usar transação em mudanças múltiplas (`$transaction`).
+- [ ] Update select/include for the new field/relation.
+- [ ] Adjust `toDomain` / `fromDomain`.
+- [ ] Adjust the query DTO when the read is projected.
+- [ ] Handle failures with `Result.fail`.
+- [ ] Use a transaction for multiple changes (`$transaction`).
 
 ### 4. Seed
 
-- [ ] Ajustar tipos do seed (`type XxxSeedItem`) quando necessário.
-- [ ] Persistir campos novos em create/update.
-- [ ] Validar integridade de dados (contagem, referências, unicidade).
+- [ ] Adjust the seed types (`type XxxSeedItem`) when needed.
+- [ ] Persist new fields in create/update.
+- [ ] Validate data integrity (counts, references, uniqueness).
 
-## CQRS dentro de adapters Prisma
+## CQRS inside Prisma adapters
 
-- Pode coexistir na mesma classe adapter:
-  - métodos repository (entidade/comando)
-  - propriedades query (`findXxxQuery = { execute: ... }`) para leitura/DTO
-- Manter fronteiras claras no contrato do dominio.
+- These can coexist in the same adapter class:
+  - repository methods (entity/command)
+  - query properties (`findXxxQuery = { execute: ... }`) for reads/DTO
+- Keep clear boundaries in the domain contract.
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Esquecer de atualizar adapter após mudar schema.
-- Retornar DTO em método de repository de comando.
-- Não atualizar seed quando campo obrigatório é adicionado.
-- Não regenerar client após mudanças de modelo.
-- Usar raw SQL sem tipagem/conversão adequada de tipos numéricos (`bigint`/`string`).
+- Forgetting to update the adapter after changing the schema.
+- Returning a DTO from a command repository method.
+- Not updating the seed when a required field is added.
+- Not regenerating the client after model changes.
+- Using raw SQL without proper typing/conversion of numeric types (`bigint`/`string`).
 
-## Referência Global
+## Global Reference
 

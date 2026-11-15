@@ -4,10 +4,10 @@ import { AppLogo } from '@/shared/components/branding/app-logo.component';
 import { Button } from '@/shared/components/ui/button';
 
 /**
- * Landing page de exemplo (rota raiz `/`).
+ * Example landing page (root route `/`).
  *
- * Hero simples com dois caminhos: entrar (autenticação) e acessar o dashboard.
- * Substitua os textos e o CTA pelo conteúdo real do produto.
+ * A simple hero with two paths: sign in (authentication) and open the dashboard.
+ * Replace the copy and the CTA with the product's real content.
  */
 export default function LandingPage() {
   return (
@@ -18,34 +18,34 @@ export default function LandingPage() {
         <header className="flex items-center justify-between">
           <AppLogo size="md" priority />
           <Button asChild variant="ghost">
-            <Link href="/join">Entrar</Link>
+            <Link href="/join">Sign in</Link>
           </Button>
         </header>
 
         <section className="flex flex-1 flex-col items-center justify-center gap-8 py-16 text-center">
           <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
-            Bem-vindo
+            Welcome
           </span>
 
           <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
-            Construa mais rápido com uma base pronta
+            Build faster on a ready-made foundation
           </h1>
 
           <p className="max-w-2xl text-lg text-muted-foreground">
-            Estrutura compartilhada, navegação e telas de exemplo já configuradas. Comece pelo dashboard ou siga para a
-            tela de autenticação.
+            Shared structure, navigation and example screens are already set up. Start with the dashboard or head to the
+            sign-in screen.
           </p>
 
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/dashboard">
                 <LayoutDashboard className="size-4" />
-                Acessar o dashboard
+                Open the dashboard
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="/join">
-                Ir para autenticação
+                Go to sign in
                 <ArrowRight className="size-4" />
               </Link>
             </Button>

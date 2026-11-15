@@ -1,7 +1,7 @@
 ---
 name: to-goal
 user-invocable: false
-description: "For the orchestrator only (the Engineer, the one agent that talks to the user): turn a request into a goal contract for Goal Driven Development, with the objective, the context the builder needs, the success criteria and the proof that decides each one, the limits and the budget. Never the solution. Also turns a spec and tickets from before Goal Driven Development into a contract. A subagent never calls this skill."
+description: "For the orchestrator only (the Engineer, the one agent that talks to the user): turn a request into a goal contract for Goal-Driven Development, with the objective, the context the builder needs, the success criteria and the proof that decides each one, the limits and the budget. Never the solution. Also turns a spec and tickets from before Goal-Driven Development into a contract. A subagent never calls this skill."
 ---
 
 Only the orchestrator uses this skill: the agent that talks to the user and dispatches the others. If you were dispatched with a mission (you build, review, explore or operate), stop: the contract is not yours to write or change. Read it and carry on.
@@ -167,7 +167,7 @@ Describes (right): "A tenant has up to 10 000 open charges; the list route's lat
 
 </context-examples>
 
-## A spec and tickets from before Goal Driven Development
+## A spec and tickets from before Goal-Driven Development
 
 A project that started with a spec and tickets carries the same knowledge in another shape. Turn it into a contract without losing any of it and without deleting anything: the spec and the tickets stay where they are, as history.
 

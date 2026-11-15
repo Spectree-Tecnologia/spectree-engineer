@@ -1171,11 +1171,11 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'which version of the squad scripts this project holds, read by tooling-sync.mjs',
   });
-  // Stryker's scratch and incremental report stay out of git
+  // Stryker's scratch and incremental report stay out of git, and so does .engineer.local.json: the Engineer keeps each person's conversation language there
   const rootGitignore = path.join(rootDir, '.gitignore');
   if (await pathExists(rootGitignore)) {
     const ignored = await fs.readFile(rootGitignore, 'utf8');
-    const missing = ['.stryker-tmp/', 'reports/stryker-incremental.json'].filter((line) => !ignored.split(/\r?\n/).includes(line));
+    const missing = ['.stryker-tmp/', 'reports/stryker-incremental.json', '.engineer.local.json'].filter((line) => !ignored.split(/\r?\n/).includes(line));
     if (missing.length > 0) await fs.writeFile(rootGitignore, `${ignored.replace(/\s*$/, '')}\n${missing.join('\n')}\n`);
   }
   // the squad runs unattended after the interview: without this allowlist every npm/git/gh/docker call stops for a prompt.
@@ -1576,23 +1576,23 @@ async function main() {
       `Bootstrap config: scope="${scope}", frontendPath="${frontendPath}:${frontendPort}", backendPath="${backendPath}:${backendPort}"`,
     );
     logger.step(
-      `Configuração resolvida: scope=${scope}, frontend=${frontendPath}:${frontendPort}, backend=${backendPath}:${backendPort}.`,
+      `Resolved config: scope=${scope}, frontend=${frontendPath}:${frontendPort}, backend=${backendPath}:${backendPort}.`,
     );
 
     const turboResult = await ensureTurboRoot(rootDir, scope);
     if (turboResult.scaffoldedWithCreateTurbo) {
       const copiedCount = turboResult.copiedScaffoldPaths.length;
       console.log(`TurboRepo base reconciled using create-turbo (copied missing paths: ${copiedCount}).`);
-      logger.step(`Base do TurboRepo reconciliada com create-turbo (itens copiados: ${copiedCount}).`);
+      logger.step(`TurboRepo base reconciled with create-turbo (items copied: ${copiedCount}).`);
     } else if (turboResult.createdTurbo || turboResult.createdPackageJson) {
       const createdItems = [];
       if (turboResult.createdPackageJson) createdItems.push('package.json');
       if (turboResult.createdTurbo) createdItems.push('turbo.json');
       console.log(`TurboRepo base created/updated: ${createdItems.join(', ')}`);
-      logger.step(`Base do TurboRepo criada/atualizada: ${createdItems.join(', ')}.`);
+      logger.step(`TurboRepo base created/updated: ${createdItems.join(', ')}.`);
     } else {
       console.log('TurboRepo already detected at current directory.');
-      logger.step('Estrutura TurboRepo já existente no diretório atual.');
+      logger.step('TurboRepo structure already present in the current directory.');
     }
 
     const removedDefaultApps = await removeDefaultTurboApps({
@@ -1604,10 +1604,10 @@ async function main() {
     const removedDefaultProjects = [...removedDefaultApps, ...removedDefaultPackages];
     if (removedDefaultProjects.length > 0) {
       console.log(`Removed default Turbo template projects before app bootstrap: ${removedDefaultProjects.join(', ')}`);
-      logger.step(`Projetos padrão do Turbo removidos antes do bootstrap: ${removedDefaultProjects.join(', ')}.`);
+      logger.step(`Default Turbo projects removed before the bootstrap: ${removedDefaultProjects.join(', ')}.`);
     } else {
       console.log('No default Turbo template projects needed removal.');
-      logger.step('Nenhum projeto padrão do Turbo precisou ser removido.');
+      logger.step('No default Turbo project needed removing.');
     }
 
     const frontendCreated = await ensureFrontendApp({
@@ -1619,7 +1619,7 @@ async function main() {
     console.log(
       frontendCreated ? `Frontend app created at ${frontendPath}.` : `Frontend app already exists at ${frontendPath}.`,
     );
-    logger.step(frontendCreated ? `Frontend criado em ${frontendPath}.` : `Frontend já existia em ${frontendPath}.`);
+    logger.step(frontendCreated ? `Frontend created at ${frontendPath}.` : `Frontend already existed at ${frontendPath}.`);
 
     const backendCreated = await ensureBackendApp({
       rootDir,
@@ -1631,7 +1631,7 @@ async function main() {
     console.log(
       backendCreated ? `Backend app created at ${backendPath}.` : `Backend app already exists at ${backendPath}.`,
     );
-    logger.step(backendCreated ? `Backend criado em ${backendPath}.` : `Backend já existia em ${backendPath}.`);
+    logger.step(backendCreated ? `Backend created at ${backendPath}.` : `Backend already existed at ${backendPath}.`);
 
     const frontendPackagePath = path.join(frontendDir, 'package.json');
     const backendPackagePath = path.join(backendDir, 'package.json');
@@ -1682,7 +1682,7 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (releaseFiles.length > 0) {
       console.log(`Created release files: ${releaseFiles.join(', ')}`);
-      logger.step(`Arquivos de release criados: ${releaseFiles.join(', ')}.`);
+      logger.step(`Release files created: ${releaseFiles.join(', ')}.`);
     }
     const dependabotPath = path.join(rootDir, '.github', 'dependabot.yml');
     if (!(await pathExists(dependabotPath))) {
@@ -1727,10 +1727,10 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
       console.log(
         `Namespace synchronized (${workspaceNamespaceResult.packageCount} workspace packages): frontend="${nextFrontendName}", backend="${nextBackendName}"`,
       );
-      logger.step(`Namespace sincronizado em ${workspaceNamespaceResult.packageCount} pacotes do workspace.`);
+      logger.step(`Namespace synchronized across ${workspaceNamespaceResult.packageCount} workspace packages.`);
     } else {
       console.log('Namespace already applied to workspace/front-end/back-end packages.');
-      logger.step('Namespace já estava aplicado no workspace/frontend/backend.');
+      logger.step('Namespace was already applied to the workspace/frontend/backend.');
     }
 
     const turboInstalled = await ensureDependency({
@@ -1742,9 +1742,9 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (!turboInstalled) {
       console.log('Dependency already present at root: turbo');
-      logger.step('Dependência turbo já presente na raiz.');
+      logger.step('turbo dependency already present at the root.');
     } else {
-      logger.step('Dependência turbo instalada na raiz.');
+      logger.step('turbo dependency installed at the root.');
     }
 
     const prettierInstalled = await ensureDependency({
@@ -1756,9 +1756,9 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (!prettierInstalled) {
       console.log('Dependency already present at root: prettier');
-      logger.step('Dependência prettier já presente na raiz.');
+      logger.step('prettier dependency already present at the root.');
     } else {
-      logger.step('Dependência prettier instalada na raiz.');
+      logger.step('prettier dependency installed at the root.');
     }
 
     const dotenvInstalled = await ensureDependency({
@@ -1770,13 +1770,13 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (!dotenvInstalled) {
       console.log(`Dependency already present in ${backendPath}: dotenv`);
-      logger.step(`Dependência dotenv já presente em ${backendPath}.`);
+      logger.step(`dotenv dependency already present in ${backendPath}.`);
     } else {
-      logger.step(`Dependência dotenv instalada em ${backendPath}.`);
+      logger.step(`dotenv dependency installed in ${backendPath}.`);
     }
 
     await patchRootPackageJson(rootDir, scope);
-    logger.step('package.json da raiz atualizado incrementalmente.');
+    logger.step('Root package.json updated incrementally.');
 
     const prettierConfigResult = await ensureRootPrettierConfig(rootDir);
     if (prettierConfigResult.updated) {
@@ -1787,12 +1787,12 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
       );
       logger.step(
         prettierConfigResult.created
-          ? '.prettierrc criado na raiz do repositório.'
-          : '.prettierrc atualizado na raiz do repositório.',
+          ? '.prettierrc created at the repository root.'
+          : '.prettierrc updated at the repository root.',
       );
     } else {
       console.log('.prettierrc already configured at repository root.');
-      logger.step('.prettierrc já estava configurado na raiz do repositório.');
+      logger.step('.prettierrc was already configured at the repository root.');
     }
 
     const backendPackagePatchResult = await patchBackendPackageJson({
@@ -1801,17 +1801,17 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (backendPackagePatchResult.updated) {
       console.log(`Updated ${backendPath}/package.json`);
-      logger.step(`${backendPath}/package.json atualizado.`);
+      logger.step(`${backendPath}/package.json updated.`);
     } else if (backendPackagePatchResult.skipped) {
       console.log(`Skipped ${backendPath}/package.json (file not found).`);
-      logger.step(`${backendPath}/package.json ignorado (arquivo ausente).`);
+      logger.step(`${backendPath}/package.json skipped (file missing).`);
     } else {
       console.log(`${backendPath}/package.json already configured.`);
-      logger.step(`${backendPath}/package.json já estava configurado.`);
+      logger.step(`${backendPath}/package.json was already configured.`);
     }
 
     await patchTurboJson(rootDir);
-    logger.step('turbo.json atualizado incrementalmente.');
+    logger.step('turbo.json updated incrementally.');
 
     const frontendConfigPatchResult = await patchFrontendNextConfig({
       rootDir,
@@ -1819,15 +1819,15 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (frontendConfigPatchResult.updated) {
       console.log(`Updated ${frontendConfigPatchResult.file} (images.remotePatterns liberado para http/https).`);
-      logger.step(`${frontendConfigPatchResult.file} atualizado com images.remotePatterns para http/https.`);
+      logger.step(`${frontendConfigPatchResult.file} updated with images.remotePatterns for http/https.`);
     } else if (frontendConfigPatchResult.skipped) {
       console.log(`Skipped Next config patch at ${frontendPath} (${frontendConfigPatchResult.reason}).`);
-      logger.step(`Configuração de imagens do Next ignorada em ${frontendPath} (${frontendConfigPatchResult.reason}).`);
+      logger.step(`Next image config skipped in ${frontendPath} (${frontendConfigPatchResult.reason}).`);
     } else {
       console.log(
         `${frontendConfigPatchResult.file} already configured for remote images (${frontendConfigPatchResult.reason}).`,
       );
-      logger.step(`${frontendConfigPatchResult.file} já estava configurado para imagens remotas.`);
+      logger.step(`${frontendConfigPatchResult.file} was already configured for remote images.`);
     }
 
     const mainPatchResult = await patchBackendMain({
@@ -1838,13 +1838,13 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (mainPatchResult.updated) {
       console.log(`Updated ${backendPath}/src/main.ts`);
-      logger.step(`${backendPath}/src/main.ts atualizado (dotenv/cors/porta).`);
+      logger.step(`${backendPath}/src/main.ts updated (dotenv/cors/port).`);
     } else if (mainPatchResult.skipped) {
       console.log(`Skipped ${backendPath}/src/main.ts (file not found).`);
-      logger.step(`${backendPath}/src/main.ts ignorado (arquivo ausente).`);
+      logger.step(`${backendPath}/src/main.ts skipped (file missing).`);
     } else {
       console.log(`${backendPath}/src/main.ts already configured.`);
-      logger.step(`${backendPath}/src/main.ts já estava configurado.`);
+      logger.step(`${backendPath}/src/main.ts was already configured.`);
     }
 
     const changedEnvFiles = await writeEnvFiles({
@@ -1858,19 +1858,19 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     });
     if (changedEnvFiles.length > 0) {
       console.log(`Updated env files: ${changedEnvFiles.join(', ')}`);
-      logger.step(`Arquivos de ambiente atualizados: ${changedEnvFiles.join(', ')}.`);
+      logger.step(`Environment files updated: ${changedEnvFiles.join(', ')}.`);
     } else {
       console.log('Env files already configured.');
-      logger.step('Arquivos de ambiente já estavam configurados.');
+      logger.step('Environment files were already configured.');
     }
 
     console.log('TurboRepo initialization completed (idempotent mode).');
-    logger.step('Inicialização do TurboRepo concluída em modo idempotente.');
+    logger.step('TurboRepo initialization finished in idempotent mode.');
 
     // only what the bootstrap owns: docs/ belongs to the project (a re-run must not rewrite its markdown)
     console.log('Formatting generated files with Prettier...');
     await runCommand('npx', ['prettier', '--write', '--log-level', 'warn', '**/*.{ts,tsx,md}', '!docs/**'], rootDir);
-    logger.step('Arquivos gerados formatados com Prettier (docs/ fora).');
+    logger.step('Generated files formatted with Prettier (docs/ left out).');
 
     await logger.success();
   } catch (error) {

@@ -1,73 +1,73 @@
 ---
 name: config-shared-frontend
 user-invocable: false
-description: Configura a estrutura compartilhada (shared/) e as rotas Next.js (grupos public/private) em um projeto frontend de destino. A navegação NÃO fica em shared/ — os caminhos são estado da aplicação e vivem no layout do grupo (private). Gera menu único, landing page, tela de auth de exemplo e um dashboard aberto (sem bloqueio de auth). Usa os assets embarcados nesta skill como fonte — nenhuma dependência de projeto específico em runtime.
+description: Sets up the shared structure (shared/) and the Next.js routes (public/private groups) in a target frontend project. Navigation does NOT live in shared/ — the paths are application state and live in the (private) group's layout. Generates a single menu, a landing page, a sample auth screen and an open dashboard (no auth lock). Uses the assets embedded in this skill as the source — no dependency on a specific project at runtime.
 tools: Read, Glob, Grep, Bash, Write, Edit
 ---
 
 # config-shared-frontend
 
-## Comando oficial (determinístico)
+## Official command (deterministic)
 
-Execute sempre a partir da raiz do monorepo:
+Always run from the monorepo root:
 
 ```bash
-# Autodetecta o app frontend quando há apenas um em apps/
+# Autodetects the frontend app when there is only one in apps/
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/scripts/apply.mjs
 
-# Ou informe o nome do app de destino (frontend, web, ou outro)
-node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/scripts/apply.mjs <nome-do-app>
+# Or pass the name of the target app (frontend, web, or another)
+node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/scripts/apply.mjs <app-name>
 ```
 
-Esse script aplica toda a skill de forma idempotente (dependências, `shared/`, rotas e formatação).
+This script applies the whole skill idempotently (dependencies, `shared/`, routes and formatting).
 
-### Resolução do app de destino (flexível)
+### Resolving the target app (flexible)
 
-O app frontend **não** precisa se chamar `frontend` — pode ser `web` ou qualquer outro nome
-em `apps/`. O script resolve o destino assim:
+The frontend app does **not** need to be called `frontend` — it can be `web` or any other name
+in `apps/`. The script resolves the target like this:
 
-1. **Nome explícito** via argumento (`apply.mjs web` ou `--app=web`) — sempre tem prioridade.
-2. **Autodetecção**: se houver **exatamente um** app Next.js em `apps/` (com `next` no
-   `package.json` ou pasta `app/`), usa esse.
-3. **Ambíguo**: se houver **zero ou mais de um** candidato, o script falha listando as
-   opções. Nesse caso, **pergunte ao usuário** qual app usar (via `AskUserQuestion`) e
-   re-execute passando o nome. Suporta layout com ou sem `src/` (`src/app` ou `app`).
+1. **Explicit name** via argument (`apply.mjs web` or `--app=web`) — always takes priority.
+2. **Autodetection**: if there is **exactly one** Next.js app in `apps/` (with `next` in
+   `package.json` or an `app/` folder), it uses that one.
+3. **Ambiguous**: if there are **zero or more than one** candidates, the script fails listing the
+   options. In that case, **ask the user** which app to use (via `AskUserQuestion`) and
+   re-run passing the name. Supports layouts with or without `src/` (`src/app` or `app`).
 
-Recria a pasta `shared/` e a estrutura de rotas Next.js em qualquer projeto frontend de destino.
-Todos os arquivos necessários estão **embarcados** nesta skill em `assets/` — a skill é autossuficiente.
+Recreates the `shared/` folder and the Next.js route structure in any target frontend project.
+Every required file is **embedded** in this skill in `assets/` — the skill is self-sufficient.
 
-## Princípios de arquitetura
+## Architecture principles
 
-- **Navegação é estado da aplicação.** Os caminhos/itens de menu são definidos no
-  `app/(private)/layout.tsx`, **não** em `shared/`. Para mudar o menu, edita-se o layout.
-  Se um projeto tiver outra estrutura de navegação, basta alterar `NAVIGATION_SECTIONS`
-  (ou trocar o componente de menu) no layout — `shared/` permanece intacto.
-- **Menu único.** Há uma única área de navegação (sem rail de módulos / sem menu duplo).
-  Todos os itens ficam em `sections` passados ao `SidebarMenu`.
-- **Dashboard aberto.** O grupo `(private)` usa o `AdminShell`, mas **sem** guard de
-  autenticação — as rotas privadas são acessíveis diretamente.
+- **Navigation is application state.** The menu paths/items are defined in
+  `app/(private)/layout.tsx`, **not** in `shared/`. To change the menu, edit the layout.
+  If a project has another navigation structure, just change `NAVIGATION_SECTIONS`
+  (or swap the menu component) in the layout — `shared/` stays intact.
+- **Single menu.** There is a single navigation area (no module rail / no double menu).
+  Every item lives in the `sections` passed to `SidebarMenu`.
+- **Open dashboard.** The `(private)` group uses `AdminShell`, but **without** an
+  authentication guard — the private routes are directly accessible.
 
-## Localização dos assets
+## Asset location
 
 ```
 ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/assets/
-  shared/          ← pasta shared completa, genérica, pronta para copiar (sem navegação)
-  public/          ← assets estáticos servidos pela raiz (ilustrações etc.)
-    illustrations/empty-dashboard-dark.svg  (usado por empty-dashboard-state)
-  app/             ← templates de layouts e páginas de rota Next.js
-    globals.template.css                    (design system dark-only — escrito em app/globals.css)
-    page.template.tsx                       (landing page com hero)
+  shared/          ← complete, generic shared folder, ready to copy (no navigation)
+  public/          ← static assets served from the root (illustrations etc.)
+    illustrations/empty-dashboard-dark.svg  (used by empty-dashboard-state)
+  app/             ← templates for Next.js route layouts and pages
+    globals.template.css                    (dark-only design system — written to app/globals.css)
+    page.template.tsx                       (landing page with hero)
     (public)/layout.template.tsx
-    (public)/join/page.template.tsx         (tela de auth de exemplo, sem formulário)
-    (private)/layout.template.tsx           (navegação inline + AdminShell, sem guard)
-    (private)/dashboard/page.template.tsx   (dashboard aberto)
+    (public)/join/page.template.tsx         (sample auth screen, no form)
+    (private)/layout.template.tsx           (inline navigation + AdminShell, no guard)
+    (private)/dashboard/page.template.tsx   (open dashboard)
 ```
 
 ---
 
-## Fase 1 — Ler contexto do projeto destino
+## Phase 1 — Read the target project's context
 
-Antes de qualquer ação, leia o contexto do projeto destino.
+Before any action, read the target project's context.
 
 ```bash
 ls {DEST}/src/app/
@@ -77,47 +77,47 @@ cat {DEST}/tsconfig.json | grep -A5 '"paths"'
 
 Capture:
 
-- Nome do projeto (`package.json > name`)
-- Versão do Next.js
-- Alias de paths (`@/*` → `./src/*`)
-- Se já existe pasta `shared/` no destino (pedir confirmação antes de sobrescrever)
-- Se já existe estrutura `app/(private)/` ou `app/(public)/`
+- Project name (`package.json > name`)
+- Next.js version
+- Path alias (`@/*` → `./src/*`)
+- Whether a `shared/` folder already exists in the target (ask for confirmation before overwriting)
+- Whether an `app/(private)/` or `app/(public)/` structure already exists
 
 ---
 
-## Fase 2 — Resolver configuração automaticamente (sem perguntas)
+## Phase 2 — Resolve the configuration automatically (no questions)
 
-**Não fazer perguntas ao usuário.** Resolver tudo pelos defaults abaixo.
+**Do not ask the user questions.** Resolve everything from the defaults below.
 
-### Nome do app
+### App name
 
-Extrair do `package.json > name` do destino:
+Extract from the target's `package.json > name`:
 
-- Com namespace (`@acme/frontend`): usar a parte após `/` em PascalCase → `Frontend`
-- Sem namespace (`myapp`): usar o nome em PascalCase → `Myapp`
+- With a namespace (`@acme/frontend`): use the part after `/` in PascalCase → `Frontend`
+- Without a namespace (`myapp`): use the name in PascalCase → `Myapp`
 
-### Navegação (menu único, no layout)
+### Navigation (single menu, in the layout)
 
-A navegação é definida **dentro** de `app/(private)/layout.tsx` em `NAVIGATION_SECTIONS`.
-Default: uma seção `Navegação` com um único item `Dashboard` → `/dashboard`.
-Não há menu de módulos. Para novos itens, adicionar entradas em `NAVIGATION_SECTIONS`.
+Navigation is defined **inside** `app/(private)/layout.tsx` in `NAVIGATION_SECTIONS`.
+Default: one `Navigation` section with a single `Dashboard` item → `/dashboard`.
+There is no module menu. For new items, add entries to `NAVIGATION_SECTIONS`.
 
-### Rotas
+### Routes
 
 ```
-/             → app/page.tsx                       (landing page com hero)
-/join         → app/(public)/join/page.tsx         (tela de auth de exemplo)
-/dashboard    → app/(private)/dashboard/page.tsx   (dashboard aberto)
+/             → app/page.tsx                       (landing page with hero)
+/join         → app/(public)/join/page.tsx         (sample auth screen)
+/dashboard    → app/(private)/dashboard/page.tsx   (open dashboard)
 ```
 
-### Sem guard de autenticação
+### No authentication guard
 
-O dashboard é **aberto**. O layout de `(private)` **não** inclui `RouteGuard`.
-O botão **Sair** no menu de usuário do `AdminShell` redireciona para a landing page (`/`).
+The dashboard is **open**. The `(private)` layout does **not** include `RouteGuard`.
+The **Sign out** button in the `AdminShell` user menu redirects to the landing page (`/`).
 
 ---
 
-## Fase 3 — Instalar dependências do frontend
+## Phase 3 — Install the frontend dependencies
 
 ```bash
 npm install \
@@ -129,54 +129,54 @@ npm install \
   --workspace {FRONTEND_PACKAGE_NAME}
 ```
 
-Onde `{FRONTEND_PACKAGE_NAME}` é o valor de `name` no `package.json` do destino.
+Where `{FRONTEND_PACKAGE_NAME}` is the value of `name` in the target's `package.json`.
 
 ---
 
-## Fase 4 — Copiar a pasta shared/
+## Phase 4 — Copy the shared/ folder
 
-### 4a. Detectar shared existente
+### 4a. Detect an existing shared
 
 ```bash
 ls {DEST}/src/shared 2>/dev/null && echo "HAS_SHARED" || echo "NO_SHARED"
 ```
 
-Se `shared/` já existir: **avisar e pedir confirmação explícita** antes de sobrescrever.
+If `shared/` already exists: **warn and ask for explicit confirmation** before overwriting.
 
-### 4b. Copiar todos os arquivos de assets/shared/
+### 4b. Copy every file from assets/shared/
 
 ```bash
 cp -r {SKILL_DIR}/assets/shared/. {DEST}/src/shared/
 ```
 
-`shared/` contém apenas apresentação e utilitários — **nenhuma navegação**.
+`shared/` contains only presentation and utilities — **no navigation**.
 
-### 4b-bis. Copiar os assets estáticos de assets/public/
+### 4b-bis. Copy the static assets from assets/public/
 
 ```bash
 cp -r {SKILL_DIR}/assets/public/. {DEST}/public/
 ```
 
-Inclui `illustrations/empty-dashboard-dark.svg`, referenciado por
-`shared/components/ui/empty-dashboard-state.tsx`. Sem esse passo o dashboard
-vazio renderiza com imagem quebrada.
+Includes `illustrations/empty-dashboard-dark.svg`, referenced by
+`shared/components/ui/empty-dashboard-state.tsx`. Without this step the empty
+dashboard renders with a broken image.
 
-### 4c. Personalizar AppLogo com o nome real
+### 4c. Customize AppLogo with the real name
 
-Editar `{DEST}/src/shared/components/branding/app-logo.component.tsx`:
-substituir `const APP_NAME = 'App';` pelo nome resolvido na Fase 2.
+Edit `{DEST}/src/shared/components/branding/app-logo.component.tsx`:
+replace `const APP_NAME = 'App';` with the name resolved in Phase 2.
 
-### 4d. Verificar alias de import
+### 4d. Check the import alias
 
-Se `@/*` não existir no `tsconfig.json`, adicionar `"@/*": ["./src/*"]` em `compilerOptions.paths`.
+If `@/*` does not exist in `tsconfig.json`, add `"@/*": ["./src/*"]` to `compilerOptions.paths`.
 
 ---
 
-## Fase 5 — Criar estrutura de rotas Next.js
+## Phase 5 — Create the Next.js route structure
 
-Copiar os templates de `assets/app/` para o destino **sem modificações**:
+Copy the templates from `assets/app/` to the target **without modifications**:
 
-| Template                                    | Destino                            |
+| Template                                    | Target                             |
 | ------------------------------------------- | ---------------------------------- |
 | `app/page.template.tsx`                     | `app/page.tsx`                     |
 | `app/(public)/layout.template.tsx`          | `app/(public)/layout.tsx`          |
@@ -185,26 +185,26 @@ Copiar os templates de `assets/app/` para o destino **sem modificações**:
 | `app/(private)/dashboard/page.template.tsx` | `app/(private)/dashboard/page.tsx` |
 | `app/globals.template.css`                  | `app/globals.css`                  |
 
-Detalhes:
+Details:
 
-- **Tema dark-only (`globals.css`)** — sobrescreve o `globals.css` gerado pelo
-  `create-next-app` com o design system completo em **modo escuro fixo**: define todos
-  os tokens (`--background`, `--card`, `--primary`, `--muted`, `--border`, `--ring`, …)
-  e os mapeia em `@theme inline` (os componentes shared usam `bg-card`,
-  `text-muted-foreground`, `ring-ring`, etc.). Remove o `:root` claro e o
-  `@media (prefers-color-scheme)`; declara `@custom-variant dark` para que o variante
-  `dark:` resolva sempre o tema escuro. O script ainda garante a classe `dark` no
-  `<html>` do root layout (`app/layout.tsx`), de forma idempotente.
-- **Landing (`/`)** — hero com botões para `/join` e `/dashboard`.
-- **Auth (`/join`)** — esqueleto sem formulário, com botões **Voltar** (`/`) e **Ir para o dashboard** (`/dashboard`).
-- **Layout (private)** — `ShellProvider` + `AdminShell`. A navegação está inline em
-  `NAVIGATION_SECTIONS` e é passada ao `SidebarMenu`. `onLogout` faz `router.push('/')`.
-  **Não** há `RouteGuard`.
-- **Dashboard (`/dashboard`)** — página aberta dentro do `AdminShell`.
+- **Dark-only theme (`globals.css`)** — overwrites the `globals.css` generated by
+  `create-next-app` with the full design system in **fixed dark mode**: defines every
+  token (`--background`, `--card`, `--primary`, `--muted`, `--border`, `--ring`, …)
+  and maps them in `@theme inline` (the shared components use `bg-card`,
+  `text-muted-foreground`, `ring-ring`, etc.). Removes the light `:root` and the
+  `@media (prefers-color-scheme)`; declares `@custom-variant dark` so that the
+  `dark:` variant always resolves to the dark theme. The script also ensures the `dark` class on the
+  root layout's `<html>` (`app/layout.tsx`), idempotently.
+- **Landing (`/`)** — hero with buttons to `/join` and `/dashboard`.
+- **Auth (`/join`)** — skeleton without a form, with the buttons **Back** (`/`) and **Go to the dashboard** (`/dashboard`).
+- **Layout (private)** — `ShellProvider` + `AdminShell`. Navigation is inline in
+  `NAVIGATION_SECTIONS` and is passed to `SidebarMenu`. `onLogout` does `router.push('/')`.
+  There is **no** `RouteGuard`.
+- **Dashboard (`/dashboard`)** — open page inside `AdminShell`.
 
 ---
 
-## Fase 6 — Verificação final
+## Phase 6 — Final check
 
 ```bash
 ls {DEST}/src/shared/components/ui/sidebar-menu.component.tsx
@@ -214,72 +214,72 @@ ls {DEST}/src/app/(private)/dashboard/page.tsx
 ls {DEST}/src/app/(public)/layout.tsx
 ls {DEST}/src/app/(public)/join/page.tsx
 
-# A navegação NÃO deve existir em shared/
-test ! -d {DEST}/src/shared/navigation && echo "OK: sem shared/navigation"
-# Não deve haver guard de auth wired
-test ! -d {DEST}/src/shared/auth && echo "OK: sem shared/auth"
+# Navigation must NOT exist in shared/
+test ! -d {DEST}/src/shared/navigation && echo "OK: no shared/navigation"
+# There must be no wired auth guard
+test ! -d {DEST}/src/shared/auth && echo "OK: no shared/auth"
 
-# Tema dark-only aplicado
+# Dark-only theme applied
 grep -q "color-scheme: dark" {DEST}/src/app/globals.css && echo "OK: globals.css dark-only"
-grep -q 'className=.*dark' {DEST}/src/app/layout.tsx && echo "OK: <html> com classe dark"
-# Não deve restar modo claro / alternância de tema
-! grep -q "prefers-color-scheme" {DEST}/src/app/globals.css && echo "OK: sem prefers-color-scheme"
+grep -q 'className=.*dark' {DEST}/src/app/layout.tsx && echo "OK: <html> with dark class"
+# No light mode / theme toggle must remain
+! grep -q "prefers-color-scheme" {DEST}/src/app/globals.css && echo "OK: no prefers-color-scheme"
 ```
 
 ---
 
-## Fase 7 — Formatação
+## Phase 7 — Formatting
 
 ```bash
 npm run format
 ```
 
-Executar na raiz do monorepo.
+Run at the monorepo root.
 
 ---
 
-## Fase 8 — Relatório final
+## Phase 8 — Final report
 
 ```
-✅ config-shared-frontend concluído para {APP_NAME}
+✅ config-shared-frontend done for {APP_NAME}
 
-📁 shared/ → {DEST}/src/shared/   (apenas apresentação + utilitários, sem navegação)
-   components/branding/app-logo.component.tsx  (nome: {APP_NAME})
-   components/ui/                              (inclui sidebar-menu — menu único)
+📁 shared/ → {DEST}/src/shared/   (presentation + utilities only, no navigation)
+   components/branding/app-logo.component.tsx  (name: {APP_NAME})
+   components/ui/                              (includes sidebar-menu — single menu)
    context/shell.context.tsx
    hooks/ · i18n/ · lib/ · template/ · util/
 
-🎨 Tema:
-   app/globals.css                       → design system dark-only (tokens + @theme inline)
-   app/layout.tsx                        → <html className="dark"> (modo escuro fixo)
+🎨 Theme:
+   app/globals.css                       → dark-only design system (tokens + @theme inline)
+   app/layout.tsx                        → <html className="dark"> (fixed dark mode)
 
-🗺️  Rotas criadas:
-   app/page.tsx                          → landing page (hero → /join e /dashboard)
-   app/(public)/layout.tsx               → PublicBoxedLayout (auth renderiza bare)
-   app/(public)/join/page.tsx            → tela de auth de exemplo (Voltar / Dashboard)
-   app/(private)/layout.tsx              → ShellProvider + AdminShell (navegação inline, sem guard)
-   app/(private)/dashboard/page.tsx      → dashboard aberto
+🗺️  Routes created:
+   app/page.tsx                          → landing page (hero → /join and /dashboard)
+   app/(public)/layout.tsx               → PublicBoxedLayout (auth renders bare)
+   app/(public)/join/page.tsx            → sample auth screen (Back / Dashboard)
+   app/(private)/layout.tsx              → ShellProvider + AdminShell (inline navigation, no guard)
+   app/(private)/dashboard/page.tsx      → open dashboard
 
-⚠️  Próximos passos:
-   1. Editar NAVIGATION_SECTIONS em app/(private)/layout.tsx para os menus reais
-   2. Implementar o formulário real em app/(public)/join/page.tsx
-   3. (Opcional) Adicionar guard de auth se as rotas privadas precisarem ser protegidas
-   4. (Opcional) Ajustar as cores de marca nos tokens hsl(...) de app/globals.css
+⚠️  Next steps:
+   1. Edit NAVIGATION_SECTIONS in app/(private)/layout.tsx for the real menus
+   2. Implement the real form in app/(public)/join/page.tsx
+   3. (Optional) Add an auth guard if the private routes need to be protected
+   4. (Optional) Adjust the brand colors in the hsl(...) tokens of app/globals.css
 ```
 
 ---
 
-## Regras obrigatórias
+## Mandatory rules
 
-- **Navegação vive no layout**, nunca em `shared/`. Não recriar `shared/navigation`.
-- **Menu único** — não reintroduzir rail de módulos / menu duplo no `SidebarMenu`.
-- **Dashboard aberto** — não adicionar `RouteGuard` ao layout de `(private)` por default.
-- **Dark-only** — sobrescrever `app/globals.css` com o template do tema escuro e manter a
-  classe `dark` no `<html>`. Não reintroduzir `:root` claro nem `prefers-color-scheme`.
-- **Sempre** usar os assets embarcados em `${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/assets/` como fonte.
-- **Confirmar** antes de sobrescrever arquivos existentes no destino.
-- **Manter** todos os imports `@/shared/...` intactos — não alterar o sistema de alias.
-- **Nunca perguntar** configuração ao usuário — resolver tudo pelos defaults da Fase 2.
+- **Navigation lives in the layout**, never in `shared/`. Do not recreate `shared/navigation`.
+- **Single menu** — do not reintroduce a module rail / double menu in `SidebarMenu`.
+- **Open dashboard** — do not add `RouteGuard` to the `(private)` layout by default.
+- **Dark-only** — overwrite `app/globals.css` with the dark theme template and keep the
+  `dark` class on `<html>`. Do not reintroduce a light `:root` or `prefers-color-scheme`.
+- **Always** use the assets embedded in `${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-shared-frontend/assets/` as the source.
+- **Confirm** before overwriting existing files in the target.
+- **Keep** every `@/shared/...` import intact — do not change the alias system.
+- **Never ask** the user for configuration — resolve everything from the Phase 2 defaults.
 
 ```
 

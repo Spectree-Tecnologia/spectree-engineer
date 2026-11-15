@@ -65,7 +65,7 @@ async function syncClock($: EngineInterface, list: Agents) {
     tick.cancel()
     tick = null
   }
-  $.ui.status(running > 0 ? `Engineer orquestrando ${plural(running, 'subagente', 'subagentes')}` : undefined)
+  $.ui.status(running > 0 ? `Engineer orchestrating ${plural(running, 'subagent', 'subagents')}` : undefined)
 }
 
 async function openPane($: EngineInterface) {
@@ -202,7 +202,7 @@ export function modelFloor(subagentType: string, model: string | undefined): str
 const AT_COMMAND = String.raw`(?:^|[;&|(])[ \t]*(?:[A-Za-z_]\w*=\S*[ \t]+)*`
 // `python -`, `python - notes.txt`, `node - <<EOF`, `node <<EOF`: the script comes from stdin.
 const STDIN_INTERPRETER = new RegExp(AT_COMMAND + String.raw`(?:python3?|py|node)\b[^\n|;&]*?(?:\s-(?=\s|$|[|;&)<])|\s<<)`, 'm')
-// A bare interpreter opens a prompt that waits on stdin (PILOT, 2026-11-11: five subagents did it). A pipe in front
+// A bare interpreter opens a prompt that waits on stdin (the pilot project, 2026-11-11: five subagents did it). A pipe in front
 // of it feeds it, so `echo 1 | node` passes.
 const BARE_INTERPRETER = new RegExp(String.raw`(?:^|[;&(]|\|\|)[ \t]*(?:[A-Za-z_]\w*=\S*[ \t]+)*(?:python3?|py|node)[ \t]*(?:$|[;&)])`, 'm')
 export const stdinInterpreter = (command: string) => STDIN_INTERPRETER.test(command) || BARE_INTERPRETER.test(command)
@@ -211,7 +211,7 @@ const STDIN_DENY =
   'Write the script to a file with the Write tool and run it from there.'
 
 // The stash list belongs to the repository, not to a worktree: a subagent's `git stash pop` applied another
-// branch's stash over four files (PILOT, 2026-11-11). Reading the list is harmless.
+// branch's stash over four files (the pilot project, 2026-11-11). Reading the list is harmless.
 // `stash` as the git subcommand, after any global option (-C <dir>, -c <k=v>, --no-pager): a commit message that says
 // stash is not one.
 const GIT_STASH = /(?:^|[;&|(])[ \t]*git(?:[ \t]+(?:-[Cc][ \t]+\S+|--?[\w-]+(?:=\S+)?))*[ \t]+stash\b(?![ \t]+(?:list|show)\b)/m
@@ -221,7 +221,7 @@ const STASH_DENY =
   'Commit to your own branch instead (a wip commit you amend later).'
 
 // The fourth guard (2026-11-12): a long mission costs more per call, because every call re-reads the whole context.
-// On PILOT's ci-time goal a full-stack-developer's call cost 98 thousand tokens in missions of up to 60 calls and 162
+// On the pilot project's ci-time goal a full-stack-developer's call cost 98 thousand tokens in missions of up to 60 calls and 162
 // thousand in missions past 110, and six long missions were 76% of its tokens. A sentence in the card did not change
 // how the agents work, so the panel says it once, at the call where the cost turns: that call is refused, with the
 // way out, and passes when repeated.
@@ -298,12 +298,12 @@ async function scheduleResume($: EngineInterface) {
     unwatchResume()
     // The tries stay spent until an answer or the Founder clears them.
     await update($, resume, v => ({ ...v, at: null }))
-    $.ui.log(`engineer-desk: a sessão segue parada depois de ${current.attempts} tentativas de retomada; escreva "continue" para seguir`)
+    $.ui.log(`engineer-desk: the session is still stopped after ${current.attempts} resume attempts; type "continue" to go on`)
     return
   }
   await update($, resume, () => planned)
   watchResume($)
-  $.ui.log(`engineer-desk: sessão parada por ${planned.why === 'limit' ? 'limite de uso' : 'erro da API'}; o painel retoma às ${clockTime(planned.at as number)}`)
+  $.ui.log(`engineer-desk: session stopped by ${planned.why === 'limit' ? 'the usage limit' : 'an API error'}; the panel resumes it at ${clockTime(planned.at as number)}`)
 }
 
 async function fireResume($: EngineInterface) {
@@ -322,7 +322,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'engineer-desk',
-      description: 'Abre o painel do Engineer: o plano em andamento e os subagentes',
+      description: 'Opens the Engineer panel: the plan under way and the subagents',
     })
     await $.tool.register({
       name: 'plan',
@@ -377,7 +377,7 @@ export const register: Register = on => {
 
   on('command.run', { command: 'engineer-desk' }, async $ => {
     const opened = await openPane($)
-    return { text: opened.isPlaced ? 'Painel do Engineer aberto.' : `Painel do Engineer não pôde abrir: ${opened.reason ?? 'sem superfície'}` }
+    return { text: opened.isPlaced ? 'Engineer panel opened.' : `Engineer panel could not open: ${opened.reason ?? 'no surface'}` }
   })
 
   on('agent.spawn', async ($, e, next) => {
@@ -485,7 +485,7 @@ export const register: Register = on => {
     const progress = planProgress(current)
     // Only a task under way shimmers, so only then does the band follow the clock.
     const at = progress.isLive ? (await read($, now)) || Date.now() : 0
-    const label = `Tarefas ${progress.done}/${progress.total}`
+    const label = `Tasks ${progress.done}/${progress.total}`
     const percent = `${progress.percent}%`
     const columns = e.props.bodyColumns > 0 ? Math.floor(e.props.bodyColumns) : 80
     const titleWidth = Math.max(6, Math.min(28, progress.title.length, Math.floor(columns / 3)))
@@ -548,10 +548,10 @@ export const register: Register = on => {
     const heroAlt = latest
       ? labelOf(latest.type)
       : hero === 'engineer'
-        ? 'Engineer trabalhando'
+        ? 'Engineer working'
         : hero === 'alert'
-          ? 'Engineer em alerta'
-          : 'Engineer em repouso'
+          ? 'Engineer on alert'
+          : 'Engineer at rest'
     const shownFinished = view.isFinishedWhole ? finished.length : SHOWN_FINISHED
     // Only the cards on screen read their steps.
     const shown = [...(view.isRunningCollapsed ? [] : running), ...(view.isFinishedCollapsed ? [] : finished.slice(0, shownFinished))]
@@ -573,7 +573,7 @@ export const register: Register = on => {
     // The plan in progress, in place of the cost, token and time figures.
     const planBar = () =>
       progress.total === 0 ? (
-        <Text dimColor>Nenhum plano em andamento.</Text>
+        <Text dimColor>No plan under way.</Text>
       ) : (
         // Clean: no frame around the plan, the title in the text colour; the bar alone carries the colour.
         <Box flexDirection="column">
@@ -587,7 +587,7 @@ export const register: Register = on => {
               {Svg ? (
                 <Svg
                   source={planBarMarkup(progress.done, progress.total, progress.isLive)}
-                  alt={`Tarefas ${progress.done} de ${progress.total}`}
+                  alt={`Tasks ${progress.done} of ${progress.total}`}
                   height={14}
                   isInteractive={progress.done < progress.total}
                 />
@@ -597,7 +597,7 @@ export const register: Register = on => {
             </Box>
             <Box flexShrink={0}>
               <Text dimColor tabular>
-                {`Tarefas ${progress.done}/${progress.total} · ${progress.percent}%`}
+                {`Tasks ${progress.done}/${progress.total} · ${progress.percent}%`}
               </Text>
             </Box>
           </Box>
@@ -621,13 +621,13 @@ export const register: Register = on => {
       const headline =
         row.status === 'running'
           ? current
-            ? `Passo ${count} · ${current}`
-            : 'Despachando…'
+            ? `Step ${count} · ${current}`
+            : 'Dispatching…'
           : row.status === 'completed'
-            ? `Concluído · ${plural(count, 'passo', 'passos')}`
+            ? `Done · ${plural(count, 'step', 'steps')}`
             : row.status === 'killed'
-              ? `Interrompido · ${plural(count, 'passo', 'passos')}`
-              : `Falhou · ${plural(count, 'passo', 'passos')}`
+              ? `Interrupted · ${plural(count, 'step', 'steps')}`
+              : `Failed · ${plural(count, 'step', 'steps')}`
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
@@ -666,7 +666,7 @@ export const register: Register = on => {
             {row.status === 'running' ? (
               <Box flexDirection="row" gap={1} alignItems="center">
                 <Box flexShrink={0}>
-                  {Svg ? <Svg source={spinnerMarkup()} alt="Em andamento" width={16} height={16} isInteractive /> : <Text color={color}>◐</Text>}
+                  {Svg ? <Svg source={spinnerMarkup()} alt="In progress" width={16} height={16} isInteractive /> : <Text color={color}>◐</Text>}
                 </Box>
                 <Box flexShrink={1} minWidth={0}>
                   <Text color={headColor} weight="semibold" wrap="truncate-end">
@@ -684,7 +684,7 @@ export const register: Register = on => {
             ))}
             {done.length > SHOWN_STEPS && (
               <Button key={`steps-${row.id}`} plain dimColor onPress={toggleSteps(row.id)}>
-                {isOpen ? '▾ Menos passos' : `▸ Mais ${done.length - SHOWN_STEPS} passos`}
+                {isOpen ? '▾ Fewer steps' : `▸ ${done.length - SHOWN_STEPS} more steps`}
               </Button>
             )}
           </Box>
@@ -711,7 +711,7 @@ export const register: Register = on => {
           {!view[field] && rows.slice(0, limit).map(card)}
           {!view[field] && rows.length > SHOWN_FINISHED && field === 'isFinishedCollapsed' && (
             <Button key="finished-whole" plain dimColor onPress={toggle('isFinishedWhole')}>
-              {view.isFinishedWhole ? `▾ Só os últimos ${SHOWN_FINISHED}` : `▸ Todos os ${rows.length} concluídos`}
+              {view.isFinishedWhole ? `▾ Only the last ${SHOWN_FINISHED}` : `▸ All ${rows.length} finished`}
             </Button>
           )}
         </Box>
@@ -720,19 +720,19 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column" gap={1} paddingX={1}>
         <Box flexDirection="row" justifyContent="flex-end" alignItems="center">
-          <Button key="hide" label="Ocultar" onPress={() => $.ui.close({ id: PANE })} />
+          <Button key="hide" label="Hide" onPress={() => $.ui.close({ id: PANE })} />
         </Box>
 
         <Box flexDirection="column" alignItems="center">
           {Svg ? <Svg source={heroMarkup(hero)} alt={heroAlt} width={130} height={120} isInteractive /> : glyphMascot()}
-          <Text dimColor>{isOrchestrating ? `Despachando ${running.map(row => labelOf(row.type)).join(', ')}` : heroAlt}</Text>
+          <Text dimColor>{isOrchestrating ? `Dispatching ${running.map(row => labelOf(row.type)).join(', ')}` : heroAlt}</Text>
         </Box>
 
         {planBar()}
 
-        {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
-        {section('Em execução', running, 'isRunningCollapsed', PALETTE.depth)}
-        {section('Concluídos', finished, 'isFinishedCollapsed', 'success', shownFinished)}
+        {list.length === 0 && <Text dimColor>No subagent dispatched yet.</Text>}
+        {section('Running', running, 'isRunningCollapsed', PALETTE.depth)}
+        {section('Finished', finished, 'isFinishedCollapsed', 'success', shownFinished)}
       </Box>
     )
   }).catch(($, e, next) => {
@@ -741,8 +741,8 @@ export const register: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     return (
       <Box flexDirection="column" gap={1} paddingX={1}>
-        <Text weight="semibold">Painel do Engineer em recuperação</Text>
-        <Text dimColor>Os subagentes seguem rodando; o painel volta no próximo evento.</Text>
+        <Text weight="semibold">Engineer panel recovering</Text>
+        <Text dimColor>The subagents keep running; the panel comes back at the next event.</Text>
       </Box>
     )
   })

@@ -1,4 +1,4 @@
-// Lean code in a goal driven squad (0.22.0, the Founder's "Sim, construir" on 2026-11-11, after reading
+// Lean code in a goal driven squad (0.22.0, the Founder's "Yes, build it" on 2026-11-11, after reading
 // DietrichGebert/ponytail): the smallest complete change, where "nobody asked for it" is decided by the contract.
 // The rule is written once, as rule 15 of the architecture, and each role has its part of it. The prompts pay for
 // what they gain: a rule added to the command or to a card is paid with text that came out.
@@ -26,11 +26,11 @@ test('the rule is written once, as rule 15 of the architecture', () => {
 
 test('the full-stack-developer plans what it reuses and reports what it did not check', () => {
   const card = read('agents/full-stack-developer.md');
-  assert.match(card, /`Reuses:`[^\n]*`New:`[^\n]*regra 15/);
-  assert.match(card, /nenhum critério exercita sai antes do commit do ticket/);
-  assert.match(card, /Enxuto na solução, nunca na mudança/);
-  assert.match(card, /`shortcut: <o limite>, <quando subir>`/);
-  assert.match(card, /o que você \*\*não conferiu\*\*/);
+  assert.match(card, /`Reuses:`[^\n]*`New:`[^\n]*rule 15/);
+  assert.match(card, /no criterion exercises comes out before the ticket's commit/);
+  assert.match(card, /Lean in the solution, never in the change/);
+  assert.match(card, /`shortcut: <the limit>, <when to upgrade>`/);
+  assert.match(card, /what you \*\*did not check\*\*/);
 });
 
 test('the plan gate refuses what already exists', () => {
@@ -39,22 +39,22 @@ test('the plan gate refuses what already exists', () => {
 
 test('the quality-engineer reads the callers the diff did not touch and reports what no criterion needs', () => {
   const card = read('agents/quality-engineer.md');
-  assert.match(card, /\*\*Leia além do diff\.\*\*[^\n]*procure cada chamador no projeto inteiro/);
+  assert.match(card, /\*\*Read beyond the diff\.\*\*[^\n]*look for every caller in the whole project/);
   assert.match(card, /^## Lean$/m);
-  assert.match(card, /código que nenhum critério, limite ou regra exige/);
+  assert.match(card, /code that no criterion, limit or rule requires/);
   // lean never costs a round: the risk policy sends a `should` to the hardening goal
-  assert.match(card, /Um achado por item, `should`/);
-  assert.match(card, /O que as outras regras numeradas exigem nunca é achado/);
+  assert.match(card, /One finding per item, `should`/);
+  assert.match(card, /What the other numbered rules require is never a finding/);
 });
 
 test('a shortcut never covers what the rule forbids cutting', () => {
-  assert.match(read('agents/security-engineer.md'), /\*\*Atalho declarado\.\*\*[^\n]*a regra 15 proíbe esse corte, e ele é `confirmed`/);
+  assert.match(read('agents/security-engineer.md'), /\*\*Declared shortcut\.\*\*[^\n]*rule 15 forbids that cut, and it is `confirmed`/);
 });
 
 test('a finding reaches the Founder numbered and in four parts', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*o que é\*\*[^\n]*\*\*o problema\*\*[^\n]*\*\*a correção\*\*[^\n]*\*\*se pularmos\*\*/);
-  assert.match(command, /Todo relato fecha com o que não foi conferido/);
+  assert.match(command, /\*\*what it is\*\*[^\n]*\*\*the problem\*\*[^\n]*\*\*the fix\*\*[^\n]*\*\*if we skip it\*\*/);
+  assert.match(command, /Every report ends with what was not checked/);
   assert.match(command, /shortcut:/);
 });
 
@@ -68,7 +68,7 @@ test('the prompts stay inside their word budget', () => {
   // 0.32.0 moved the start of a goal from the platform-engineer's card to the command, as two commands the Engineer
   // runs: the command grew and the two together shrank.
   // 0.34.0 raised both by about 120 words: the two lanes of step 7 (which tickets run together, the second checkout,
-  // the merge of a closed ticket and its proof). Measured on PILOT's ci-time-20: a free ticket sat idle for 40 and for
+  // the merge of a closed ticket and its proof). Measured on the pilot project's ci-time-20: a free ticket sat idle for 40 and for
   // 77 minutes while the one before it was built and verified.
   // 0.35.0 raised the command by 66 words and the two together by 118: the bug's minimal contract (step 8 could not
   // run without one), the verifiers' diff without `.scratch/`, and the rule number beside each item the
@@ -77,8 +77,10 @@ test('the prompts stay inside their word budget', () => {
   // things (who runs a git command, the approval of the design system and the way back to an approved prototype, the
   // count of the audit, the commit of the plan, the test of gate 2, a `should` that pays one round, the ceiling of
   // two full-stack-developers per machine). Each is a sentence where the squad had to guess.
-  const COMMAND = 8147;
-  const SQUAD = 19514;
+  // 0.37.0 re-based both budgets on the English translation (about 5% longer than the Portuguese, with the language
+  // question of section 1 item 8); from here on, new text pays for itself again.
+  const COMMAND = 8476;
+  const SQUAD = 20158;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

@@ -6,7 +6,7 @@ type EmptyListStateProps = {
   imageAlt?: string;
 };
 
-export function EmptyListState({ title, subtitle, imageAlt = 'Ilustracao de lista vazia' }: EmptyListStateProps) {
+export function EmptyListState({ title, subtitle, imageAlt = 'Illustration of an empty list' }: EmptyListStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <div className="w-full max-w-4xl">

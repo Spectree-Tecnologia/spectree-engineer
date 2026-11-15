@@ -63,8 +63,8 @@ export class Result<T> {
   }
 
   static fail<T>(e: string | string[]): Result<T> {
-    const erro = typeof e === 'string' ? [e] : e;
-    return new Result<T>(undefined, Array.isArray(erro) ? erro : [erro]);
+    const errors = typeof e === 'string' ? [e] : e;
+    return new Result<T>(undefined, Array.isArray(errors) ? errors : [errors]);
   }
 
   static empty<T>(): Result<T> {

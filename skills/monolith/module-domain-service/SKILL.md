@@ -1,34 +1,33 @@
 ---
 name: module-domain-service
 user-invocable: false
-description: Criar, revisar ou orientar a implementação de serviços de domínio de módulo no padrão do projeto, restritos ao núcleo de domínio (`modules/*`). Usar quando o pedido envolver "domain service", "serviço de domínio", arquivos `*.service.ts` em `modules/*/src/**`, políticas de domínio, cálculos/regras puras entre entidades e VOs, criação/ajuste de testes desses serviços ou a skill `module-domain-service`.
+description: Create, review or guide the implementation of module domain services in the project's pattern, restricted to the domain core (`modules/*`). Use when the request involves "domain service", `*.service.ts` files in `modules/*/src/**`, domain policies, pure calculations/rules across entities and VOs, creating/adjusting tests for these services, or the `module-domain-service` skill.
 ---
 
 # Module Domain Service
 
 ## Overview
 
-Aplicar o padrão de serviço de domínio para encapsular regras que não pertencem naturalmente a uma única entidade/VO, mantendo lógica pura e independente de infraestrutura.
+Apply the domain service pattern to encapsulate rules that do not naturally belong to a single entity/VO, keeping the logic pure and independent of infrastructure.
 
 ## Guidelines
 
-- Considerar domínio apenas dentro de `modules/*`.
-- Não tratar `*.service.ts` de `web`, `frontend`, `api` ou infraestrutura como domínio.
-- Manter o serviço sem dependência de framework, HTTP, banco, Prisma, Nest, React ou estado global.
-- Preferir funções/métodos puros e determinísticos.
-- Receber dados de domínio (entities, DTOs de domínio, VOs) e retornar tipos simples/valores de domínio.
-- Nomear por intenção de regra (`Policy`, `Calculator`, `Resolver`, `Specification`).
+- Consider domain only inside `modules/*`.
+- Do not treat `*.service.ts` files in `web`, `frontend`, `api` or infrastructure as domain.
+- Keep the service free of any dependency on framework, HTTP, database, Prisma, Nest, React or global state.
+- Prefer pure, deterministic functions/methods.
+- Receive domain data (entities, domain DTOs, VOs) and return simple types/domain values.
+- Name by the intent of the rule (`Policy`, `Calculator`, `Resolver`, `Specification`).
 
 ## Workflow
 
-1. Confirmar que o arquivo alvo está em `modules/*/`.
-2. Identificar a regra transversal que não cabe em uma única entidade.
-3. Definir API mínima do serviço (classe com método estático ou instância simples).
-4. Implementar regra sem side effects e sem I/O.
-5. Garantir consumo simples por use cases/contexts.
-6. Criar testes unitários cobrindo cenários principais e bordas.
+1. Confirm that the target file is in `modules/*/`.
+2. Identify the cross-cutting rule that does not fit in a single entity.
+3. Define the service's minimal API (class with a static method or a simple instance).
+4. Implement the rule without side effects and without I/O.
+5. Ensure simple consumption by use cases/contexts.
+6. Create unit tests covering the main scenarios and edge cases.
 
 ## References
 
-Consultar `references/domain-service-pattern.md` para critérios de fronteira, exemplos reais e checklist de implementação/testes.
-
+See `references/domain-service-pattern.md` for boundary criteria, real examples and the implementation/testing checklist.

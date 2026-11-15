@@ -2,12 +2,12 @@ import { HexColor } from '../../src/index.js';
 
 const error = 'hexcolor.invalid';
 
-test('Deve criar um cor em hexadecimal', () => {
+test('creates a hexadecimal colour', () => {
   const cor = new HexColor('#ff0000');
   expect(cor.value).toBe('#ff0000');
 });
 
-test('Deve validar cor em hexadecimal', () => {
+test('validates a hexadecimal colour', () => {
   expect(HexColor.isValid('#ff0000')).toBe(true);
   expect(HexColor.isValid('#f00')).toBe(true);
   expect(HexColor.isValid('#FF0000')).toBe(true);
@@ -20,7 +20,7 @@ test('Deve validar cor em hexadecimal', () => {
   expect(HexColor.isValid('#ff000')).toBe(false);
 });
 
-test('Deve lançar erro ao tentar criar cor inválida', () => {
+test('throws when creating an invalid colour', () => {
   expect(() => new HexColor(null as any)).toThrow(error);
   expect(() => new HexColor('   ')).toThrow(error);
   expect(() => new HexColor('JJJ')).toThrow(error);
@@ -28,12 +28,12 @@ test('Deve lançar erro ao tentar criar cor inválida', () => {
   expect(() => new HexColor('#ff000')).toThrow(error);
 });
 
-test('Deve tentar criar uma cor com sucesso', () => {
+test('tries to create a colour and succeeds', () => {
   const cor = HexColor.tryCreate('#ff0000');
   expect(cor.isOk).toBe(true);
 });
 
-test('Deve tentar criar uma cor inválida', () => {
+test('tries to create an invalid colour', () => {
   const cor = HexColor.tryCreate('#ff000');
   expect(cor.isOk).toBe(false);
   expect(cor.errors[0]?.code).toBe(error);

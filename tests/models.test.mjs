@@ -22,13 +22,13 @@ test('every card declares Opus', () => {
 
 test('the command asks for Fable only from the third verification round on', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /todo papel do squad roda em \*\*Opus\*\*/);
-  assert.match(command, /\*\*Piso: `opus`\.\*\*/);
+  assert.match(command, /every squad role runs on \*\*Opus\*\*/);
+  assert.match(command, /\*\*Floor: `opus`\.\*\*/);
   // each line that names `model: "fable"` is the one about the third round
   const asking = command.split('\n').filter((line) => line.includes('model: "fable"'));
   assert.equal(asking.length, 1);
-  assert.match(asking[0], /\*\*A terceira rodada sobe de modelo\.\*\*/);
-  assert.doesNotMatch(command, /modelo mais capaz/);
+  assert.match(asking[0], /\*\*The third round moves up a model\.\*\*/);
+  assert.doesNotMatch(command, /more capable model/);
 });
 
 test("the panel's floor is Opus", () => {

@@ -1,7 +1,7 @@
 import { ValidationError } from '../../src/index.js';
 import type { Message } from '../../src/base/message.js';
 
-test('Deve criar um ValidationError com uma falha', () => {
+test('creates a ValidationError with one failure', () => {
   const msg: Message = {
     code: 'email.not-valid',
     meta: { module: 'auth', object: 'user', attribute: 'email' },
@@ -16,7 +16,7 @@ test('Deve criar um ValidationError com uma falha', () => {
   expect(error.messages[0]).toBe(msg);
 });
 
-test("Deve usar 'validation-error' como código padrão se code não for fornecido", () => {
+test("uses 'validation-error' as the default code when no code is given", () => {
   const error = new ValidationError({
     meta: { module: 'auth', object: 'user', attribute: 'email' },
   });
@@ -27,7 +27,7 @@ test("Deve usar 'validation-error' como código padrão se code não for forneci
   expect(error.messages[0]?.meta?.module).toBe('auth');
 });
 
-test('Deve criar um ValidationError com várias falhas', () => {
+test('creates a ValidationError with several failures', () => {
   const error = new ValidationError(
     [
       {

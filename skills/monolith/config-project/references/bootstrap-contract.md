@@ -2,81 +2,81 @@
 
 ## Goal
 
-Padronizar o bootstrap de um monorepo TurboRepo para:
+Standardize the bootstrap of a TurboRepo monorepo for:
 
 - `<frontendAppPath>` (Next.js)
-- `<backendAppPath>` (NestJS sem git interno)
+- `<backendAppPath>` (NestJS without its own git)
 
-Com defaults obtidos de `skills.config.json`:
+With defaults taken from `skills.config.json`:
 
-- `namespace` (padrão: `@namespace`)
-- `frontendAppPath` (padrão: `apps/frontend`)
-- `backendAppPath` (padrão: `apps/backend`)
-- `frontendPort` (padrão: `3000`)
-- `backendPort` (padrão: `4000`)
-- `frontendApiUrlEnvVar` (padrão: `NEXT_PUBLIC_API_URL`)
-- `backendPortEnvVar` (padrão: `PORT`)
+- `namespace` (default: `@namespace`)
+- `frontendAppPath` (default: `apps/frontend`)
+- `backendAppPath` (default: `apps/backend`)
+- `frontendPort` (default: `3000`)
+- `backendPort` (default: `4000`)
+- `frontendApiUrlEnvVar` (default: `NEXT_PUBLIC_API_URL`)
+- `backendPortEnvVar` (default: `PORT`)
 
 ## Steps Applied
 
-1. Detectar ausência/incompletude da estrutura Turbo na pasta atual e, quando necessário, executar `npx create-turbo@latest` para gerar o template oficial.
-2. Reconciliar no repositório atual apenas arquivos/pastas ausentes vindos do template Turbo (sem sobrescrever arquivos já existentes), incluindo:
+1. Detect a missing/incomplete Turbo structure in the current folder and, when needed, run `npx create-turbo@latest` to generate the official template.
+2. Reconcile into the current repository only the missing files/folders from the Turbo template (without overwriting files that already exist), including:
    - `.gitignore`
    - `.npmrc`
    - `packages/eslint-config`
    - `packages/typescript-config`
-   - demais estruturas padrão faltantes
-   - se `.git` já existir no root, rodar scaffold com `--no-git` para evitar recriação de repositório git
-3. Antes de criar os apps customizados, remover os projetos padrão do Turbo (`apps/docs`, `apps/frontend` e `packages/ui`) quando detectados como template original.
-4. Criar `<frontendAppPath>` com `npx create-next-app@latest <frontendName> --yes --use-npm --src-dir` somente se o app Next.js ainda não existir.
-5. Criar `<backendAppPath>` com `nest new <backendName> --skip-git --package-manager npm` (ou fallback via `npx @nestjs/cli@latest`) somente se o app NestJS ainda não existir.
-6. Garantir `name` de todos os projetos do workspace (`apps/*` e `modules/*`) com namespace:
+   - any other missing standard structure
+   - if `.git` already exists at the root, run the scaffold with `--no-git` to avoid recreating the git repository
+3. Before creating the custom apps, remove the default Turbo projects (`apps/docs`, `apps/frontend` and `packages/ui`) when they are detected as the original template.
+4. Create `<frontendAppPath>` with `npx create-next-app@latest <frontendName> --yes --use-npm --src-dir` only if the Next.js app does not exist yet.
+5. Create `<backendAppPath>` with `nest new <backendName> --skip-git --package-manager npm` (or fallback via `npx @nestjs/cli@latest`) only if the NestJS app does not exist yet.
+6. Ensure the `name` of every workspace project (`apps/*` and `modules/*`) carries the namespace:
    - frontend: `<namespace>/<frontendName>`
    - backend: `<namespace>/<backendName>`
-7. Instalar apenas dependências faltantes:
+7. Install only the missing dependencies:
    - root: `turbo` (dev dependency)
    - root: `prettier` (dev dependency)
    - backend: `dotenv`
-8. Atualizar `package.json` root:
-   - `name` preenchido (default: `<namespace>/workspace`)
-   - `scripts.test = "node scripts/check-boundaries.mjs && turbo run test"` e `scripts/check-boundaries.mjs` copiado dos assets da skill
-   - `scripts.format = "prettier --write \"**/*.{ts,tsx,md}\""` quando ausente
+8. Update the root `package.json`:
+   - `name` filled in (default: `<namespace>/workspace`)
+   - `scripts.test = "node scripts/check-boundaries.mjs && turbo run test"` and `scripts/check-boundaries.mjs` copied from the skill's assets
+   - `scripts.format = "prettier --write \"**/*.{ts,tsx,md}\""` when missing
    - `private = true`
-   - `workspaces` contendo `apps/*` e `modules/*`
-   - `devDependencies.turbo` presente
-   - `devDependencies.prettier` presente
-9. Garantir `.prettierrc` na raiz com configuração padrão de formatação do workspace.
-10. Atualizar `turbo.json`:
+   - `workspaces` containing `apps/*` and `modules/*`
+   - `devDependencies.turbo` present
+   - `devDependencies.prettier` present
+9. Ensure `.prettierrc` at the root with the workspace's default formatting configuration.
+10. Update `turbo.json`:
 
 - `tasks.test.cache = false`
-- `tasks.build.outputs` contendo `dist/**`
-- `tasks.build.outputs` contendo `!.next/cache/**` quando contém `.next/**`, e `prebuild: node scripts/clean-next.mjs` no `package.json` da raiz
+- `tasks.build.outputs` containing `dist/**`
+- `tasks.build.outputs` containing `!.next/cache/**` when it contains `.next/**`, and `prebuild: node scripts/clean-next.mjs` in the root `package.json`
 
-11. Atualizar `<frontendAppPath>/next.config.ts|js|mjs` de forma incremental para garantir:
+11. Update `<frontendAppPath>/next.config.ts|js|mjs` incrementally to ensure:
 
-- `images.remotePatterns` contendo regras para `https` e `http` com `hostname: "**"` (liberação de imagens remotas).
+- `images.remotePatterns` containing rules for `https` and `http` with `hostname: "**"` (allowing remote images).
 
-12. Atualizar env files via upsert (preservando chaves extras):
+12. Update the env files via upsert (preserving extra keys):
 
-- `<frontendAppPath>/.env` e `.env.example` com:
+- `<frontendAppPath>/.env` and `.env.example` with:
   - `<frontendApiUrlEnvVar>=http://localhost:<backendPort>`
   - `PORT=<frontendPort>`
-- `<backendAppPath>/.env` e `.env.example` com:
+- `<backendAppPath>/.env` and `.env.example` with:
   - `<backendPortEnvVar>=<backendPort>`
   - `FRONTEND_URL=http://localhost:<frontendPort>`
   - `DATABASE_URL`
-  - `JWT_SECRET` (placeholder no `.env.example`; valor aleatório no `.env`, gerado uma vez)
+  - `JWT_SECRET` (placeholder in `.env.example`; random value in `.env`, generated once)
 
-13. Atualizar `<backendAppPath>/src/main.ts` de forma incremental com:
+13. Update `<backendAppPath>/src/main.ts` incrementally with:
 
-- `app.enableCors({ origin: FRONTEND_URL })` — sem a variável, CORS fechado
-- leitura de `process.env.<backendPortEnvVar>` (default `<backendPort>`)
+- `app.enableCors({ origin: FRONTEND_URL })` — without the variable, CORS is closed
+- reading `process.env.<backendPortEnvVar>` (default `<backendPort>`)
 - `import "dotenv/config"`
 
-14. Criar, só quando ausentes, os arquivos de release: `<backendAppPath>/Dockerfile`, `<frontendAppPath>/Dockerfile`, `.dockerignore`, `docker-compose.prod.yml` (postgres, migrate, backend, frontend), `.env.example` na raiz, e `scripts.release` no `package.json` root. `next.config` ganha `output: 'standalone'`.
+14. Create, only when missing, the release files: `<backendAppPath>/Dockerfile`, `<frontendAppPath>/Dockerfile`, `.dockerignore`, `docker-compose.prod.yml` (postgres, migrate, backend, frontend), `.env.example` at the root, and `scripts.release` in the root `package.json`. `next.config` gets `output: 'standalone'`.
 
 ## Notes
 
-- O script é idempotente: ao executar novamente, ele pula etapas já atendidas.
-- O script só remove automaticamente diretórios existentes quando detectar que são projetos padrão originais do Turbo (`apps/docs`, `apps/frontend` e `packages/ui`).
-- Se um diretório de frontend/backend já existir mas não corresponder ao tipo esperado (Next/Nest), o processo falha para evitar sobrescrita acidental.
+- The script is idempotent: when run again, it skips the steps already satisfied.
+- The script only removes existing directories automatically when it detects they are the original default Turbo projects (`apps/docs`, `apps/frontend` and `packages/ui`).
+- If a frontend/backend directory already exists but does not match the expected type (Next/Nest), the process fails to avoid an accidental overwrite.

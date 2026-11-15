@@ -2,10 +2,10 @@
 
 ## Paths
 
-- VOs globais (shared):
+- Global VOs (shared):
   - `packages/shared/src/vo/*.vo.ts`
   - `packages/shared/test/vo/*.vo.test.ts`
-- VOs de módulo (domínio):
+- Module VOs (domain):
   - `modules/<domain>/src/<feature>/model/<name>.vo.ts`
   - `modules/<domain>/test/<feature>/<name>.vo.test.ts`
 - Base VO: `packages/shared/src/base/vo.ts`
@@ -13,11 +13,11 @@
 
 ## Core Principles
 
-- Imutabilidade: valor definido no construtor e sem setters.
-- Invariantes: validar no `tryCreate` e retornar `Result.fail` quando violado.
-- Normalizacao: aplicar `trim`, `toLowerCase`, formatações ou defaults quando fizer sentido.
-- Erros: usar constantes estaticas com codigo legivel (ex.: `INVALID_EMAIL`).
-- API consistente: `create` -> chama `tryCreate`, `throwsIfFailed`, retorna `instance`.
+- Immutability: value set in the constructor and no setters.
+- Invariants: validate in `tryCreate` and return `Result.fail` when violated.
+- Normalization: apply `trim`, `toLowerCase`, formatting or defaults when it makes sense.
+- Errors: use static constants with a readable code (e.g. `INVALID_EMAIL`).
+- Consistent API: `create` -> calls `tryCreate`, `throwsIfFailed`, returns `instance`.
 
 ## Skeleton
 
@@ -52,15 +52,15 @@ export class ExampleVo extends ValueObject<string, ValueObjectConfig> {
 
 ## Reference VOs
 
-- `email.vo.ts` para normalizacao, regex e getters `local`/`domain`.
-- `id.vo.ts` para geracao default (uuid) e metodo `required`.
-- `permission-id.vo.ts` para heranca que apenas especializa a mensagem de erro.
-- `strong-password.vo.ts` para validacoes multiplas.
-- `url.vo.ts` e `number.vo.ts` para casos de tipos diferentes.
+- `email.vo.ts` for normalization, regex and the `local`/`domain` getters.
+- `id.vo.ts` for default generation (uuid) and the `required` method.
+- `permission-id.vo.ts` for inheritance that only specializes the error message.
+- `strong-password.vo.ts` for multiple validations.
+- `url.vo.ts` and `number.vo.ts` for cases of different types.
 
 ## Test Pattern
 
-- Validar sucesso e falha (`isOk`, `isFailure`, `errors`).
-- Verificar normalizacao do valor armazenado.
-- Testar `create` lancando erro quando invalido.
-- Cobrir getters derivados quando existirem.
+- Validate success and failure (`isOk`, `isFailure`, `errors`).
+- Check the normalization of the stored value.
+- Test `create` throwing an error when invalid.
+- Cover derived getters when they exist.

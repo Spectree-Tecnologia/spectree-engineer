@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { CalendarDays } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Calendar } from '@/shared/components/ui/calendar';
@@ -39,7 +39,7 @@ export function DatePickerInput({
   id,
   value,
   onChange,
-  placeholder = 'Selecionar data',
+  placeholder = 'Select date',
   disabled = false,
   className,
 }: DatePickerInputProps) {
@@ -60,7 +60,7 @@ export function DatePickerInput({
             className,
           )}
         >
-          <span>{selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : placeholder}</span>
+          <span>{selectedDate ? format(selectedDate, 'MM/dd/yyyy', { locale: enUS }) : placeholder}</span>
           <CalendarDays className="size-4 shrink-0 opacity-70" />
         </Button>
       </PopoverTrigger>

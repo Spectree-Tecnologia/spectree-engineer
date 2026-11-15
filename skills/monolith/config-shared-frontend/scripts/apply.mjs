@@ -28,11 +28,11 @@ function copyTemplate(from, to) {
   fs.copyFileSync(from, to)
 }
 
-// ── Resolução flexível do app de destino ─────────────────────────────────────
-// O app frontend pode se chamar `frontend`, `web` ou outro nome. Estratégia:
-//   1. nome explícito via argumento: `apply.mjs <nome>` ou `--app=<nome>`
-//   2. autodetecção: único app Next.js em apps/ → usa esse
-//   3. ambíguo (0 ou >1) → erro pedindo o nome (a IA deve perguntar ao usuário)
+// ── Flexible resolution of the target app ────────────────────────────────────
+// The frontend app may be called `frontend`, `web` or anything else. Strategy:
+//   1. explicit name as an argument: `apply.mjs <name>` or `--app=<name>`
+//   2. autodetection: the only Next.js app in apps/ → use it
+//   3. ambiguous (0 or >1) → error asking for the name (the AI should ask the user)
 
 function parseAppArg() {
   const args = process.argv.slice(2)
@@ -68,7 +68,7 @@ function resolveFrontendDir() {
   if (requested) {
     const dir = path.join(appsDir, requested)
     if (!fs.existsSync(dir)) {
-      throw new Error(`App "${requested}" não encontrado em apps/. Apps disponíveis: ${listNextApps().join(', ') || '(nenhum)'}`)
+      throw new Error(`App "${requested}" not found in apps/. Available apps: ${listNextApps().join(', ') || '(none)'}`)
     }
     return dir
   }
@@ -76,18 +76,18 @@ function resolveFrontendDir() {
   const candidates = listNextApps()
   if (candidates.length === 0) {
     throw new Error(
-      'Nenhum app frontend (Next.js) encontrado em apps/. Rode config-project antes, ou informe o nome: node apply.mjs <nome-do-app>',
+      'No frontend (Next.js) app found in apps/. Run config-project first, or give the name: node apply.mjs <app-name>',
     )
   }
   if (candidates.length > 1) {
     throw new Error(
-      `Múltiplos apps frontend encontrados em apps/: ${candidates.join(', ')}. Informe qual usar: node apply.mjs <nome-do-app>`,
+      `Several frontend apps found in apps/: ${candidates.join(', ')}. Say which one to use: node apply.mjs <app-name>`,
     )
   }
   return path.join(appsDir, candidates[0])
 }
 
-// srcRoot suporta layout com ou sem `src/`.
+// srcRoot supports a layout with or without `src/`.
 function resolveSrcRoot(frontendDir) {
   return fs.existsSync(path.join(frontendDir, 'src')) ? path.join(frontendDir, 'src') : frontendDir
 }
@@ -113,31 +113,31 @@ function patchAppLogo(sharedDir, appName) {
   fs.writeFileSync(logoPath, content, 'utf8')
 }
 
-// O app é dark-only: o root layout precisa ter a classe `dark` no <html> para
-// que o tema escuro e o variante `dark:` fiquem sempre ativos. Idempotente.
+// The app is dark-only: the root layout needs the `dark` class on <html> so the
+// dark theme and the `dark:` variant are always on. Idempotent.
 function patchRootLayoutDark(appDir) {
   const layoutPath = path.join(appDir, 'layout.tsx')
   if (!fs.existsSync(layoutPath)) return false
 
   const content = fs.readFileSync(layoutPath, 'utf8')
 
-  // Localiza a tag <html ...> de abertura.
+  // Finds the opening <html ...> tag.
   const htmlMatch = content.match(/<html\b[^>]*>/)
   if (!htmlMatch) return false
 
   const htmlTag = htmlMatch[0]
-  // Já está em dark? Não mexe.
+  // Already dark? Leave it.
   if (/\bdark\b/.test(htmlTag)) return false
 
   let patchedTag
   if (/className=\{`/.test(htmlTag)) {
-    // className={`...`}  → insere `dark ` logo após a crase de abertura
+    // className={`...`}  → insert `dark ` right after the opening backtick
     patchedTag = htmlTag.replace(/className=\{`/, 'className={`dark ')
   } else if (/className=("|')/.test(htmlTag)) {
-    // className="..." | '...'  → insere `dark ` logo após a aspa de abertura
+    // className="..." | '...'  → insert `dark ` right after the opening quote
     patchedTag = htmlTag.replace(/className=("|')/, 'className=$1dark ')
   } else {
-    // sem className  → adiciona className="dark"
+    // no className  → add className="dark"
     patchedTag = htmlTag.replace(/<html\b/, '<html className="dark"')
   }
 
@@ -160,29 +160,29 @@ function main() {
   const appName = toAppName(frontendPkg)
   const assets = path.join(skillDir, 'assets')
 
-  console.log(`→ Aplicando config-shared-frontend em ${path.relative(root, frontendDir)} (pacote: ${frontendPkg})`)
+  console.log(`→ Applying config-shared-frontend to ${path.relative(root, frontendDir)} (package: ${frontendPkg})`)
 
   run(
     `npm install lucide-react clsx tailwind-merge class-variance-authority radix-ui react-hook-form react-day-picker date-fns recharts sonner @radix-ui/react-checkbox @radix-ui/react-dialog @radix-ui/react-dropdown-menu @radix-ui/react-label @radix-ui/react-popover @radix-ui/react-radio-group @radix-ui/react-separator @radix-ui/react-slot @radix-ui/react-tabs --workspace ${frontendPkg}`,
   )
 
-  // shared/ — apenas apresentação e utilitários. A navegação NÃO mora aqui:
-  // os caminhos fazem parte do estado da aplicação e vivem no layout (private).
+  // shared/: presentation and utilities only. Navigation does NOT live here:
+  // the paths are part of the application's state and live in the (private) layout.
   copyDirContent(path.join(assets, 'shared'), sharedDir)
   patchAppLogo(sharedDir, appName)
 
-  // public/ — assets estáticos servidos pela raiz (ex.: ilustrações referenciadas
-  // por componentes shared como empty-dashboard-state). Copia toda a árvore.
+  // public/: static assets served from the root (e.g. illustrations used by
+  // shared components such as empty-dashboard-state). Copies the whole tree.
   const publicAssets = path.join(assets, 'public')
   if (fs.existsSync(publicAssets)) copyDirContent(publicAssets, publicDir)
 
-  // Design system dark-only: escreve o globals.css com todos os tokens do tema
-  // escuro (os componentes shared usam bg-card, text-muted-foreground, etc.) e
-  // garante a classe `dark` no <html> do root layout.
+  // Dark-only design system: writes globals.css with every dark theme token
+  // (the shared components use bg-card, text-muted-foreground, etc.) and makes
+  // sure the root layout's <html> has the `dark` class.
   copyTemplate(path.join(assets, 'app', 'globals.template.css'), path.join(appDir, 'globals.css'))
   patchRootLayoutDark(appDir)
 
-  // Rotas Next.js — landing (raiz), join (public) e dashboard aberto (private).
+  // Next.js routes: landing (root), join (public) and the open dashboard (private).
   copyTemplate(path.join(assets, 'app', 'page.template.tsx'), path.join(appDir, 'page.tsx'))
   copyTemplate(
     path.join(assets, 'app', '(private)', 'layout.template.tsx'),

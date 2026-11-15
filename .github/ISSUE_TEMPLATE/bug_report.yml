@@ -1,0 +1,57 @@
+name: Bug report
+description: Something the plugin did, or generated, is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check the [open issues](https://github.com/Spectree-Tecnologia/spectree-engineer/issues) first. For a security problem, do **not** use this form; see SECURITY.md.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Engineer command / orchestration
+        - An agent (quality-engineer, full-stack-developer, ...)
+        - A monolith skill (config-*, module-*, backend-*, frontend-*)
+        - Generated project (template, CI, scripts)
+        - Engineer panel (hooks)
+        - Evals or tests of this repo
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you asked for, what the squad did, and the output or error. Paste logs as text.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest steps or request that shows it. If you know it, the `file:line` in the plugin.
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: The version in `.claude-plugin/plugin.json`, or the output of `claude plugin list`.
+      placeholder: "0.36.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Claude Code version and surface (CLI, desktop app, VS Code), OS, Node.js version.
+      placeholder: "Claude Code 2.1.x, desktop app, macOS 15, Node 24"
+    validations:
+      required: true

@@ -1,5 +1,5 @@
-// The tickets of a goal are a graph, read by a script (the Founder's "engenharia de grafo", approved on 2026-11-13).
-// Measured on PILOT the same day: the squad ran almost serially (parallelism 1.14 to 1.33) and the Engineer chose the
+// The tickets of a goal are a graph, read by a script (the Founder's "graph engineering", approved on 2026-11-13).
+// Measured on the pilot project the same day: the squad ran almost serially (parallelism 1.14 to 1.33) and the Engineer chose the
 // next ticket by reading prose. `goal graph` says by exit code what the plan gate used to read by eye: no cycle, every
 // criterion has a ticket, two tickets with no order between them never write the same place; and it names the
 // frontier, the tickets free to start. Run, not read:
@@ -148,7 +148,7 @@ test('a ticket closes on its own proof, by exit code', () => {
 });
 
 // Found by the audit of 2026-11-13, after the graph was written: the cards say `Status: done` in plain text, an adopted
-// item keeps its tickets from before Goal Driven in the same folder, a goal planned before the graph has no Proof, and
+// item keeps its tickets from before Goal-Driven in the same folder, a goal planned before the graph has no Proof, and
 // a criterion moved to a continuation goal could not pass `check --ready`.
 test('the graph reads what the squad really writes', () => {
   const plain = (text) => text.replace(/\*\*(Status|Blocked by|Criteria):\*\*/g, '$1:');
@@ -161,12 +161,12 @@ test('the graph reads what the squad really writes', () => {
   assert.deepEqual(JSON.parse(mixed.out).tickets[1].criteria, [2, 3]);
 });
 
-test('a ticket from before Goal Driven stays in the folder and out of the graph', () => {
+test('a ticket from before Goal-Driven stays in the folder and out of the graph', () => {
   const dir = project(good);
   fs.writeFileSync(path.join(dir, '.scratch', 'things', 'issues', '01-old-create.md'), '# 01: old\n\n**Blocked by:** None\n\n**Status:** ready-for-agent\n\n- [ ] an acceptance criterion\n');
   const res = run(dir, '--plan');
   assert.equal(res.code, 0, res.out);
-  assert.match(res.out, /note: {2}\.scratch\/things\/issues\/01-old-create\.md has no "Criteria": a ticket from before Goal Driven, left out of the graph/);
+  assert.match(res.out, /note: {2}\.scratch\/things\/issues\/01-old-create\.md has no "Criteria": a ticket from before Goal-Driven, left out of the graph/);
   assert.match(res.out, /3 tickets, 0 done/);
 });
 
@@ -212,25 +212,25 @@ test('no skill sends an agent to a user it cannot reach, or to a command the flo
   assert.match(read('ARCHITECTURE.md'), /`modules\/<m>\/src\/<aggregate>\/query\/`/);
   assert.match(read('agents/full-stack-developer.md'), /`query\/` \(`\*\.query\.ts`\)/);
   assert.match(read('skills/monolith/module-query-cqrs/SKILL.md'), /src\/<feature>\/query\//);
-  assert.doesNotMatch(read('skills/monolith/module-query-cqrs/SKILL.md'), /use case de leitura/);
+  assert.doesNotMatch(read('skills/monolith/module-query-cqrs/SKILL.md'), /\b(read|reading|query) use case|use case (for|of) (a )?read/i);
   assert.doesNotMatch(read('skills/monolith/module-use-case/references/use-case-pattern.md'), /class \w+UseCase implements/);
   // check:pr needs the Evidence table filled: it runs before the pull request, not in the deterministic layer
   assert.doesNotMatch(read('commands/engineer.md'), /test:e2e`\); `npm run check:pr`/);
 });
 
-// Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on PILOT on 2026-11-13: tickets 02
+// Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on the pilot project on 2026-11-13: tickets 02
 // and 06 of ci-time took three verification rounds each, every re-verification hunted again and found new things,
 // and the quality-engineer verified a checkout the next full-stack-developer was already changing.
 test('a ticket closes whole: nobody writes while it is verified, the builder fixes, whoever found re-checks, once', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*Checkpoint por ticket: o ticket fecha antes de o próximo começar\.\*\*/);
-  assert.match(command, /Enquanto eles verificam, ninguém escreve no checkout: o que rodam é o commit do ticket/);
-  assert.doesNotMatch(command, /sem esperar por eles/);
-  assert.match(command, /quem achou reconfere, pela mesma conversa, com o diff da correção: cada achado `closed` ou `open`/);
-  assert.match(command, /Não é caça nova: o objetivo inteiro é da verificação final/);
-  assert.match(read('agents/quality-engineer.md'), /\*\*Reconferência\.\*\*[^\n]*`closed` ou `open`[^\n]*Não procure achado novo fora desse diff/);
-  assert.match(read('agents/security-engineer.md'), /`closed` ou `open` por achado seu, sem caça nova/);
-  assert.match(read('agents/full-stack-developer.md'), /Você pode ser chamado de volta uma vez, pela mesma conversa, com os achados do checkpoint do seu ticket/);
+  assert.match(command, /\*\*Checkpoint per ticket: the ticket closes before the next one starts\.\*\*/);
+  assert.match(command, /While they verify, nobody writes in the checkout: what they run is the ticket's commit/);
+  assert.doesNotMatch(command, /without waiting for them/);
+  assert.match(command, /whoever found it re-checks, through the same conversation, with the fix's diff: each finding `closed` or `open`/);
+  assert.match(command, /It is not a new hunt: the whole goal belongs to the final verification/);
+  assert.match(read('agents/quality-engineer.md'), /\*\*Re-check\.\*\*[^\n]*`closed` or `open`[^\n]*Do not look for a new finding outside that diff/);
+  assert.match(read('agents/security-engineer.md'), /`closed` or `open` per finding of yours, no new hunt/);
+  assert.match(read('agents/full-stack-developer.md'), /You may be called back once, through the same conversation, with the findings of your ticket's checkpoint/);
   // the handoff notice no longer assumes a ticket: a fix or a bug mission has none
   assert.match(read('hooks/engineer-desk/register.tsx'), /in your ticket, or in your report when the mission has no ticket/);
 });
@@ -256,7 +256,7 @@ test('a proof written `in ci:` is run by the pull request\'s run, and by nothing
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /An `in ci:` proof is run by the pull request's run \(the CI step `Goal proofs written in ci`/);
 });
 
-// 0.33.0, from PILOT's ci-time-20 (2026-11-14): the wording of a by-hand half of a proof held a second `run:`, and the
+// 0.33.0, from the pilot project's ci-time-20 (2026-11-14): the wording of a by-hand half of a proof held a second `run:`, and the
 // pull request's own step would have run it. The quality-engineer found it; the author can see it when it writes.
 test('goal check prints every command a contract will run, as the script reads the cell', () => {
   const two = contract().replace('| 3 | a thing is archived | run: `node -e "process.exit(0)"` |', '| 3 | a thing is archived | in ci: run: `node a.mjs` exits 0; by hand, on the runner, the step\'s run: `node b.mjs` shows it |');
@@ -266,17 +266,17 @@ test('goal check prints every command a contract will run, as the script reads t
   assert.match(res.stdout, /runs: {2}criterion 1 {2}node -e "process\.exit\(0\)"/);
   assert.match(res.stdout, /runs: {2}criterion 3 \(in ci\) {2}node a\.mjs/);
   assert.match(res.stdout, /runs: {2}criterion 3 \(in ci\) {2}node b\.mjs/, 'the command the author did not mean to run is on the list');
-  assert.match(read('commands/engineer.md'), /as linhas `runs:` são o que cada critério roda/);
+  assert.match(read('commands/engineer.md'), /the `runs:` lines are what each criterion runs/);
 });
 
 test('whoever plans does not build: the first ticket is a new full-stack-developer\'s', () => {
-  assert.match(read('agents/full-stack-developer.md'), /Plano aprovado, a sua missão acabou\./);
-  assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*O primeiro só planeja o objetivo/m);
+  assert.match(read('agents/full-stack-developer.md'), /Plan approved, your mission is over\./);
+  assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*The first one only plans the goal/m);
   assert.match(read('skills/engineering/to-tickets/SKILL.md'), /never by the one that wrote the plan/);
-  assert.doesNotMatch(read('README.md'), /quem planeja constrói o primeiro ticket/);
+  assert.doesNotMatch(read('README.md'), /whoever plans builds the first ticket/);
 });
 
-// Delivery 3 (0.34.0): two lanes. Measured on PILOT's ci-time-20 (2026-11-14): ticket 02 sat free for the 40 minutes of
+// Delivery 3 (0.34.0): two lanes. Measured on the pilot project's ci-time-20 (2026-11-14): ticket 02 sat free for the 40 minutes of
 // ticket 01 and ticket 03 for the 77 minutes of ticket 02, with the usage limit never reached in 3.8 hours.
 test('the graph says which tickets of the frontier may be built at the same time', () => {
   const dir = project({ ...good, '01-create': { ...good['01-create'], status: 'done' } });
@@ -294,16 +294,16 @@ test('the graph says which tickets of the frontier may be built at the same time
 
 test('the Engineer runs two lanes, and a closed ticket is merged with the other lane stopped', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*Duas pistas, quando o grafo deixa\.\*\*[^\n]*`parallel:`[^\n]*nunca com mais de dois/);
-  assert.match(command, /`npm run worktree -- up <slug>-b --branch <tipo>\/<slug>-b`/);
-  assert.match(command, /com a pista 1 parada: `git merge --no-ff --no-edit <sha fechado>` e a prova do afetado/);
-  assert.match(command, /conflito é `git merge --abort` e missão do platform-engineer/);
-  assert.match(command, /O grafo só vê `done` o ticket mergeado/);
-  assert.match(command, /Sessão com `worktree` no prompt roda uma pista só/);
+  assert.match(command, /\*\*Two lanes, when the graph allows\.\*\*[^\n]*`parallel:`[^\n]*never with more than two/);
+  assert.match(command, /`npm run worktree -- up <slug>-b --branch <type>\/<slug>-b`/);
+  assert.match(command, /with lane 1 stopped: `git merge --no-ff --no-edit <closed sha>` and the proof of what it affects/);
+  assert.match(command, /a conflict is `git merge --abort` and a platform-engineer mission/);
+  assert.match(command, /The graph sees as `done` only a merged ticket/);
+  assert.match(command, /A session with `worktree` in the prompt runs a single lane/);
   // two verifiers at once never share a scratch database
-  assert.match(command, /`npm run db:scratch -- <papel>-t<NN> -- <comando>`/);
+  assert.match(command, /`npm run db:scratch -- <role>-t<NN> -- <command>`/);
   assert.match(read('skills/engineering/to-tickets/SKILL.md'), /also lists `package-lock\.json`/);
-  assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*Um por checkout\./m);
+  assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*One per checkout\./m);
 });
 
 test('the squad plans, gates and walks by the graph', () => {
@@ -313,7 +313,7 @@ test('the squad plans, gates and walks by the graph', () => {
   assert.match(skill, /npm run goal -- graph <slug> --plan/);
   const command = read('commands/engineer.md');
   assert.match(command, /`npm run goal -- graph <slug> --plan`/);
-  assert.match(command, /o primeiro da frontier que `npm run goal -- graph <slug>` imprime/);
+  assert.match(command, /the first of the frontier that `npm run goal -- graph <slug>` prints/);
   assert.match(command, /`npm run goal -- graph <slug> --prove <NN>`/);
   assert.match(read('agents/full-stack-developer.md'), /npm run goal -- graph <slug> --plan/);
 });

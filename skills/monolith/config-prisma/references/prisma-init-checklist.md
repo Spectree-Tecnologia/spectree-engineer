@@ -1,28 +1,28 @@
 # Prisma Init Checklist
 
-## Objetivo
+## Goal
 
-Padronizar bootstrap do Prisma no backend NestJS com:
+Standardize the Prisma bootstrap in the NestJS backend with:
 
-- schema modular em `apps/backend/prisma/models/*.model.prisma`
-- entrypoint de seed técnico em `apps/backend/prisma/seed/main.ts` (sem seeds de módulos)
-- módulo Nest de banco em `apps/backend/src/db/*` com `PrismaService` compatível com `TransactionManager`/`runInTransaction`
-- Docker Compose do backend compatível com `DATABASE_URL`
+- a modular schema in `apps/backend/prisma/models/*.model.prisma`
+- a technical seed entrypoint in `apps/backend/prisma/seed/main.ts` (no module seeds)
+- a Nest database module in `apps/backend/src/db/*` with a `PrismaService` compatible with `TransactionManager`/`runInTransaction`
+- a backend Docker Compose compatible with `DATABASE_URL`
 
-## Pré-requisitos
+## Prerequisites
 
-- Workspace com `apps/backend/package.json`
-- `DATABASE_URL` definido em `apps/backend/.env` (ou em `.env.example`)
-- Node.js/NPM instalados
-- Docker/Docker Compose instalados
+- Workspace with `apps/backend/package.json`
+- `DATABASE_URL` defined in `apps/backend/.env` (or in `.env.example`)
+- Node.js/NPM installed
+- Docker/Docker Compose installed
 
-## Passo a passo
+## Step by step
 
-1. Rodar simulação.
-2. Aplicar bootstrap.
-3. Instalar dependências.
-4. Subir Postgres com Docker Compose.
-5. Gerar client Prisma.
+1. Run the simulation.
+2. Apply the bootstrap.
+3. Install the dependencies.
+4. Start Postgres with Docker Compose.
+5. Generate the Prisma client.
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --dry-run
@@ -31,13 +31,13 @@ npm --workspace apps/backend run db:start
 npm --workspace apps/backend run prisma:generate
 ```
 
-## Escaffold de módulos Prisma
+## Scaffolding Prisma modules
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --module auth --module stock --module billing
 ```
 
-## Arquivos críticos
+## Critical files
 
 - `apps/backend/package.json`
 - `apps/backend/.env`
@@ -50,27 +50,27 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-bac
 - `apps/backend/src/db/prisma.service.ts`
 - `apps/backend/src/app.module.ts`
 
-## Regra de escopo desta skill
+## Scope rule of this skill
 
-- Não incluir seeds de dados por módulo (`prisma/seed/tasks/*`) nesta etapa.
-- O bootstrap de seed deve permanecer neutro até os módulos específicos serem aplicados.
-- `prisma/models/bootstrap.model.prisma` deve existir apenas quando ainda não há arquivos `*.model.prisma` de domínio.
-- Não sobrescrever `prisma/seed/main.ts` já moderno (com `@prisma/client`/`PrismaPg` e tasks de módulo); somente corrigir templates legados.
+- Do not include per-module data seeds (`prisma/seed/tasks/*`) at this stage.
+- The seed bootstrap must stay neutral until the specific modules are applied.
+- `prisma/models/bootstrap.model.prisma` must exist only while there are no domain `*.model.prisma` files yet.
+- Do not overwrite a `prisma/seed/main.ts` that is already modern (with `@prisma/client`/`PrismaPg` and module tasks); only fix legacy templates.
 
 ## Flags
 
-- `--apply`: aplica alterações em disco
-- `--dry-run`: simula alterações
-- `--install`: roda `npm install --workspace <workspace-backend>` usando o nome em `apps/backend/package.json` (fallback `apps/backend`)
-- `--start-db`: roda `docker compose up -d postgres` no `apps/backend`
-- `--module <nome>`: cria arquivo Prisma por módulo
-- `--prisma-version <semver>`: força versão de Prisma; sem esta flag, a skill preserva versão Prisma já existente no backend (fallback `7.4.2`)
+- `--apply`: applies the changes to disk
+- `--dry-run`: simulates the changes
+- `--install`: runs `npm install --workspace <workspace-backend>` using the name in `apps/backend/package.json` (fallback `apps/backend`)
+- `--start-db`: runs `docker compose up -d postgres` in `apps/backend`
+- `--module <name>`: creates a Prisma file per module
+- `--prisma-version <semver>`: forces the Prisma version; without this flag, the skill preserves the Prisma version already in the backend (fallback `7.4.2`)
 
-## Pós-bootstrap
+## Post-bootstrap
 
-- Adicionar modelos reais em `prisma/models/*.model.prisma`
-- Gerar migrações (`prisma migrate dev`)
-- Implementar seeds por módulo e registrá-las em `prisma/seed/main.ts`
-- Atualizar adapters `*.prisma.ts` para mapear domínio/DTO
-- Remover `prisma/models/bootstrap.model.prisma` após entrada dos modelos reais e gerar migration de substituição
-- Em rebootstrap de projetos antigos, o script corrige automaticamente `prisma/seed/main.ts` legado quando detecta imports de `generated/client`, `generated/prisma` ou `cid`.
+- Add real models in `prisma/models/*.model.prisma`
+- Generate migrations (`prisma migrate dev`)
+- Implement per-module seeds and register them in `prisma/seed/main.ts`
+- Update the `*.prisma.ts` adapters to map domain/DTO
+- Remove `prisma/models/bootstrap.model.prisma` once the real models are in, and generate a replacement migration
+- When re-bootstrapping old projects, the script automatically fixes a legacy `prisma/seed/main.ts` when it detects imports of `generated/client`, `generated/prisma` or `cid`.

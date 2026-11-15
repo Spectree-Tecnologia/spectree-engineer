@@ -2,66 +2,66 @@
 
 ## Paths
 
-- Bases compartilhadas:
+- Shared bases:
   - `packages/shared/src/db/crud-repository.ts`
   - `packages/shared/src/db/create-repository.ts`
   - `packages/shared/src/db/find-by-id-repository.ts`
-- Contratos de dominio em `modules/*`:
+- Domain contracts in `modules/*`:
   - `modules/auth/src/user/provider/user.repository.ts`
   - `modules/product/src/product/provider/product.repository.ts`
   - `modules/branch/src/branch/provider/branch.repository.ts`
-- Implementações de infraestrutura:
+- Infrastructure implementations:
   - `apps/backend/src/modules/auth/user.prisma.ts`
   - `apps/backend/src/modules/product/product.prisma.ts`
   - `apps/backend/src/modules/branch/branch.prisma.ts`
-- Mocks/in-memory para testes:
+- Mocks/in-memory for tests:
   - `modules/<domain>/test/mock/in-memory-<entity>.repository.ts`
 
-## Papel do Repository
+## Role of the Repository
 
-- Encapsular persistência de entidades de domínio.
-- Expor operações orientadas ao agregado (CRUD + métodos específicos quando necessário).
-- Não conter regra de caso de uso.
+- Encapsulate persistence of domain entities.
+- Expose aggregate-oriented operations (CRUD + specific methods when needed).
+- Contain no use case rule.
 
 ## Repository vs Query (CQRS)
 
 - Repository:
-  - usado em comando/escrita.
-  - pode buscar entidade para preservar invariantes antes de update/delete.
+  - used in commands/writes.
+  - may fetch an entity to preserve invariants before update/delete.
 - Query:
-  - usada para leitura/projeção DTO.
-  - pode coexistir na mesma classe adapter, mas como contrato separado.
+  - used for reads/DTO projections.
+  - may coexist in the same adapter class, but as a separate contract.
 
-## Estrutura esperada
+## Expected structure
 
-1. Definir interface de repositório no `dominio`.
-2. Estender `CrudRepository<T>` quando fizer sentido.
-3. Adicionar métodos específicos de domínio apenas quando necessários.
-4. Implementar adapter (Prisma/in-memory) retornando `Result`.
-5. Incluir mapeadores:
+1. Define the repository interface in the domain.
+2. Extend `CrudRepository<T>` when it makes sense.
+3. Add domain-specific methods only when needed.
+4. Implement the adapter (Prisma/in-memory) returning `Result`.
+5. Include mappers:
 
-- `toDomain(payload)` para criar entidade.
-- `fromDomain(entity)` para persistência.
+- `toDomain(payload)` to create the entity.
+- `fromDomain(entity)` for persistence.
 
-## Checklist de implementação
+## Implementation checklist
 
-- [ ] Contrato está em `dominio` e tipa `Promise<Result<...>>`.
-- [ ] Implementação não vaza tipo de ORM para o dominio.
-- [ ] Erro de not found mapeado para erro de domínio.
-- [ ] Operações compostas usam transação quando necessário.
-- [ ] Métodos customizados têm nome orientado ao domínio (`findByEmail`, `updateRoles`, etc.).
-- [ ] Mocks de teste seguem contrato real.
+- [ ] The contract is in the domain and typed as `Promise<Result<...>>`.
+- [ ] The implementation does not leak ORM types into the domain.
+- [ ] Not found error mapped to a domain error.
+- [ ] Composite operations use a transaction when needed.
+- [ ] Custom methods have domain-oriented names (`findByEmail`, `updateRoles`, etc.).
+- [ ] Test mocks follow the real contract.
 
-## Estratégia de testes
+## Testing strategy
 
-- Testar sucesso/falha dos métodos principais.
-- Testar not found.
-- Testar métodos específicos de domínio.
-- Em mocks/in-memory, garantir comportamento consistente com contrato.
+- Test success/failure of the main methods.
+- Test not found.
+- Test domain-specific methods.
+- In mocks/in-memory, ensure behavior consistent with the contract.
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Retornar DTO em método de repository (quebra fronteira com query).
-- Acoplar use case ao ORM em vez da interface.
-- Não normalizar dados ao mapear domínio.
-- Esquecer transação em operações que alteram múltiplas tabelas.
+- Returning a DTO from a repository method (breaks the boundary with the query).
+- Coupling the use case to the ORM instead of the interface.
+- Not normalizing data when mapping the domain.
+- Forgetting a transaction in operations that change multiple tables.

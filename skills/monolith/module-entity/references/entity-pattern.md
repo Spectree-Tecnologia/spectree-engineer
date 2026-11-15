@@ -3,53 +3,53 @@
 ## Paths
 
 - Base entity: `packages/shared/src/base/entity.ts`
-- Entidades (exemplos):
+- Entities (examples):
   - `modules/auth/src/user/model/user.entity.ts`
   - `modules/auth/src/permission/model/permission.entity.ts`
   - `modules/branch/src/branch/model/branch.entity.ts`
   - `modules/stock/src/movement/model/movement.entity.ts`
   - `modules/product/src/product/model/product.entity.ts`
-- Testes de referência:
+- Reference tests:
   - `packages/shared/test/base/entity.test.ts`
   - `modules/branch/test/branch/branch.entity.test.ts`
   - `modules/stock/test/movement/movement.entity.test.ts`
   - `modules/stock/test/stock/stock.entity.test.ts`
 
-## Estrutura esperada
+## Expected structure
 
-1. Definir `XxxProps extends EntityProps`.
-2. Declarar classe `Xxx extends Entity<Xxx, XxxProps>`.
-3. Construtor `private/protected` + `super(props)`.
-4. Getters para campos relevantes.
-5. `static create(props)` delegando para `tryCreate` + `throwsIfFailed`.
-6. `static tryCreate(props)` validando invariantes e retornando `Result`.
-7. `Result.combine([...])` para consolidar erros de VOs.
-8. Retornar instância com valores normalizados (`instance.value`).
+1. Define `XxxProps extends EntityProps`.
+2. Declare the class `Xxx extends Entity<Xxx, XxxProps>`.
+3. `private/protected` constructor + `super(props)`.
+4. Getters for relevant fields.
+5. `static create(props)` delegating to `tryCreate` + `throwsIfFailed`.
+6. `static tryCreate(props)` validating invariants and returning `Result`.
+7. `Result.combine([...])` to consolidate VO errors.
+8. Return the instance with normalized values (`instance.value`).
 
-## Checklist de implementação
+## Implementation checklist
 
 - `id`:
-  - Usar `Id.tryCreate(props.id)` quando opcional.
-  - Usar `Id.required(...)` quando o campo é obrigatório (ex.: relação obrigatória).
+  - Use `Id.tryCreate(props.id)` when optional.
+  - Use `Id.required(...)` when the field is mandatory (e.g. a mandatory relation).
 - VOs:
-  - Validar texto, nome, alias, sku, url, número, preço com VOs apropriados.
-- Entidades aninhadas:
-  - Validar com `Xxx.tryCreate` e persistir `instance.props`/`instance.value` no `props`.
-- Listas:
-  - Para arrays de IDs/VOs, mapear para `tryCreate`, combinar resultados e salvar valores normalizados.
-- Erros:
-  - Em falha, retornar `Result.fail(attributes.errors!)` ou `attributes.withFail`.
-- Métodos de domínio:
-  - Quando houver regra de estado, encapsular em método da entidade (ex.: `deactivate`, `moveSubcategory`, factories específicas).
+  - Validate text, name, alias, sku, url, number, price with the appropriate VOs.
+- Nested entities:
+  - Validate with `Xxx.tryCreate` and store `instance.props`/`instance.value` in `props`.
+- Lists:
+  - For arrays of IDs/VOs, map to `tryCreate`, combine the results and store normalized values.
+- Errors:
+  - On failure, return `Result.fail(attributes.errors!)` or `attributes.withFail`.
+- Domain methods:
+  - When there is a state rule, encapsulate it in an entity method (e.g. `deactivate`, `moveSubcategory`, specific factories).
 
-## Padrões observados no código
+## Patterns observed in the code
 
-- Identidade e timestamps são tratados pela classe base `Entity`.
-- `equals` e `notEquals` são por `id`.
-- `cloneWith` faz deep-merge e reaplica validação via `tryCreate`.
-- Algumas entidades usam getters que materializam VO/Entity a partir de `props` (ex.: `Stock.location`, `Branch.address`).
+- Identity and timestamps are handled by the base `Entity` class.
+- `equals` and `notEquals` are by `id`.
+- `cloneWith` does a deep merge and reapplies validation via `tryCreate`.
+- Some entities use getters that materialize a VO/Entity from `props` (e.g. `Stock.location`, `Branch.address`).
 
-## Exemplo mínimo
+## Minimal example
 
 ```ts
 import { Entity, EntityProps, Id, Name, Result } from '@namespace/shared';
@@ -95,17 +95,17 @@ export class Example extends Entity<Example, ExampleProps> {
 }
 ```
 
-## Estratégia de testes
+## Testing strategy
 
-- Criação válida (`tryCreate.isOk`, `create` retorna instância).
-- Criação inválida (`tryCreate.isFailure`, `create` lança erro).
-- Igualdade por `id` (`equals`/`notEquals`).
-- `cloneWith` com atualização válida e inválida.
-- Cenários de normalização (quando houver VOs que normalizam entrada).
+- Valid creation (`tryCreate.isOk`, `create` returns an instance).
+- Invalid creation (`tryCreate.isFailure`, `create` throws an error).
+- Equality by `id` (`equals`/`notEquals`).
+- `cloneWith` with a valid and an invalid update.
+- Normalization scenarios (when there are VOs that normalize input).
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Esquecer normalização ao montar `new Entity` (usar valor cru em vez de `instance.value`).
-- Não validar arrays (ex.: `roleIds`, URLs).
-- Introduzir regra de domínio fora da entidade (espalhada em use case sem necessidade).
-- Criar setter mutável ao invés de usar método de domínio + `cloneWith`.
+- Forgetting normalization when building `new Entity` (using the raw value instead of `instance.value`).
+- Not validating arrays (e.g. `roleIds`, URLs).
+- Introducing a domain rule outside the entity (scattered in a use case without need).
+- Creating a mutable setter instead of using a domain method + `cloneWith`.

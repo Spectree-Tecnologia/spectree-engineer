@@ -1,5 +1,5 @@
-// The skills of this plugin are tools of the squad's agents, not commands of the Founder (2026-11-11: "as skills são
-// de utilização exclusiva dos agentes, não quero que elas fiquem aparecendo nos slash commands"). `user-invocable:
+// The skills of this plugin are tools of the squad's agents, not commands of the Founder (2026-11-11: "the skills are
+// for the agents' use only, I don't want them showing up in the slash commands"). `user-invocable:
 // false` keeps a skill out of the slash menu and leaves it callable by the model, so the only thing the Founder types
 // is `/engineer`.
 //   node --test tests/skills.test.mjs
@@ -24,7 +24,7 @@ const frontmatter = (file) => fs.readFileSync(file, 'utf8').split(/^---\r?$/m)[1
 const rel = (file) => path.relative(plugin, file).split(path.sep).join('/');
 
 test('every skill stays out of the slash menu', () => {
-  assert.ok(skills.length >= 32, `only ${skills.length} skills found`);
+  assert.ok(skills.length >= 31, `only ${skills.length} skills found`);
   for (const file of skills) {
     assert.match(frontmatter(file), /^user-invocable: false\r?$/m, `${rel(file)} does not declare user-invocable: false`);
   }

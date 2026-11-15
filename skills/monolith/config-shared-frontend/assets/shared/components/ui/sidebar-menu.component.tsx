@@ -26,13 +26,13 @@ export type SidebarMenuSection = {
 };
 
 export type SidebarMenuProps = {
-  /** Item destacado acima das seções (opcional). */
+  /** Highlighted item above the sections (optional). */
   mainItem?: SidebarMenuItem;
-  /** Seções de navegação renderizadas em uma única área. */
+  /** Navigation sections rendered in a single area. */
   sections: SidebarMenuSection[];
-  /** Força o estado recolhido; por padrão segue o estado do shell. */
+  /** Forces the collapsed state; by default it follows the shell's state. */
   collapsed?: boolean;
-  /** Rota de destino ao clicar no logo. Default: '/'. */
+  /** Route to go to when the logo is clicked. Default: '/'. */
   homeHref?: string;
 };
 
@@ -133,12 +133,12 @@ function MenuSections({
 }
 
 /**
- * Menu de navegação lateral — área única.
+ * Side navigation menu, single area.
  *
- * Toda a navegação é passada via `sections` (e opcionalmente `mainItem`) pelo
- * layout que renderiza este componente. Os caminhos de navegação fazem parte do
- * estado da aplicação e NÃO vivem aqui em shared/ — este componente é apenas a
- * apresentação. Para mudar o menu, edite as seções no layout de destino.
+ * All navigation is passed in through `sections` (and optionally `mainItem`) by
+ * the layout that renders this component. The navigation paths are part of the
+ * application's state and do NOT live here in shared/: this component is only
+ * presentation. To change the menu, edit the sections in the target layout.
  */
 export function SidebarMenu(props: SidebarMenuProps) {
   // usePathname reads the request URL; with Cache Components it must render inside a Suspense boundary
@@ -159,7 +159,7 @@ function SidebarMenuContent({ mainItem, sections, collapsed, homeHref = '/' }: S
       <nav className="flex min-h-full flex-col px-2 pb-4">
         <Link
           href={homeHref}
-          aria-label="Ir para o início"
+          aria-label="Go to home"
           className={joinClassNames([
             MENU_HEADER_HEIGHT_CLASS,
             'mb-3 flex shrink-0 items-center border-b border-white/8',

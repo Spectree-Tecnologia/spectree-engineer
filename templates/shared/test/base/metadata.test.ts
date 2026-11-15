@@ -1,6 +1,6 @@
 import { Metadata, MetadataProps } from '../../src/base/metadata.js';
 
-test('Deve criar um Metadata com valores corretos', () => {
+test('creates a Metadata with the right values', () => {
   const props: MetadataProps = {
     module: 'auth',
     object: 'user',
@@ -18,7 +18,7 @@ test('Deve criar um Metadata com valores corretos', () => {
   expect(metadata.id).toBe('123');
 });
 
-test('Deve retornar undefined para propriedades ausentes', () => {
+test('returns undefined for missing properties', () => {
   const metadata = new Metadata({});
 
   expect(metadata.module).toBeUndefined();
@@ -28,7 +28,7 @@ test('Deve retornar undefined para propriedades ausentes', () => {
   expect(metadata.id).toBeUndefined();
 });
 
-test('Deve criar um novo Metadata com módulo atualizado', () => {
+test('creates a new Metadata with an updated module', () => {
   const metadata = new Metadata({ module: 'Original' });
   const updatedMetadata = metadata.withModule('Updated');
 
@@ -36,7 +36,7 @@ test('Deve criar um novo Metadata com módulo atualizado', () => {
   expect(metadata.module).toBe('Original');
 });
 
-test('Deve criar um novo Metadata com objeto atualizado', () => {
+test('creates a new Metadata with an updated object', () => {
   const metadata = new Metadata({ object: 'Original' });
   const updatedMetadata = metadata.withObject('Updated');
 
@@ -44,7 +44,7 @@ test('Deve criar um novo Metadata com objeto atualizado', () => {
   expect(metadata.object).toBe('Original');
 });
 
-test('Deve criar um novo Metadata com atributo atualizado', () => {
+test('creates a new Metadata with an updated attribute', () => {
   const metadata = new Metadata({ attribute: 'Original' });
   const updatedMetadata = metadata.withAttribute('Updated');
 
@@ -52,7 +52,7 @@ test('Deve criar um novo Metadata com atributo atualizado', () => {
   expect(metadata.attribute).toBe('Original');
 });
 
-test('Deve criar um novo Metadata com valor atualizado', () => {
+test('creates a new Metadata with an updated value', () => {
   const metadata = new Metadata({ value: 100 });
   const updatedMetadata = metadata.withValue(200);
 
@@ -60,7 +60,7 @@ test('Deve criar um novo Metadata com valor atualizado', () => {
   expect(metadata.value).toBe(100);
 });
 
-test('Deve criar um novo Metadata com id atualizado', () => {
+test('creates a new Metadata with an updated id', () => {
   const metadata = new Metadata({ id: '123' });
   const updatedMetadata = metadata.withId('456');
 
@@ -68,7 +68,7 @@ test('Deve criar um novo Metadata com id atualizado', () => {
   expect(metadata.id).toBe('123');
 });
 
-test('Deve criar um novo Metadata com atributo atualizado', () => {
+test('creates a new Metadata with an updated attribute', () => {
   const original = new Metadata({
     module: 'Mod1',
     object: 'Obj1',
@@ -92,10 +92,10 @@ test('Deve criar um novo Metadata com atributo atualizado', () => {
   expect(updated.id).toBe('002');
 });
 
-test('Deve criar um novo Metadata com atributo atualizado', () => {
+test('creates a new Metadata with an updated attribute', () => {
   const userMeta = new Metadata({ module: 'auth', object: 'user' });
   const nameMeta = userMeta.to('name');
-  const emailMeta = userMeta.to('email', 'joao#empresa.com.br');
+  const emailMeta = userMeta.to('email', 'john#company.com');
 
   expect(nameMeta.module).toBe('auth');
   expect(nameMeta.object).toBe('user');
@@ -105,5 +105,5 @@ test('Deve criar um novo Metadata com atributo atualizado', () => {
   expect(emailMeta.module).toBe('auth');
   expect(emailMeta.object).toBe('user');
   expect(emailMeta.attribute).toBe('email');
-  expect(emailMeta.value).toBe('joao#empresa.com.br');
+  expect(emailMeta.value).toBe('john#company.com');
 });

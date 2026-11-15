@@ -50,10 +50,10 @@ export type GenericSchema = ObjectSchema | SchemaObject<any> | ValueObjectClass<
 
 export type Schema = Record<string, SchemaField<any, any>>;
 
-// NOTE: Helper para verificar se um campo e opcional
+// NOTE: Helper that checks whether a field is optional
 type IsOptionalConfig<T> = T extends FieldConfig<any, any> ? (T extends { optional: true } ? true : false) : false;
 
-// NOTE: Extrai o tipo do valor de um campo (incluindo arrays aninhados)
+// NOTE: Extracts a field's value type (nested arrays included)
 type ExtractFieldValue<T> =
   T extends FieldConfig<infer V, any>
     ? Exclude<V, undefined>
@@ -65,7 +65,7 @@ type ExtractFieldValue<T> =
           ? Infer<S>
           : never;
 
-// NOTE: Extrai tipo de objeto schema com propriedades opcionais
+// NOTE: Extracts the type of a schema object with optional properties
 export type ExtractObjectSchemaType<T extends ObjectSchema> = {
   [K in keyof T as IsOptionalConfig<T[K]> extends true ? never : K]: ExtractFieldValue<T[K]>;
 } & {

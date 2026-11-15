@@ -5,11 +5,11 @@ import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 
 /**
- * Tela de autenticação de exemplo (rota `/join`).
+ * Example authentication screen (route `/join`).
  *
- * Ainda sem formulário — apenas o esqueleto da tela com os caminhos de
- * navegação: voltar para a landing page e seguir para o dashboard.
- * Substitua o conteúdo pelo formulário real de login quando definido.
+ * No form yet: only the skeleton of the screen with its navigation paths,
+ * back to the landing page and on to the dashboard.
+ * Replace the content with the real login form once it is defined.
  */
 export default function AuthPage() {
   return (
@@ -21,21 +21,21 @@ export default function AuthPage() {
           <AppLogo size="lg" priority />
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Autenticação</h1>
-            <p className="text-sm text-muted-foreground">Formulário de login em desenvolvimento.</p>
+            <h1 className="text-2xl font-semibold">Sign in</h1>
+            <p className="text-sm text-muted-foreground">The sign-in form is under construction.</p>
           </div>
 
           <div className="flex w-full flex-col gap-3">
             <Button asChild>
               <Link href="/dashboard">
-                Ir para o dashboard
+                Go to the dashboard
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/">
                 <ArrowLeft className="size-4" />
-                Voltar
+                Back
               </Link>
             </Button>
           </div>

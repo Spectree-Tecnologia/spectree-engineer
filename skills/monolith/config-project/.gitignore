@@ -38,3 +38,6 @@ yarn-error.log*
 *.pem
 
 .log/
+
+# Engineer: each person's conversation language, never committed
+.engineer.local.json

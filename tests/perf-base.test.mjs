@@ -1,5 +1,5 @@
 // The latency budget asks the base before it blocks: a route over budget twice is measured on the base's code on the
-// same machine, and only "slower than the base" fails. Measured on PILOT on 2026-11-13: 4 of 4 red CI runs on the
+// same machine, and only "slower than the base" fails. Measured on the pilot project on 2026-11-13: 4 of 4 red CI runs on the
 // latency step were the runner or the harness, never the pull request's code. Run, not read:
 //   node --test tests/perf-base.test.mjs
 import assert from 'node:assert/strict';

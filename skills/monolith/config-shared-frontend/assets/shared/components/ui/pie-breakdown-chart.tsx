@@ -35,7 +35,7 @@ const DEFAULT_COLORS = [
 
 const DEFAULT_EMPTY_STATE = (
   <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] text-sm text-zinc-500">
-    Nenhum dado disponível para exibir no gráfico.
+    No data available to display in the chart.
   </div>
 );
 
@@ -53,7 +53,7 @@ export function PieBreakdownChart({
       return valueFormatter(value);
     }
 
-    return new Intl.NumberFormat('pt-BR').format(value);
+    return new Intl.NumberFormat('en-US').format(value);
   };
 
   const totalValue = data.reduce((total, item) => total + item.value, 0);
@@ -85,7 +85,7 @@ export function PieBreakdownChart({
 
               return [
                 showPercentageInTooltip
-                  ? `${formatValue(safeValue)} • ${percentage.toFixed(1).replace('.', ',')}%`
+                  ? `${formatValue(safeValue)} • ${percentage.toFixed(1)}%`
                   : formatValue(safeValue),
                 String(name ?? item?.name ?? ''),
               ];
