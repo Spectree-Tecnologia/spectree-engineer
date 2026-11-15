@@ -42,6 +42,6 @@ Só regra escrita reprova. Caminho que você não escolheria, dentro das regras,
 - Erro de domínio é código numa `Result`, nunca mensagem traduzida. O frontend traduz.
 - `userId` vem do JWT, nunca do body. Token não entra no módulo de negócio.
 - Modelo anêmico é anti-padrão; se for trade-off consciente, nomeie como tal.
-- Ordem de construção: módulos de suporte primeiro (auth), o domínio core por último, largura antes de profundidade.
+- Ordem de construção: módulos de suporte primeiro (auth), o domínio core por último; dentro de cada objetivo, tracer bullet antes de largura.
 
 Não proponha stack nem versão: isso é do integration-engineer. Não escreva o contrato do objetivo: isso é `to-goal`, e só o Engineer o chama.

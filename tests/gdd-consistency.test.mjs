@@ -60,3 +60,68 @@ test('a bug has a contract, because the final verification reads one', () => {
   assert.match(script, /goal\.criteria\.length < 3\) warnings\.push/);
   assert.match(script, /approved by \.\+ on/);
 });
+
+// 0.36.0: the rest of the same reading (the Founder's "Execute a rodada: achados 4 a 8 e as três dualidades").
+const command = read('commands/engineer.md');
+const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2})$/;
+
+test('a deterministic git command is the Engineer\'s and is logged; judgement is the platform-engineer\'s', () => {
+  assert.match(command, /\*\*Comando determinístico de git é seu; o que pede leitura e julgamento é do platform-engineer\*\*/);
+  assert.match(command, /`\[CMD\] <comando> → exit <n>` em `decisions\.md`/);
+  // a session opened with `worktree` no longer sends the platform-engineer to run the script the Engineer runs
+  assert.doesNotMatch(command, /a missão do platform-engineer é `npm run worktree/);
+  const card = read('agents/platform-engineer.md');
+  assert.doesNotMatch(card, /Tudo que muda o repositório fora do código de um objetivo passa por você/);
+  assert.doesNotMatch(card, /no checkout principal: sem worktree/);
+  assert.match(card, /Quem cria e remove a worktree é o Engineer, por script/);
+  assert.doesNotMatch(read('agents/full-stack-developer.md'), /remove worktree: é do platform-engineer/);
+});
+
+test('the design stage records every approval and has a way back', () => {
+  assert.match(command, /grava `Approved by founder on <data>` em `docs\/design\/design-system\.md`/);
+  assert.match(command, /`design-system\.md` sem essa linha, em projeto sem contrato nenhum, é o design system esperando o fundador/);
+  assert.match(command, /estado de tela que falta no protótipo aprovado é uma rodada do ui-ux-designer só para esse artboard, com nova aprovação/);
+  const card = read('agents/ui-ux-designer.md');
+  assert.match(card, /A exceção é a rodada que o Engineer abre para um estado de tela que faltou/);
+  assert.match(card, /em módulo que ainda não existe, de `decisions\.md` e do `GLOSSARY\.md`/);
+  assert.doesNotMatch(card, /que pergunta ao solutions-architect/);
+});
+
+test('the audit every five items has a count and a line that resets it', () => {
+  const audit = command.slice(command.indexOf('### Auditoria'), command.indexOf('### Pergunta sobre API'));
+  assert.match(audit, /`Audited on <data>, through <slug>`/);
+  assert.match(audit, /Cinco ou mais: a auditoria `quick` roda antes do item/);
+  assert.match(command, /a contagem da Auditoria, e abra o próximo item/);
+  assert.match(command, /faça a contagem da Auditoria e comece o próximo item/);
+});
+
+test('one order of construction: support modules first, the tracer bullet before breadth', () => {
+  assert.doesNotMatch(read('ARCHITECTURE.md'), /breadth before depth/);
+  assert.match(read('ARCHITECTURE.md'), /inside a goal, the tracer bullet comes before breadth/);
+  assert.doesNotMatch(read('agents/solutions-architect.md'), /largura antes de profundidade/);
+  assert.match(command, /tracer bullet antes de largura/);
+});
+
+test('the plan is committed before the first ticket, because lane 2 is born from HEAD', () => {
+  assert.match(command, /você commita `docs\/goals\/<slug>\.md` e `\.scratch\/<slug>\/` \(`docs\(<slug>\): plan`/);
+});
+
+test('scope: the criteria are the Engineer\'s, and the test of a new business rule is written once', () => {
+  assert.match(command, /`Status: approved by engineer under the roadmap approved on <data da aprovação do roadmap>`/);
+  assert.match('approved by engineer under the roadmap approved on 2026-11-15', STATUS);
+  const gates = command.slice(command.indexOf('## 6. Os quatro gates'), command.indexOf('## 7.'));
+  assert.match(gates, /muda o que o usuário final pode fazer, pagar ou ver e não está no roadmap, no `GLOSSARY\.md`, num ADR nem no protótipo aprovado/);
+});
+
+test('a should pays for one round, and only a real failure climbs to fable', () => {
+  assert.match(command, /\*\*`should` paga uma rodada, não duas\.\*\*/);
+  assert.match(command, /Reprovou na segunda com critério `not met` ou `weak proof`, `blocking`, ou `confirmed` de `medium` para cima/);
+  assert.match(command, /ou da segunda rodada final em diante/);
+  assert.doesNotMatch(read('README.md'), /`should` espera a verificação final/);
+});
+
+test('two full-stack-developers per machine, whichever way they are opened', () => {
+  assert.match(command, /só se `git worktree list` mostra só este checkout \(o teto é de dois full-stack-developers por máquina/);
+  assert.match(command, /a linha `Spent:` do último objetivo fechado não tem horas no limite de uso/);
+  assert.match(command, /`git worktree list` mostra só o checkout principal \(a primeira não está em duas pistas/);
+});
