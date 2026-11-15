@@ -191,7 +191,6 @@ agents/                the seven specialist agents
 skills/engineering/    process skills, vendored from Matt Pocock (MIT)
 skills/monolith/       scaffolding skills: config-*, module-*, backend-*, frontend-*
 skills/security/       security-audit, vendored from Cloudflare (MIT)
-skills/design/         to-wireframe: a reference image becomes a typed wireframe
 templates/shared/      the @<ns>/shared package copied at bootstrap
 hooks/engineer-desk/   the Engineer panel (a Claude Code hooks module)
 scripts/               smoke test, eval runner, panel test, art tracer

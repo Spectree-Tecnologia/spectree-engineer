@@ -1,6 +1,0 @@
-interface:
-  display_name: "To Wireframe"
-  short_description: "Image or brief → typed ASCII or SVG wireframe"
-  default_prompt: "Use $to-wireframe: format=svg, read this app screen and write a typed, complete and nested wireframe next to it."
-policy:
-  allow_implicit_invocation: false

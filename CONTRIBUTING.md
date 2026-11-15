@@ -82,7 +82,7 @@ Every merge to `main` is a version, because `claude plugin update` compares vers
 
 ## Vendored skills
 
-`skills/engineering/` (Matt Pocock), `skills/security/security-audit/` (Cloudflare) and `skills/design/to-wireframe/` are vendored from other projects. Record any change to them in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), and prefer sending general improvements upstream.
+`skills/engineering/` (Matt Pocock) and `skills/security/security-audit/` (Cloudflare) are vendored from other projects. Record any change to them in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), and prefer sending general improvements upstream.
 
 ## Language
 

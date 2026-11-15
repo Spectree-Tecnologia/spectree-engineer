@@ -26,9 +26,6 @@ Design system: <URL>
 | Artboard | Route | Module | Components from the kit | New components |
 |---|---|---|---|---|
 
-## Wireframes
-- <screen> — docs/design/<feature-slug>/wireframes/<screen>.txt, from <the founder's reference>
-
 ## Decisions
 - <one line per UX decision, with the why>
 
@@ -43,7 +40,7 @@ Design system: <URL>
 
 ## How to design
 
-- **A reference becomes a wireframe before an artboard.** Whenever the mission carries a reference from the founder (screenshot, image, capture of another app, link, description of a screen), call the Skill tool with `to-wireframe` before designing: `format=ascii image=<path>` for an image, `format=ascii brief="<the description>"` for text, with `output=docs/design/<feature-slug>/wireframes/<screen>.txt`. The typed wireframe is the floor plan: each region (`nav`, `card`, `form`…) becomes a kit component, each tag (`[h1:]`, `[btn:]`, `[in:]`…) an element, and the artboard is born from it, not from the image. List the wireframes in the handoff ("Wireframes" section, one per line with the source reference). A reference that contradicts the design system: the design system wins, and the difference goes to "Decisions". A reference the founder sends to "look like this" with no wireframe in between becomes a visual copy without structure, and that is what the rule prevents.
+- **A reference is structure, not a look to copy.** Whenever the mission carries a reference from the founder (screenshot, image, capture of another app, link, description of a screen), read it for its regions (navigation, cards, forms…) and elements (headings, buttons, fields) before designing, and build each one from a kit component: the artboard is born from that structure, not from the image. A reference that contradicts the design system: the design system wins, and the difference goes to "Decisions".
 - **Read first:** `GLOSSARY.md` (the names of things on the screen are the glossary's), the grill conversation/notes the mission points to, the most similar existing screen in `apps/frontend/src/modules/*/pages/`. A new screen that ignores the neighboring screen is the inconsistency nobody asks for and everybody notices.
 - **Kit components first.** A new component only when none in the kit serves; it goes in the "New components" column and becomes a success criterion of the contract.
 - **A form is the schema.** Fields, required-ness and validation messages come from the module's VOs (the front end uses `v.defineObject` over them); in a module that does not exist yet, from `decisions.md` and `GLOSSARY.md`. Do not invent a rule on the screen: what is missing is an open question, and the Engineer decides or takes it to the founder.
