@@ -1,14 +1,14 @@
 ---
-description: O quality-engineer, em modo prova, ataca a prova planejada nos tickets antes de existir código — o checador do ticket 01 recusa só o que lembrou de listar, e o do ticket 02 confere o título do teste e não se ele roda.
+description: The quality-engineer, in proof mode, attacks the proof planned in the tickets before any code exists — ticket 01's checker refuses only what it remembered to list, and ticket 02's checks the test's title and not whether it runs.
 tags: [quality-engineer, proof]
 max_turns: 12
 timeout_seconds: 900
 allowed_tools: [Agent, Read, Glob, Grep, Skill]
 ---
-Despache o agente `spectree-engineer:quality-engineer` com a missão abaixo, textualmente, e responda com o relato dele na íntegra — sem resumir, sem comentar, sem acrescentar nada.
+Dispatch the agent `spectree-engineer:quality-engineer` with the mission below, verbatim, and answer with its report in full — without summarizing, without commenting, without adding anything.
 
-**Missão:** modo prova, no gate do plano. O plano do objetivo `ci-gate` acabou de chegar e ainda não existe código: diga o que a prova planejada deixaria passar.
-**Critério de saída verificável:** o relato no formato do modo prova do seu card, um bloco por critério.
-**Leitura obrigatória:** `docs/architecture.md`; o contrato `docs/goals/ci-gate.md`; os tickets em `.scratch/ci-gate/issues/`; `.github/workflows/ci.yml`, que é a baseline.
-**Guard-rails:** só leitura; este workspace não tem git nem Bash.
-**Teto:** 3 tentativas.
+**Mission:** proof mode, at the plan gate. The plan of the goal `ci-gate` has just arrived and no code exists yet: say what the planned proof would let through.
+**Verifiable exit criterion:** the report in the format of your card's proof mode, one block per criterion.
+**Required reading:** `docs/architecture.md`; the contract `docs/goals/ci-gate.md`; the tickets in `.scratch/ci-gate/issues/`; `.github/workflows/ci.yml`, which is the baseline.
+**Guard-rails:** read only; this workspace has no git and no Bash.
+**Ceiling:** 3 attempts.

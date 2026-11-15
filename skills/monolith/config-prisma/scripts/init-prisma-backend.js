@@ -382,7 +382,7 @@ async function moveFileIfExists(fromPath, toPath, ctx) {
   );
   await ctx.ops.renamePath(fromPath, toPath, {
     markRisk: true,
-    note: 'migracao de nome legado',
+    note: 'legacy name migration',
   });
 
   return true;

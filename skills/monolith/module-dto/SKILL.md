@@ -1,41 +1,40 @@
 ---
 name: module-dto
 user-invocable: false
-description: 'Criar, revisar ou orientar Data Transfer Objects de módulo no padrão do projeto. Usar quando o pedido envolver arquivos `dto/*.ts`, contratos de entrada (`InDTO`), saída (`OutDTO`), DTOs de query CQRS para leitura, paginação/filtros/metadados, adaptação de tipagem para consumo da API/front sem vazar detalhes de entidade/ORM ou a skill `module-dto`.'
+description: 'Create, review or guide module Data Transfer Objects in the project''s pattern. Use when the request involves `dto/*.ts` files, input (`InDTO`) and output (`OutDTO`) contracts, CQRS query DTOs for reads, pagination/filters/metadata, adapting types for API/front-end consumption without leaking entity/ORM details, or the `module-dto` skill.'
 ---
 
 # Module DTO
 
 ## Overview
 
-Aplicar o padrão de DTOs para fronteiras de aplicação/leitura, separando claramente entrada, saída e projeções de query conforme o consumidor e o caso de uso.
+Apply the DTO pattern to application/read boundaries, clearly separating input, output and query projections according to the consumer and the use case.
 
 ## Guidelines
 
-- Distinguir DTO por finalidade:
-  - Input DTO (`InDTO`): entrada de use case/comando/filtro.
-  - Output DTO (`OutDTO`): resposta de use case/controlador.
-  - Query DTO (CQRS): projeção de leitura para API/front.
-- Query DTO não deve estender classe de entidade.
-- DTO pode:
-  - derivar de `*Props` (ex.: `UserProps`, `RoleProps`) com `Omit`/`Pick`;
-  - ou ser totalmente independente quando a projeção exigir.
-- Manter DTO sem regra de domínio e sem acoplamento ao ORM.
-- Preferir nomes explícitos (`FindAllUsersOutDTO`, `ProductFiltersDTO`, `RoleDTO`).
+- Distinguish DTOs by purpose:
+  - Input DTO (`InDTO`): input of a use case/command/filter.
+  - Output DTO (`OutDTO`): response of a use case/controller.
+  - Query DTO (CQRS): read projection for the API/front end.
+- A query DTO must not extend an entity class.
+- A DTO may:
+  - derive from `*Props` (e.g. `UserProps`, `RoleProps`) with `Omit`/`Pick`;
+  - or be fully independent when the projection requires it.
+- Keep the DTO free of domain rules and of coupling to the ORM.
+- Prefer explicit names (`FindAllUsersOutDTO`, `ProductFiltersDTO`, `RoleDTO`).
 
 ## Workflow
 
-1. Identificar o tipo de DTO (input, output ou query).
-2. Definir o contrato mínimo necessário para o consumidor.
-3. Escolher base de tipagem:
+1. Identify the DTO type (input, output or query).
+2. Define the minimal contract the consumer needs.
+3. Choose the typing base:
 
-- `*Props` + adaptação (`Omit`/`Pick`) quando fizer sentido;
-- tipo dedicado quando a projeção é diferente do domínio.
+- `*Props` + adaptation (`Omit`/`Pick`) when it makes sense;
+- a dedicated type when the projection differs from the domain.
 
-4. Padronizar paginação/filtros/metadados quando aplicável.
-5. Revisar uso no use case/query/repository para manter fronteiras corretas.
+4. Standardize pagination/filters/metadata when applicable.
+5. Review usage in the use case/query/repository to keep the boundaries correct.
 
 ## References
 
-Consultar `references/dto-pattern.md` para exemplos reais do projeto, convenções e checklist.
-
+See `references/dto-pattern.md` for real project examples, conventions and checklist.

@@ -28,10 +28,10 @@ export function nextResume(now: number, attempts: number, limits: readonly Limit
 }
 
 export const resumePrompt = (why: Resume['why']) =>
-  `A sessão parou por ${why === 'limit' ? 'limite de uso do plano' : 'erro da API'} e o painel a retomou sozinho, sem o fundador. ` +
-  'Continue de onde parou. Antes de despachar, releia o contrato do objetivo e o plano em `.scratch/<slug>/`, e confira com `git status` e `git log` o que ficou dos agentes interrompidos. ' +
-  'Um agente que morreu no meio da missão não volta: despache um novo, que retoma do ticket. ' +
-  'Se o seu último passo foi uma pergunta ao fundador, repita a pergunta e pare.'
+  `The session stopped because of ${why === 'limit' ? "the plan's usage limit" : 'an API error'} and the panel resumed it by itself, without the founder. ` +
+  'Continue where it stopped. Before dispatching, re-read the goal contract and the plan in `.scratch/<slug>/`, and check with `git status` and `git log` what the interrupted agents left. ' +
+  'An agent that died in the middle of its mission does not come back: dispatch a new one, which resumes from the ticket. ' +
+  'If your last step was a question to the founder, repeat the question and stop.'
 
 export const clockTime = (at: number) => {
   const date = new Date(at)

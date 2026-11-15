@@ -2,98 +2,98 @@
 name: to-wireframe
 user-invocable: false
 description: >-
-  Cria um wireframe tipado e aninhado de uma imagem ou brief de tela, em ASCII
-  ou SVG conforme format=ascii|svg informado pelo usuário. Use when the user
+  Creates a typed, nested wireframe from a screen image or brief, in ASCII
+  or SVG according to the format=ascii|svg given by the user. Use when the user
   mentions to-wireframe or asks for a typed UI wireframe.
 ---
 
 # To Wireframe
 
-> Vendorizada de [rtadewald/skills](https://github.com/rtadewald/skills/tree/main/to-wireframe) (commit 82fe5ed, 2026-10-30), com `disable-model-invocation` removido para o `ui-ux-designer` poder chamá-la. Ver `THIRD-PARTY-LICENSES.md`.
+> Vendored from [rtadewald/skills](https://github.com/rtadewald/skills/tree/main/to-wireframe) (commit 82fe5ed, 2026-10-30), with `disable-model-invocation` removed so the `ui-ux-designer` can call it. See `THIRD-PARTY-LICENSES.md`.
 
-Crie um wireframe tipado que descreve estrutura, componentes e conteúdo visível de uma tela. Use como referência canônica de densidade e marcação [`references/wireframe.example.svg`](references/wireframe.example.svg).
+Create a typed wireframe that describes the structure, components and visible content of a screen. Use [`references/wireframe.example.svg`](references/wireframe.example.svg) as the canonical reference for density and markup.
 
-## Chamada obrigatória
+## Mandatory call
 
-O usuário deve informar o formato em toda chamada: `format=svg` ou `format=ascii`. Se faltar, pergunte qual formato quer; não escolha um padrão.
+The user must give the format on every call: `format=svg` or `format=ascii`. If it is missing, ask which format they want; do not pick a default.
 
-Também aceite uma única fonte:
+Also accept a single source:
 
-- `image=<path>` ou imagem anexada: extraia a estrutura da tela existente;
-- `brief=<descrição da tela>`: construa a planta a partir do briefing, proposta ou especificação recebida.
+- `image=<path>` or an attached image: extract the structure of the existing screen;
+- `brief=<screen description>`: build the blueprint from the brief, proposal or specification received.
 
-`output=<path>` é opcional para imagem e obrigatório para brief. Quando a entrada for uma imagem e não houver `output`, salve ao lado dela:
+`output=<path>` is optional for an image and mandatory for a brief. When the input is an image and there is no `output`, save next to it:
 
 ```text
 image=mocks/dashboard.png format=svg    → mocks/dashboard.wireframe.svg
 image=mocks/dashboard.png format=ascii  → mocks/dashboard.wireframe.txt
 ```
 
-Exemplos de chamada:
+Call examples:
 
 ```text
 Use $to-wireframe: format=svg image=mocks/dashboard.png
 Use $to-wireframe: format=ascii image=mocks/dashboard.png
-Use $to-wireframe: format=svg brief="Dashboard de projetos com sidebar, KPIs e atividade" output=mocks/12-wire-a.svg
+Use $to-wireframe: format=svg brief="Projects dashboard with sidebar, KPIs and activity" output=mocks/12-wire-a.svg
 ```
 
-Mostre o path resultante. Abra SVG quando fizer sentido. A skill termina ao entregar o wireframe: não implemente HTML/CSS, assets, imagem final, plano de etapas ou gates de aprovação.
+Show the resulting path. Open the SVG when it makes sense. The skill ends when it delivers the wireframe: do not implement HTML/CSS, assets, a final image, a step plan or approval gates.
 
-## O que o wireframe representa
+## What the wireframe represents
 
-O wireframe é uma planta estrutural, não uma recriação visual pixel-perfect. Cada superfície ou componente com estilo próprio recebe uma região com label: `nav`, `hero`, `media`, `card`, `card2`, `card3`, `form`, `rail`, `quote` ou `section`.
+The wireframe is a structural blueprint, not a pixel-perfect visual recreation. Each surface or component with its own style gets a labeled region: `nav`, `hero`, `media`, `card`, `card2`, `card3`, `form`, `rail`, `quote` or `section`.
 
-- Mesmo visual usa o mesmo id; uma variação visual recebe o próximo id (`card`, `card2`, `card3`).
-- Regiões aninham quando a tela mostra uma superfície própria dentro de outra, como cards de lista, tooltip flutuante, dock de controles ou painel de gráfico.
-- Toda caixa desenhada precisa de label. Não achate um componente em texto solto no pai.
+- The same look uses the same id; a visual variation gets the next id (`card`, `card2`, `card3`).
+- Regions nest when the screen shows a surface of its own inside another, such as list cards, a floating tooltip, a controls dock or a chart panel.
+- Every drawn box needs a label. Do not flatten a component into loose text in its parent.
 
-## Tags tipadas
+## Typed tags
 
-Todo texto e controle visível entra em uma tag; não deixe conteúdo solto. Use este vocabulário fechado:
+All visible text and controls go into a tag; leave no loose content. Use this closed vocabulary:
 
-| Tag | Uso |
+| Tag | Use |
 |---|---|
-| `[h1:]`, `[h2:]`, `[h3:]` | Títulos |
-| `[t1:]`, `[t2:]`, `[t3:]` | Corpo, meta e microtexto |
-| `[btn:]`, `[btn2:]`, `[btn3:]` | Botões com estilos distintos |
-| `[lnk:]` | Link de navegação inativo |
-| `[in:]` | Placeholder ou texto de input |
-| `[ico:]` | Ícone |
-| `[img:]` | Imagem, raster ou 3D |
+| `[h1:]`, `[h2:]`, `[h3:]` | Headings |
+| `[t1:]`, `[t2:]`, `[t3:]` | Body, meta and microtext |
+| `[btn:]`, `[btn2:]`, `[btn3:]` | Buttons with distinct styles |
+| `[lnk:]` | Inactive navigation link |
+| `[in:]` | Placeholder or input text |
+| `[ico:]` | Icon |
+| `[img:]` | Image, raster or 3D |
 | `[av:]` | Avatar |
-| `[chart:]` | Gráfico |
+| `[chart:]` | Chart |
 
-Um mesmo id de tag representa o mesmo estilo. Botões visualmente diferentes usam ids diferentes. Nav ativo é `[btn:]`; nav inativo é `[lnk:]`. Um botão com ícone pode ser `[btn: [ico:plus] Add project]`. Escreva uma tag por linha visual: uma headline em três linhas vira três tags `[h1:]`.
+The same tag id represents the same style. Visually different buttons use different ids. Active nav is `[btn:]`; inactive nav is `[lnk:]`. A button with an icon can be `[btn: [ico:plus] Add project]`. Write one tag per visual line: a headline on three lines becomes three `[h1:]` tags.
 
-Na entrada por imagem, use o texto essencial que estiver legível. Quando não der para ler com segurança, escreva a tag apropriada com `...`; não invente texto. Na entrada por brief, use somente conteúdo que o briefing fornece ou que seja necessário para explicar a função declarada da tela.
+For image input, use the essential text that is legible. When it cannot be read reliably, write the appropriate tag with `...`; do not invent text. For brief input, use only content the brief provides or that is needed to explain the screen's stated function.
 
-## Processo
+## Process
 
-1. Leia a imagem ou o brief e defina as regiões, seus estados e o conteúdo tipado.
-2. Em uma passada, desenhe a planta no formato pedido.
-3. Faça uma única revisão: toda superfície está rotulada; todo texto está em tag; componentes internos estão aninhados; e nav ativo/inativo está tipado corretamente.
-4. Grave no `output` definido ou no caminho padrão da imagem.
+1. Read the image or the brief and define the regions, their states and the typed content.
+2. In one pass, draw the blueprint in the requested format.
+3. Do a single review: every surface is labeled; all text is in a tag; inner components are nested; and active/inactive nav is typed correctly.
+4. Write to the given `output` or to the image's default path.
 
-Não meça pixels, faça OCR, crop, eyedropper ou simule a aparência final. Estime posições e tamanhos quando vier de imagem; quando vier de brief, priorize a hierarquia descrita.
+Do not measure pixels, run OCR, crop, use an eyedropper or simulate the final look. Estimate positions and sizes when working from an image; when working from a brief, prioritize the described hierarchy.
 
-## Renderização SVG
+## SVG rendering
 
-Para `format=svg`:
+For `format=svg`:
 
-- Comece com `<?xml version="1.0" encoding="UTF-8"?>`.
-- Use `viewBox` proporcional ao canvas da imagem; para brief sem proporção definida, use `0 0 1440 810`.
-- Desenhe somente `rect` e `text`, em cinza, com strokes e labels simples.
-- Não use cores de produto, tipografia premium, sombras, gradientes, curvas, ícones ou gráficos simulados.
-- Use labels com letras e números básicos para evitar XML inválido.
+- Start with `<?xml version="1.0" encoding="UTF-8"?>`.
+- Use a `viewBox` proportional to the image canvas; for a brief with no defined proportion, use `0 0 1440 810`.
+- Draw only `rect` and `text`, in gray, with simple strokes and labels.
+- Do not use product colors, premium typography, shadows, gradients, curves, icons or simulated charts.
+- Use labels with basic letters and numbers to avoid invalid XML.
 
-## Renderização ASCII
+## ASCII rendering
 
-Para `format=ascii`:
+For `format=ascii`:
 
-- Use somente `+`, `-` e `|` como bordas, para funcionar em qualquer terminal.
-- Coloque o label de cada região na primeira linha de sua caixa e mantenha as tags tipadas dentro dela.
-- Represente regiões aninhadas com caixas aninhadas e reserve espaço visual entre colunas e seções.
-- Não use cores, sombras, gradientes, ícones desenhados, gráficos simulados ou medidas pixel-perfect.
+- Use only `+`, `-` and `|` as borders, so it works in any terminal.
+- Put each region's label on the first line of its box and keep the typed tags inside it.
+- Represent nested regions with nested boxes and leave visual space between columns and sections.
+- Do not use colors, shadows, gradients, drawn icons, simulated charts or pixel-perfect measurements.
 
 ```text
 +------------------------------------------------------------------------+

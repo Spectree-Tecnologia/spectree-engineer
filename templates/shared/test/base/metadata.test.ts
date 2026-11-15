@@ -95,7 +95,7 @@ test('creates a new Metadata with an updated attribute', () => {
 test('creates a new Metadata with an updated attribute', () => {
   const userMeta = new Metadata({ module: 'auth', object: 'user' });
   const nameMeta = userMeta.to('name');
-  const emailMeta = userMeta.to('email', 'joao#empresa.com.br');
+  const emailMeta = userMeta.to('email', 'john#company.com');
 
   expect(nameMeta.module).toBe('auth');
   expect(nameMeta.object).toBe('user');
@@ -105,5 +105,5 @@ test('creates a new Metadata with an updated attribute', () => {
   expect(emailMeta.module).toBe('auth');
   expect(emailMeta.object).toBe('user');
   expect(emailMeta.attribute).toBe('email');
-  expect(emailMeta.value).toBe('joao#empresa.com.br');
+  expect(emailMeta.value).toBe('john#company.com');
 });

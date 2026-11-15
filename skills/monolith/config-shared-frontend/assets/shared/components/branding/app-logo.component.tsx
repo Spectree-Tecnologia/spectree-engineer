@@ -32,7 +32,7 @@ const gapClasses: Record<LogoSize, string> = {
   lg: 'gap-3',
 };
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type AppLogoMarkProps = {
   size?: LogoSize;
@@ -56,7 +56,7 @@ type AppLogoProps = {
   priority?: boolean;
 };
 
-// ── Componentes ───────────────────────────────────────────────────────────────
+// ── Components ────────────────────────────────────────────────────────────────
 
 export function AppLogoMark({ size = 'md', className }: AppLogoMarkProps) {
   return (

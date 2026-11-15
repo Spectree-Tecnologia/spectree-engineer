@@ -86,4 +86,6 @@ Every merge to `main` is a version, because `claude plugin update` compares vers
 
 ## Language
 
-Repository docs, code, comments, commit messages and everything the squad writes into a project are in English. The command, the agent cards and the monolith skills are still in Brazilian Portuguese, and translating them is planned. Until then, a PR that edits them may stay in Portuguese, but must not mix the two languages in one file.
+Everything in this repository is in English: docs, prompts (the command, the agent cards, the skills), code, comments, tests, evals and commit messages. The generated project is in English too, with English as the default UI locale.
+
+The one exception is runtime behaviour, not repository content: the Engineer talks to each person in the language they chose on first contact, recorded in the project's gitignored `.engineer.local.json`. Do not write prompt text that assumes a particular conversation language.

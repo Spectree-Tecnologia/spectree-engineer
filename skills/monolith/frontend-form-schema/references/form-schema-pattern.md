@@ -1,29 +1,29 @@
 # Frontend Form + Schema Pattern
 
-## Paths de referência
+## Reference paths
 
-- Validator e componentes compartilhados:
+- Validator and shared components:
   - `apps/frontend/src/shared/components/form/validator/*`
   - `apps/frontend/src/shared/components/form/form.component.tsx`
-- Schemas (exemplos):
+- Schemas (examples):
   - `apps/frontend/src/modules/auth/data/login.schema.ts`
   - `apps/frontend/src/modules/auth/data/create-user.schema.ts`
   - `apps/frontend/src/modules/product/data/create-product.schema.ts`
   - `apps/frontend/src/modules/product/data/update-product.schema.ts`
-- Forms (exemplos):
+- Forms (examples):
   - `apps/frontend/src/modules/auth/pages/create-user.page.tsx`
   - `apps/frontend/src/modules/product/components/product-form.component.tsx`
   - `apps/frontend/src/modules/auth/components/change-password-form.component.tsx`
 
-## Padrão principal
+## Main pattern
 
-- Stack padrão:
+- Default stack:
   - `react-hook-form` + `v` (`@namespace/shared`)
 - Schema:
   - `v.defineObject({...})`
   - `v.defineArray(...)`
-  - `.refine(...)` para validação cruzada
-- Tipagem:
+  - `.refine(...)` for cross-field validation
+- Typing:
   - `type XxxFormData = v.infer<typeof xxxSchema>`
 - Resolver:
   - `resolver: v.resolver(xxxSchema)`
@@ -31,48 +31,48 @@
 ## Create vs Update
 
 - Create schema:
-  - campos geralmente obrigatórios.
+  - fields usually required.
 - Update schema:
-  - campos opcionais quando o endpoint aceita parcial:
+  - optional fields when the endpoint accepts a partial payload:
     - `{ vo: Name, optional: true }`
 
-## Campos complexos
+## Complex fields
 
-- Array de VO:
+- Array of VOs:
   - `v.defineArray(URL, { optional: true })`
-- Array de objetos:
+- Array of objects:
   - `v.defineArray({ name: SubCategoryName, id: { vo: Id, optional: true } })`
-- Config de VO:
+- VO config:
   - `{ vo: Description, config: { minLength: 10 } }`
 
-## Composição de UI
+## UI composition
 
-- Usar componentes compartilhados:
+- Use the shared components:
   - `Form`
   - `FormField`
   - `FormItem`
   - `FormControl`
   - `FormMessage`
   - `FormButtonSubmit`
-- Evitar renderizar erro manualmente quando `FormMessage` resolve o caso.
+- Avoid rendering errors manually when `FormMessage` handles the case.
 
-## Exceções e legado
+## Exceptions and legacy
 
-- Existe uso pontual de Zod no projeto, mas o padrão a seguir é `v`.
-- Em manutenção, preferir migrar para `v` quando alterar forms legados.
+- Zod is used in a few places in the project, but the pattern to follow is `v`.
+- During maintenance, prefer migrating to `v` when changing legacy forms.
 
 ## Checklist
 
-- [ ] Schema criado/atualizado no módulo correto.
-- [ ] `FormData` inferido com `v.infer`.
-- [ ] `resolver: v.resolver(schema)` aplicado.
-- [ ] `defaultValues` coerentes com schema e modo (create/update).
-- [ ] Mensagens de erro exibidas via `FormMessage`.
-- [ ] Barrel `index.ts` atualizado quando novo schema é adicionado.
+- [ ] Schema created/updated in the correct module.
+- [ ] `FormData` inferred with `v.infer`.
+- [ ] `resolver: v.resolver(schema)` applied.
+- [ ] `defaultValues` consistent with the schema and mode (create/update).
+- [ ] Error messages shown via `FormMessage`.
+- [ ] Barrel `index.ts` updated when a new schema is added.
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Misturar Zod e `v` sem necessidade no mesmo fluxo.
-- Esquecer `optional: true` em update forms.
-- Não converter tipo de input antes de enviar (ex.: `string` -> `number`).
-- Não usar `.refine` para regras entre campos (ex.: confirmação de senha).
+- Mixing Zod and `v` needlessly in the same flow.
+- Forgetting `optional: true` in update forms.
+- Not converting the input type before sending (e.g. `string` -> `number`).
+- Not using `.refine` for rules across fields (e.g. password confirmation).

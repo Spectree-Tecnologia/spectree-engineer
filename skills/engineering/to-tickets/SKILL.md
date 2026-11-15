@@ -8,9 +8,9 @@ description: "For the full-stack-developer that plans a goal: break a goal contr
 
 Break a goal into **tickets**: tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-This is Matt Pocock's `to-tickets`, adapted to Goal Driven Development. The source is the goal contract (`docs/goals/<slug>.md`), not a spec. The one who writes the tickets is the `full-stack-developer` that plans the goal, because the breakdown is part of the how and the how belongs to whoever sees the code. Nobody asks the user about the breakdown: the plan is judged against the architecture rules instead.
+This is Matt Pocock's `to-tickets`, adapted to Goal-Driven Development. The source is the goal contract (`docs/goals/<slug>.md`), not a spec. The one who writes the tickets is the `full-stack-developer` that plans the goal, because the breakdown is part of the how and the how belongs to whoever sees the code. Nobody asks the user about the breakdown: the plan is judged against the architecture rules instead.
 
-If you are the orchestrator (you talk to the user and dispatch the others), stop: you never write tickets. An item from before Goal Driven Development, with a spec and no contract, goes to the adoption path: read `commands/engineer.md`, three folders above this skill's base directory, section 3, "Projeto em andamento de antes do Goal Driven".
+If you are the orchestrator (you talk to the user and dispatch the others), stop: you never write tickets. An item from before Goal-Driven Development, with a spec and no contract, goes to the adoption path: read `commands/engineer.md`, three folders above this skill's base directory, section 3, "Project in progress from before Goal-Driven".
 
 ## Why tickets
 

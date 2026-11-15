@@ -1,73 +1,73 @@
 ---
 name: config-prisma
 user-invocable: false
-description: 'Inicializar e padronizar a infraestrutura do Prisma no backend NestJS do projeto com schema modular por domínio (`apps/backend/prisma/models/*.model.prisma`), entrypoint de seed técnico em `apps/backend/prisma/seed/main.ts` (sem seeds de módulos), configuração de `prisma.config.ts`, Docker Compose do backend compatível com `DATABASE_URL` do `.env`, e criação/ajuste de `DbModule` + `PrismaService` compatível com `TransactionManager`/`runInTransaction`. Usar quando o pedido envolver setup inicial de Prisma, onboarding de módulos com arquivo Prisma próprio ou rebootstrap da infraestrutura de banco no backend.'
+description: 'Initialize and standardize the Prisma infrastructure in the project''s NestJS backend with a modular schema per domain (`apps/backend/prisma/models/*.model.prisma`), a technical seed entrypoint in `apps/backend/prisma/seed/main.ts` (no module seeds), the `prisma.config.ts` configuration, a backend Docker Compose compatible with the `DATABASE_URL` in `.env`, and creating/adjusting `DbModule` + `PrismaService` compatible with `TransactionManager`/`runInTransaction`. Use when the request involves the initial Prisma setup, onboarding modules with their own Prisma file, or re-bootstrapping the backend database infrastructure.'
 ---
 
 # Config Prisma
 
 ## Overview
 
-Executar setup determinístico da infraestrutura Prisma no `apps/backend`, com seed entrypoint neutro (sem tasks de módulo), módulo de banco no Nest e inicialização do Postgres via Docker Compose alinhada ao `.env`.
-O contrato gerado de banco deve ficar compatível com a versão atual do projeto: `PrismaService` implementando `TransactionManager` e expondo `runInTransaction` para casos de uso transacionais (ex.: auth).
+Run a deterministic setup of the Prisma infrastructure in `apps/backend`, with a neutral seed entrypoint (no module tasks), a database module in Nest and Postgres started via Docker Compose aligned with `.env`.
+The generated database contract must stay compatible with the project's current version: `PrismaService` implementing `TransactionManager` and exposing `runInTransaction` for transactional use cases (e.g. auth).
 
 ## Workflow
 
-1. Confirmar que o workspace contém `apps/backend/package.json`.
-2. Executar o script da skill:
+1. Confirm the workspace contains `apps/backend/package.json`.
+2. Run the skill's script:
    - `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --dry-run`
    - `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --install`
-   - `npm --workspace apps/backend run prisma:generate` (obrigatório antes de qualquer `npm run build`)
-3. Incluir arquivos Prisma por módulo (repetível):
+   - `npm --workspace apps/backend run prisma:generate` (mandatory before any `npm run build`)
+3. Add Prisma files per module (repeatable):
    - `node ${CLAUDE_PLUGIN_ROOT}/skills/monolith/config-prisma/scripts/init-prisma-backend.js --apply --module auth --module product`
-4. Subir banco com Docker Compose do backend:
+4. Start the database with the backend's Docker Compose:
    - `npm --workspace apps/backend run db:start`
-5. Validar Prisma:
+5. Validate Prisma:
    - `npm --workspace apps/backend run prisma:generate`
-6. Rodar ciclo completo de banco (desenvolvimento local):
+6. Run the full database cycle (local development):
    - `npx prisma migrate dev`
-   - `npm run db:roles` (cria/atualiza `app_runtime`; repetir depois de toda migration)
+   - `npm run db:roles` (creates/updates `app_runtime`; repeat after every migration)
    - `npx prisma generate`
    - `npx prisma db seed`
 
-## O que o script garante
+## What the script guarantees
 
-- Dependências Prisma no `apps/backend/package.json` (`prisma`, `@prisma/client`, `@prisma/adapter-pg`, `tsx`) com preservação da versão já existente quando o backend já está configurado (sem upgrade forçado por padrão).
-- Scripts npm de banco/Prisma (`db:start`, `db:stop`, `db:logs`, `prisma:generate`, `prisma:migrate:*`, `prisma:seed`, `prisma:studio`).
-- Script de desenvolvimento na raiz preparado para subir o banco automaticamente antes do Turbo (`npm run dev` -> `db:start` + `turbo run dev`).
-- Remoção de script legado `prisma:cid` quando presente.
-- Dois papéis de banco: `MIGRATION_DATABASE_URL` (owner: migrate, seed, `db:roles`) e `DATABASE_URL` (`app_runtime`, que não é dono de nada — lê e escreve linhas, nunca `ALTER`/`DROP`/`DISABLE TRIGGER`). `apps/backend/db/roles.sql` (idempotente, escrito uma vez; a lista de tabelas append-only vive nele) + `db/roles.mjs` (`npm run db:roles`, roda como owner com `APP_DB_PASSWORD`). O `PrismaService` recusa subir em produção se o papel conectado for dono de tabela.
-- `apps/backend/prisma.config.ts` com `seed: 'npx tsx prisma/seed/main.ts'` e `url` = `MIGRATION_DATABASE_URL` (fallback `DATABASE_URL`).
-- `apps/backend/prisma/schema.prisma` com `generator client { provider = "prisma-client-js" }` no padrão atual.
-- `apps/backend/prisma/seed/main.ts` inicial (sem implementação de módulos) usando `PrismaClient` de `@prisma/client` com `PrismaPg`.
-- Autocorreção apenas para templates legados de seed (`generated/client`, `generated/prisma`, `cid`) sem sobrescrever seeds modernos já estruturados com tasks de módulo.
-- Não cria nem altera `prisma/seed/tasks/*` de módulos específicos.
-- `apps/backend/prisma/models/bootstrap.model.prisma` temporário apenas quando ainda não existe nenhum `*.model.prisma` de domínio.
-- Arquivos de módulos Prisma no padrão `<module-name>.model.prisma`.
-- `apps/backend/docker-compose.yml` alinhado ao `DATABASE_URL` carregado de `apps/backend/.env` (fallback para `.env.example`).
-- Criação/ajuste de `apps/backend/src/db/db.module.ts` e `apps/backend/src/db/prisma.service.ts`.
-- `apps/backend/test/query-budget.ts`: `expectQueryBudget(prisma.client, K, fn)` falha o teste quando o Prisma emite mais de K queries durante `fn` (o `PrismaService` nasce com `log: [{ level: 'query', emit: 'event' }]`). É o orçamento de queries por caso de uso da regra 11 de `docs/architecture.md`; o e2e gerado pelo `config-new-module` já o usa na listagem.
-- `PrismaService` com contrato transacional atual:
-  - implementa `TransactionManager<PrismaTransactionContext>`
-  - expõe `runInTransaction`
-  - define `PrismaTransactionContext` com `client: Prisma.TransactionClient`.
-- Inclusão de `DbModule` em `apps/backend/src/app.module.ts` quando ausente.
+- Prisma dependencies in `apps/backend/package.json` (`prisma`, `@prisma/client`, `@prisma/adapter-pg`, `tsx`), preserving the existing version when the backend is already configured (no forced upgrade by default).
+- npm database/Prisma scripts (`db:start`, `db:stop`, `db:logs`, `prisma:generate`, `prisma:migrate:*`, `prisma:seed`, `prisma:studio`).
+- A development script at the root prepared to start the database automatically before Turbo (`npm run dev` -> `db:start` + `turbo run dev`).
+- Removal of the legacy `prisma:cid` script when present.
+- Two database roles: `MIGRATION_DATABASE_URL` (owner: migrate, seed, `db:roles`) and `DATABASE_URL` (`app_runtime`, which owns nothing — it reads and writes rows, never `ALTER`/`DROP`/`DISABLE TRIGGER`). `apps/backend/db/roles.sql` (idempotent, written once; the list of append-only tables lives in it) + `db/roles.mjs` (`npm run db:roles`, runs as owner with `APP_DB_PASSWORD`). `PrismaService` refuses to start in production if the connected role owns a table.
+- `apps/backend/prisma.config.ts` with `seed: 'npx tsx prisma/seed/main.ts'` and `url` = `MIGRATION_DATABASE_URL` (fallback `DATABASE_URL`).
+- `apps/backend/prisma/schema.prisma` with `generator client { provider = "prisma-client-js" }` in the current pattern.
+- An initial `apps/backend/prisma/seed/main.ts` (no module implementation) using `PrismaClient` from `@prisma/client` with `PrismaPg`.
+- Auto-correction only for legacy seed templates (`generated/client`, `generated/prisma`, `cid`), without overwriting modern seeds already structured with module tasks.
+- Does not create or change the `prisma/seed/tasks/*` of specific modules.
+- A temporary `apps/backend/prisma/models/bootstrap.model.prisma` only when no domain `*.model.prisma` exists yet.
+- Prisma module files in the `<module-name>.model.prisma` pattern.
+- `apps/backend/docker-compose.yml` aligned with the `DATABASE_URL` loaded from `apps/backend/.env` (fallback to `.env.example`).
+- Creating/adjusting `apps/backend/src/db/db.module.ts` and `apps/backend/src/db/prisma.service.ts`.
+- `apps/backend/test/query-budget.ts`: `expectQueryBudget(prisma.client, K, fn)` fails the test when Prisma emits more than K queries during `fn` (`PrismaService` is born with `log: [{ level: 'query', emit: 'event' }]`). It is the per-use-case query budget of rule 11 of `docs/architecture.md`; the e2e generated by `config-new-module` already uses it on the listing.
+- `PrismaService` with the current transactional contract:
+  - implements `TransactionManager<PrismaTransactionContext>`
+  - exposes `runInTransaction`
+  - defines `PrismaTransactionContext` with `client: Prisma.TransactionClient`.
+- Adding `DbModule` to `apps/backend/src/app.module.ts` when missing.
 
 ## Notes
 
-- O script é idempotente: pode ser executado várias vezes sem duplicar estrutura.
-- O script instala usando o nome real do workspace lido de `apps/backend/package.json` (fallback: `apps/backend`).
-- Após criar modelos reais, remover `prisma/models/bootstrap.model.prisma` (se existir) e gerar nova migration.
-- Para ambientes locais de desenvolvimento, após ajustes no schema, executar o fluxo completo:
-  - `npx prisma migrate dev && npx prisma generate && npx prisma db seed` (nunca `migrate reset`: o Prisma o recusa a um agente; banco limpo é `npm run db:scratch`)
-- Em backends já evoluídos, o script evita regressão de `seed/main.ts` para template neutro quando o arquivo já estiver no padrão moderno com tasks registradas.
-- Consultar `references/prisma-init-checklist.md` para checklist operacional.
+- The script is idempotent: it can be run many times without duplicating structure.
+- The script installs using the actual workspace name read from `apps/backend/package.json` (fallback: `apps/backend`).
+- After creating real models, remove `prisma/models/bootstrap.model.prisma` (if it exists) and generate a new migration.
+- For local development environments, after schema changes, run the full flow:
+  - `npx prisma migrate dev && npx prisma generate && npx prisma db seed` (never `migrate reset`: Prisma refuses it to an agent; a clean database is `npm run db:scratch`)
+- In backends that have already evolved, the script avoids regressing `seed/main.ts` to the neutral template when the file is already in the modern pattern with registered tasks.
+- See `references/prisma-init-checklist.md` for the operational checklist.
 
 ## Risk Logging Guardrails
 
-- Registrar fatos de execucao em `.log/skills.log` com marcador no inicio da linha.
-- Marcadores minimos esperados: `[CMD]`, `[FILE_CREATE]`, `[FILE_UPDATE]`, `[FILE_DELETE]`, `[DIR_CREATE]`, `[RISK]`, `[FAIL]`, `[AI]`.
-- Sempre registrar `[RISK]` quando houver sobrescrita, exclusao, rename/move, ou fallback forcado em arquivos/pastas.
-- Toda falha inesperada deve gerar `[FAIL]` com descricao factual curta do evento.
-- Operacoes de terminal e alteracoes de arquivos devem passar pelos utilitarios compartilhados em `../utils` para manter rastreabilidade consistente.
+- Record execution facts in `.log/skills.log` with a marker at the start of the line.
+- Minimum expected markers: `[CMD]`, `[FILE_CREATE]`, `[FILE_UPDATE]`, `[FILE_DELETE]`, `[DIR_CREATE]`, `[RISK]`, `[FAIL]`, `[AI]`.
+- Always record `[RISK]` when there is an overwrite, deletion, rename/move, or forced fallback on files/folders.
+- Every unexpected failure must produce `[FAIL]` with a short factual description of the event.
+- Terminal operations and file changes must go through the shared utilities in `../utils` to keep traceability consistent.
 

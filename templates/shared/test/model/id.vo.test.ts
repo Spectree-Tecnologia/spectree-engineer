@@ -10,8 +10,8 @@ test('throws when creating an invalid id', () => {
 });
 
 test('creates a new valid id from an existing id', () => {
-  const valor = Id.createUUID();
-  const id = new Id(valor);
+  const value = Id.createUUID();
+  const id = new Id(value);
   expect(id.value).toHaveLength(36);
 });
 

@@ -64,7 +64,7 @@ export function DashboardRankingListCard({
                 options={[...limitOptions]}
                 value={selectedLimitValue}
                 onChange={setSelectedLimitValue}
-                placeholder="Qtd. itens"
+                placeholder="No. of items"
               />
             </div>
 
@@ -95,13 +95,13 @@ export function DashboardRankingListCard({
           <div className="space-y-3">
             {isLoading ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-zinc-500">
-                Carregando {title.toLowerCase()}...
+                Loading {title.toLowerCase()}...
               </div>
             ) : null}
 
             {!isLoading && items.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-zinc-500">
-                Nenhum {emptyLabel} encontrado para os ultimos {selectedMonths} meses.
+                No {emptyLabel} found for the last {selectedMonths} months.
               </div>
             ) : null}
 

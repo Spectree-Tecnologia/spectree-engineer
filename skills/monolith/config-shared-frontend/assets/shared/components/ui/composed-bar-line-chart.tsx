@@ -26,7 +26,7 @@ type ComposedBarLineChartProps<TData extends ChartDatum> = {
 
 const DEFAULT_EMPTY_STATE = (
   <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] text-sm text-zinc-500">
-    Nenhum dado disponível para exibir no gráfico.
+    No data available to display in the chart.
   </div>
 );
 
@@ -35,8 +35,8 @@ export function ComposedBarLineChart<TData extends ChartDatum>({
   xKey,
   barKey,
   lineKey,
-  barLabel = 'Barras',
-  lineLabel = 'Linha',
+  barLabel = 'Bars',
+  lineLabel = 'Line',
   barColor = '#f97316',
   lineColor = '#22c55e',
   height = 320,
@@ -51,7 +51,7 @@ export function ComposedBarLineChart<TData extends ChartDatum>({
       return valueFormatter(value, dataKey);
     }
 
-    return new Intl.NumberFormat('pt-BR').format(value);
+    return new Intl.NumberFormat('en-US').format(value);
   };
 
   if (data.length === 0) {

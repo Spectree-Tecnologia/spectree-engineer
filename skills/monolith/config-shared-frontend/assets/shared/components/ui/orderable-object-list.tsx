@@ -105,7 +105,7 @@ export function OrderableObjectList<TItem>({
           className,
         )}
       >
-        {emptyState ?? 'Nenhum item adicionado.'}
+        {emptyState ?? 'No items added.'}
       </div>
     );
   }
@@ -131,8 +131,8 @@ export function OrderableObjectList<TItem>({
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label={labels?.moveUp ?? 'Mover item para cima'}
-                  title={labels?.moveUp ?? 'Mover para cima'}
+                  aria-label={labels?.moveUp ?? 'Move item up'}
+                  title={labels?.moveUp ?? 'Move up'}
                   disabled={disabled || index === 0}
                   onClick={() => handleMoveUp(index)}
                 >
@@ -142,8 +142,8 @@ export function OrderableObjectList<TItem>({
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label={labels?.moveDown ?? 'Mover item para baixo'}
-                  title={labels?.moveDown ?? 'Mover para baixo'}
+                  aria-label={labels?.moveDown ?? 'Move item down'}
+                  title={labels?.moveDown ?? 'Move down'}
                   disabled={disabled || index === items.length - 1}
                   onClick={() => handleMoveDown(index)}
                 >
@@ -153,8 +153,8 @@ export function OrderableObjectList<TItem>({
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label={labels?.remove ?? 'Excluir item'}
-                  title={labels?.remove ?? 'Excluir'}
+                  aria-label={labels?.remove ?? 'Delete item'}
+                  title={labels?.remove ?? 'Delete'}
                   disabled={disabled}
                   onClick={() => handleRemove(index)}
                 >

@@ -2,7 +2,7 @@
 
 ## skills/engineering — Matt Pocock, https://github.com/mattpocock/skills (MIT)
 
-Vendored at commit a496f55 (2026-10-29), adapted: `disable-model-invocation` removed where the orchestrator must call the skill. `to-tickets` is rewritten for Goal Driven Development (0.23.0): the source is the goal contract, the author is the `full-stack-developer` that plans the goal, the user is not asked about the breakdown, and the tickets are local files; the vertical-slice rules, the blocking edges and the expand and contract sequence are Matt Pocock's.
+Vendored at commit a496f55 (2026-10-29), adapted: `disable-model-invocation` removed where the orchestrator must call the skill. `to-tickets` is rewritten for Goal-Driven Development (0.23.0): the source is the goal contract, the author is the `full-stack-developer` that plans the goal, the user is not asked about the breakdown, and the tickets are local files; the vertical-slice rules, the blocking edges and the expand and contract sequence are Matt Pocock's.
 
 MIT License
 
@@ -38,7 +38,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 ## skills/design/to-wireframe — rtadewald, https://github.com/rtadewald/skills/tree/main/to-wireframe
 
-Vendored at commit 82fe5ed (2026-10-30), adapted: `disable-model-invocation` removed so the `ui-ux-designer` agent can call it. **The source repository carries no license file** at that commit: the author keeps copyright, and this copy rests on the founder's own use of the skill and the founder's request to ship it with the plugin. Before redistributing the plugin beyond Spectree, get the author's written permission or a license in the repository, and record it here.
+Vendored at commit 82fe5ed (2026-10-30), adapted: `disable-model-invocation` removed so the `ui-ux-designer` agent can call it, and translated from Portuguese to English (0.37.0). **The source repository carries no license file** at that commit: the author keeps copyright, and this copy rests on the founder's own use of the skill and the founder's request to ship it with the plugin. Before redistributing the plugin beyond Spectree, get the author's written permission or a license in the repository, and record it here.
 
 ## Rule 15 of ARCHITECTURE.md and the lean parts of the cards — Dietrich Gebert, https://github.com/DietrichGebert/ponytail (MIT)
 

@@ -1,14 +1,14 @@
 ---
-description: O quality-engineer, em modo contrato, ataca um contrato antes de existir código — aponta o sistema errado que passa na prova do critério 1 (o 404 afirmado sem a caixa de saída vazia), o caso não nomeado da lista de recusa do critério 2 e a prova que não decide o critério 3.
+description: The quality-engineer, in contract mode, attacks a contract before any code exists — it points out the wrong system that passes criterion 1's proof (the 404 asserted without the empty outbox), the unnamed case of criterion 2's refusal list and the proof that does not decide criterion 3.
 tags: [quality-engineer, contract]
 max_turns: 12
 timeout_seconds: 900
 allowed_tools: [Agent, Read, Glob, Grep, Skill]
 ---
-Despache o agente `spectree-engineer:quality-engineer` com a missão abaixo, textualmente, e responda com o relato dele na íntegra — sem resumir, sem comentar, sem acrescentar nada.
+Dispatch the agent `spectree-engineer:quality-engineer` with the mission below, verbatim, and answer with its report in full — without summarizing, without commenting, without adding anything.
 
-**Missão:** modo contrato. O contrato `docs/goals/second-copy.md` acabou de ser escrito e ainda não existe código: diga onde ele quebra.
-**Critério de saída verificável:** o relato no formato do modo contrato do seu card, um bloco por critério.
-**Leitura obrigatória:** `docs/architecture.md`; `GLOSSARY.md`; o contrato.
-**Guard-rails:** só leitura; este workspace não tem git nem Bash, e não há código para ler.
-**Teto:** 3 tentativas.
+**Mission:** contract mode. The contract `docs/goals/second-copy.md` has just been written and no code exists yet: say where it breaks.
+**Verifiable exit criterion:** the report in the format of your card's contract mode, one block per criterion.
+**Required reading:** `docs/architecture.md`; `GLOSSARY.md`; the contract.
+**Guard-rails:** read only; this workspace has no git and no Bash, and there is no code to read.
+**Ceiling:** 3 attempts.

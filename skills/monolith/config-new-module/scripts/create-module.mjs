@@ -88,49 +88,10 @@ function toPosixPath(value) {
   return value.replace(/\\/g, '/');
 }
 
-const MODULE_MAIN_MENU_LABELS = {
-  accounts: 'Contas',
-  auth: 'Autenticação',
-  autenticacao: 'Autenticação',
-  categories: 'Categorias',
-  'credit-cards': 'Cartões',
-  cartoes: 'Cartões',
-  example: 'Exemplos',
-  examples: 'Exemplos',
-  'finance-hub': 'Hub Financeiro',
-  recurring: 'Recorrentes',
-  statements: 'Extratos',
-  transactions: 'Transações',
-  transacoes: 'Transações',
-};
-
-const MODULE_MENU_WORD_ACCENT_OVERRIDES = {
-  aplicacao: 'Aplicação',
-  autenticacao: 'Autenticação',
-  cartoes: 'Cartões',
-  categorias: 'Categorias',
-  configuracoes: 'Configurações',
-  conexoes: 'Conexões',
-  consolidacao: 'Consolidação',
-  conciliacao: 'Conciliação',
-  creditos: 'Créditos',
-  diagnostico: 'Diagnóstico',
-  estagio: 'Estágio',
-  extratos: 'Extratos',
-  historico: 'Histórico',
-  informacoes: 'Informações',
-  integracoes: 'Integrações',
-  modulo: 'Módulo',
-  notificacoes: 'Notificações',
-  parametros: 'Parâmetros',
-  permissoes: 'Permissões',
-  relatorios: 'Relatórios',
-  revisao: 'Revisão',
-  transacoes: 'Transações',
-  usuarios: 'Usuários',
-  validacao: 'Validação',
-  variacoes: 'Variações',
-  visao: 'Visão',
+// The menu label is the English title case of the module slug (`credit-cards` → `Credit Cards`);
+// this map holds only the slugs where title case reads wrong.
+const MODULE_MAIN_MENU_LABEL_OVERRIDES = {
+  auth: 'Authentication',
 };
 
 const MODULE_MAIN_MENU_ICONS = {
@@ -175,16 +136,13 @@ function toTitleCaseFromKebab(value) {
     .filter(Boolean)
     .map((part) => {
       const normalizedPart = part.toLowerCase();
-      if (MODULE_MENU_WORD_ACCENT_OVERRIDES[normalizedPart]) {
-        return MODULE_MENU_WORD_ACCENT_OVERRIDES[normalizedPart];
-      }
       return normalizedPart.charAt(0).toUpperCase() + normalizedPart.slice(1);
     })
     .join(' ');
 }
 
 function resolveMainMenuLabel(moduleName) {
-  return MODULE_MAIN_MENU_LABELS[moduleName] || toTitleCaseFromKebab(moduleName);
+  return MODULE_MAIN_MENU_LABEL_OVERRIDES[moduleName] || toTitleCaseFromKebab(moduleName);
 }
 
 function resolveMainMenuIcon(moduleName) {
@@ -329,7 +287,7 @@ async function ensureFrontendNavigationMenuEntry({ navigationLayoutPath, moduleN
 
   const iconComponent = resolveMainMenuLucideIcon(moduleName);
   const label = resolveMainMenuLabel(moduleName);
-  logger.ai(`icon and PT-BR label resolved deterministically for the ${moduleName} module: ${label} (${iconComponent}).`);
+  logger.ai(`icon and English label resolved deterministically for the ${moduleName} module: ${label} (${iconComponent}).`);
 
   const newItem = `{ id: '${moduleName}', label: '${label}', href: '${expectedHref}', icon: ${iconComponent}, match: 'prefix' }`;
   const inner = source.slice(itemsOpenBracketIndex + 1, itemsCloseBracketIndex);
@@ -742,7 +700,7 @@ export function ${frontendDashboardComponentName}() {
     <section className="space-y-1">
       <h1 className="text-2xl font-semibold tracking-tight">${moduleClassName} Dashboard</h1>
       <p className="text-sm text-muted-foreground">
-        Estrutura inicial do módulo ${moduleName}.
+        Initial structure of the ${moduleName} module.
       </p>
     </section>
   );

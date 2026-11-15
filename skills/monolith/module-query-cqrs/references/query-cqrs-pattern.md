@@ -1,39 +1,39 @@
 # Query CQRS Pattern
 
-## Quando usar Query (CQRS)
+## When to use a Query (CQRS)
 
-- Leitura para retornar dados ao front/API.
-- Projeções com paginação, filtros, agregações e joins.
-- Formato de saída orientado ao consumidor (DTO), sem obrigar retorno da entidade completa.
+- Reads that return data to the front end/API.
+- Projections with pagination, filters, aggregations and joins.
+- Consumer-oriented output shape (DTO), without requiring the full entity to be returned.
 
-## Quando usar Repository (comando)
+## When to use a Repository (command)
 
-- Fluxos de escrita: create/update/delete.
-- Leitura para preservar invariantes antes de comando (ex.: `findById` retornando entidade).
-- Regras de domínio de escrita com `Entity`/`tryCreate`/`cloneWith`.
+- Write flows: create/update/delete.
+- Reads that preserve invariants before a command (e.g. `findById` returning an entity).
+- Write-side domain rules with `Entity`/`tryCreate`/`cloneWith`.
 
-## DTO em Query: regra de modelagem
+## DTO in a Query: modeling rule
 
-- Não estender a classe da entidade.
-- Opções válidas:
-  - Derivar de `*Props` da entidade com adaptação:
-    - exemplo: `interface RoleDTO extends Omit<RoleProps, "permissionIds"> { permissions: ... }`
-  - Criar DTO totalmente independente quando a projeção exigir.
-- Escolher a opção de menor acoplamento para o caso.
+- Do not extend the entity class.
+- Valid options:
+  - Derive from the entity's `*Props` with adaptation:
+    - example: `interface RoleDTO extends Omit<RoleProps, "permissionIds"> { permissions: ... }`
+  - Create a fully independent DTO when the projection requires it.
+- Choose the option with the least coupling for the case.
 
-## Paths de referência
+## Reference paths
 
-- Interfaces de query em dominio:
+- Query interfaces in the domain:
   - `modules/auth/src/user/query/find-user-by-id.query.ts`
   - `modules/product/src/product/query/find-many-products-with-filters.query.ts`
   - `modules/auth/src/audit/query/find-auth-login-overview.query.ts`
-- Quem consome a query é o controller, direto (`apps/backend/src/modules/<m>/<m>.controller.ts`): leitura nunca passa por use case, e o `check-boundaries` recusa `use-case/find-*`, `list-*`, `get-*`, `search-*` e `count-*` (regra 4).
-- Implementações no adapter (Prisma):
+- The query's consumer is the controller, directly (`apps/backend/src/modules/<m>/<m>.controller.ts`): a read never goes through a use case, and `check-boundaries` rejects `use-case/find-*`, `list-*`, `get-*`, `search-*` and `count-*` (rule 4).
+- Implementations in the adapter (Prisma):
   - `apps/backend/src/modules/auth/user.prisma.ts`
   - `apps/backend/src/modules/product/product.prisma.ts`
   - `apps/backend/src/modules/auth/audit.prisma.ts`
 
-## Contrato esperado
+## Expected contract
 
 ```ts
 export interface FindXxxQuery {
@@ -41,29 +41,29 @@ export interface FindXxxQuery {
 }
 ```
 
-- `InputDTO` pode ser primitivo, objeto de filtro ou paginação.
-- `OutputDTO` pode ser item único, coleção paginada, painel agregado etc.
+- `InputDTO` may be a primitive, a filter object or pagination.
+- `OutputDTO` may be a single item, a paginated collection, an aggregated panel, etc.
 
-## Checklist de implementação
+## Implementation checklist
 
-- [ ] Caso é leitura (não comando).
-- [ ] Interface `*Query` está no `dominio`.
-- [ ] `execute` retorna `Promise<Result<DTO>>`.
-- [ ] DTO está alinhado com necessidade do consumidor.
-- [ ] Use case de leitura mapeia `isFailure` para erro de domínio quando necessário.
-- [ ] Adapter de infraestrutura implementa a interface sem vazar detalhes do banco.
+- [ ] The case is a read (not a command).
+- [ ] The `*Query` interface is in the domain.
+- [ ] `execute` returns `Promise<Result<DTO>>`.
+- [ ] The DTO is aligned with the consumer's need.
+- [ ] The read use case maps `isFailure` to a domain error when needed.
+- [ ] The infrastructure adapter implements the interface without leaking database details.
 
-## Estratégia de testes
+## Testing strategy
 
-- Query/use case retorna dados esperados em cenário feliz.
-- Cenário de vazio/not found.
-- Cenário de falha da query (erro técnico ou dados inexistentes).
-- Casos de paginação/filtros.
-- Se houver formatação adicional no use case (ex.: preço formatado), testar projeção final.
+- The query/use case returns the expected data in the happy path.
+- Empty/not found scenario.
+- Query failure scenario (technical error or nonexistent data).
+- Pagination/filter cases.
+- If there is additional formatting in the use case (e.g. formatted price), test the final projection.
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Retornar entidade em query voltada a API quando DTO era o contrato certo.
-- Colocar regra de escrita numa query.
-- Acoplar DTO de leitura à estrutura de banco.
-- Misturar responsabilidades (query fazendo comando).
+- Returning an entity in an API-facing query when a DTO was the right contract.
+- Putting a write rule in a query.
+- Coupling the read DTO to the database structure.
+- Mixing responsibilities (a query performing a command).

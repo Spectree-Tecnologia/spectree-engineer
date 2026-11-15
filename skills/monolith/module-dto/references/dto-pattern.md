@@ -1,61 +1,61 @@
 # DTO Pattern
 
-## Tipos de DTO
+## DTO types
 
 - Input DTO:
-  - entrada de comando/use case/filtros.
-  - exemplos: `FindAllUsersInDTO`, `ProductFiltersDTO`.
+  - input of a command/use case/filters.
+  - examples: `FindAllUsersInDTO`, `ProductFiltersDTO`.
 - Output DTO:
-  - saída de use case/controlador.
-  - exemplos: `FindAllUsersOutDTO`, `ProductListDTO`.
+  - output of a use case/controller.
+  - examples: `FindAllUsersOutDTO`, `ProductListDTO`.
 - Query DTO (CQRS):
-  - projeção de leitura para API/front.
-  - exemplos: `UserDTO`, `RoleDTO`, `ProductDetailsDTO`.
+  - read projection for the API/front end.
+  - examples: `UserDTO`, `RoleDTO`, `ProductDetailsDTO`.
 
-## Regra de modelagem de Query DTO
+## Query DTO modeling rule
 
-- Não estender classe de entidade.
-- Opções válidas:
-  - Derivar de `*Props` com adaptação (`Omit`, `Pick`, campos enriquecidos) quando necessário.
-  - Criar DTO próprio e independente quando a projeção exigir.
+- Do not extend an entity class.
+- Valid options:
+  - Derive from `*Props` with adaptation (`Omit`, `Pick`, enriched fields) when needed.
+  - Create a dedicated, independent DTO when the projection requires it.
 
-Exemplos reais:
+Real examples:
 
 - `modules/auth/src/user/dto/user.dto.ts`
-  - `UserDTO extends Omit<UserProps, "roleIds">` + `roles` e `permissions`.
+  - `UserDTO extends Omit<UserProps, "roleIds">` + `roles` and `permissions`.
 - `modules/auth/src/role/dto/role.dto.ts`
   - `RoleDTO extends Omit<RoleProps, "permissionIds">` + `permissions`.
 - `modules/product/src/product/dto/product-details.dto.ts`
   - `ProductDetailsDTO extends Omit<ProductProps, "subcategoryId" | "brandId">` + `category/subcategory/brand`.
 
-## Convenções úteis observadas
+## Useful conventions observed
 
-- Entrada/saída com sufixos claros:
+- Input/output with clear suffixes:
   - `FindAllXxxInDTO`
   - `FindAllXxxOutDTO`
   - `FindAllXxxMetaDTO`
-- Itens de lista separados:
+- Separate list items:
   - `ProductListItem`, `BranchListItem`.
-- Filtros dedicados:
+- Dedicated filters:
   - `ProductFiltersDTO`, `BrandFiltersDTO`.
 
-## Fronteiras
+## Boundaries
 
-- DTO não carrega regra de domínio.
-- DTO não deve depender de Prisma/ORM.
-- DTO de leitura pode ser enriquecido para front (ex.: `formattedPrice`), desde que a transformação esteja em query/use case.
+- A DTO carries no domain rule.
+- A DTO must not depend on Prisma/ORM.
+- A read DTO may be enriched for the front end (e.g. `formattedPrice`), as long as the transformation lives in the query/use case.
 
 ## Checklist
 
-- [ ] Tipo de DTO identificado (input/output/query).
-- [ ] Nomes seguem convenção de intenção.
-- [ ] Tipagem adequada ao consumidor final.
-- [ ] Sem acoplamento à entidade concreta ou ORM.
-- [ ] Em CQRS, query retorna DTO de leitura e não entidade quando projeção é o contrato.
+- [ ] DTO type identified (input/output/query).
+- [ ] Names follow the intent convention.
+- [ ] Typing suited to the final consumer.
+- [ ] No coupling to the concrete entity or ORM.
+- [ ] In CQRS, the query returns a read DTO and not an entity when the projection is the contract.
 
-## Armadilhas comuns
+## Common pitfalls
 
-- Usar entidade como payload de API sem necessidade.
-- Misturar campos de comando com campos de leitura no mesmo DTO.
-- Acoplar DTO a estrutura de banco.
-- Não separar metadados de paginação dos dados.
+- Using an entity as the API payload without need.
+- Mixing command fields with read fields in the same DTO.
+- Coupling the DTO to the database structure.
+- Not separating pagination metadata from the data.

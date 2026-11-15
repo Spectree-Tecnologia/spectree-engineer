@@ -16,7 +16,7 @@ A [Claude Code](https://code.claude.com) plugin built on **Goal-Driven Developme
 
 </div>
 
-> **Language note.** The orchestrator talks to you in **Brazilian Portuguese (pt-BR)** today. Everything it produces (contracts, code, tests, commits, PRs) is in English. An English conversation mode is planned; see [Roadmap and limits](#roadmap-and-limits).
+> **Your language, English artifacts.** On first contact the Engineer asks, in English, which language you want to talk in, and talks to you in that language from then on. Everything else the squad produces is in English: contracts, code, tests, docs, commits and PRs.
 
 ## Goal-Driven Development (GDD)
 
@@ -155,7 +155,7 @@ In the Claude Code prompt, describe the outcome you want:
 /spectree-engineer:engineer I want a small app where a single user keeps a list of books they have read, with a rating for each
 ```
 
-The Engineer starts the interview. It asks one question at a time, each with a recommendation, then writes `docs/roadmap.md` for your approval. After you approve, the `platform-engineer` bootstraps the monorepo (Turborepo, NestJS, Prisma + PostgreSQL, Next.js, Vitest), and the first goal, always the `identity` module, starts on its own branch.
+The first time, the Engineer asks which language you want to talk in. It saves your answer in `.engineer.local.json`, which is gitignored because the choice is per person, then picks up your request. Next comes the interview: one question at a time, each with a recommendation, then writes `docs/roadmap.md` for your approval. After you approve, the `platform-engineer` bootstraps the monorepo (Turborepo, NestJS, Prisma + PostgreSQL, Next.js, Vitest), and the first goal, always the `identity` module, starts on its own branch.
 
 Run the command with no arguments at any time to see the project's state, the next step and any pending decision:
 
@@ -180,6 +180,7 @@ claude plugin update spectree-engineer
 - **CI that fits the GitHub Free plan:** one workflow, one job, never on push. Fast checks run on PR pushes, e2e and Playwright smoke run when a PR is ready, the full suite runs nightly, and a pre-release run gates the p95.
 - **Disposable databases:** `npm run db:scratch -- <name> -- <command>` creates, migrates, seeds and drops a database around any command, whatever its exit code.
 - **Mutation testing** per module with StrykerJS.
+- **English UI by default**, with error messages in English and Portuguese (`shared/i18n`) and a place for more locales.
 
 ## Repository layout
 
@@ -214,7 +215,6 @@ The panel never touches the network. Function hooks are an early-access Claude C
 
 Honest limits of the current release:
 
-- **Conversation language.** The command, the agent cards and the monolith skills are written in pt-BR, and the Engineer talks to you in pt-BR. Translating them, with the Engineer answering in your language, is the next planned change.
 - **One architecture.** The plugin generates one shape: the TypeScript modular monolith described in [ARCHITECTURE.md](ARCHITECTURE.md). It does not adapt to an existing codebase with a different layout.
 - **Some rules are read, not enforced.** Seven architecture rules are enforced by a script and one by the perf and e2e suites. The rest rely on the plan gate and review, and the [CHANGELOG](CHANGELOG.md) lists what each release did not prove.
 - **Cost.** A full goal spends many tokens on Opus. `npm run goal -- spent <slug>` reports where they went.

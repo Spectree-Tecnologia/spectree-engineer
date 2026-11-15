@@ -116,15 +116,15 @@ test('the scope step chooses the Playwright smoke from the diff', { skip: !bash 
 
 test('the squad reads the moments: a red p95 is reported, never a round', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*O p95 reporta, não bloqueia:\*\* a tabela vai à evidência como `reported`/);
-  assert.match(command, /viram item do roadmap, nunca rodada\. Quem bloqueia é o run `pre-release`, antes do deploy\./);
-  assert.match(command, /toda camada determinística sai 0, menos o p95\./);
-  assert.match(command, /O PR abre pronto, nunca em draft: o run de PR pronto é o gate do merge\./);
-  assert.doesNotMatch(command, /perf vermelho vai ao full-stack-developer/);
+  assert.match(command, /\*\*The p95 reports, it does not block:\*\* the table goes to the evidence as `reported`/);
+  assert.match(command, /become roadmap items, never a round\. What blocks is the `pre-release` run, before the deploy\./);
+  assert.match(command, /every deterministic layer exits 0, except the p95\./);
+  assert.match(command, /The PR opens ready, never as a draft: the ready-PR run is the merge gate\./);
+  assert.doesNotMatch(command, /red perf goes to the full-stack-developer/);
   const platform = read('agents/platform-engineer.md');
-  assert.match(platform, /\*\*um workflow, um job, nunca em push\*\*/);
+  assert.match(platform, /\*\*one workflow, one job, never on push\*\*/);
   assert.match(platform, /gh workflow run ci\.yml --ref main -f stage=pre-release/);
-  assert.match(platform, /\*\*sem `--` antes dos nomes\*\*/);
-  assert.match(read('agents/quality-engineer.md'), /Um p95 acima do orçamento não é achado: achado é a rota sem número/);
+  assert.match(platform, /\*\*without `--` before the names\*\*/);
+  assert.match(read('agents/quality-engineer.md'), /A p95 over budget is not a finding: the finding is the route without a number/);
   assert.match(read('ARCHITECTURE.md'), /gates the `pre-release` run before production/);
 });

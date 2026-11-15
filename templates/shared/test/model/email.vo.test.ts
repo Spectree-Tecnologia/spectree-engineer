@@ -3,17 +3,17 @@ import { Email, ValidationError } from '../../src/index.js';
 const error = 'email.invalid';
 
 test('creates a valid email', () => {
-  const email = new Email('fulano@zmail.com');
-  expect(email.value).toBe('fulano@zmail.com');
+  const email = new Email('someone@zmail.com');
+  expect(email.value).toBe('someone@zmail.com');
 });
 
 test('returns the user name', () => {
-  const email = new Email('fulano@zmail.com');
-  expect(email.username).toBe('fulano');
+  const email = new Email('someone@zmail.com');
+  expect(email.username).toBe('someone');
 });
 
 test('returns the domain', () => {
-  const email = new Email('fulano@zmail.com');
+  const email = new Email('someone@zmail.com');
   expect(email.domain).toBe('zmail.com');
 });
 
@@ -25,8 +25,8 @@ test('validates an email', () => {
 test('throws when creating an invalid email', () => {
   expect(() => new Email(undefined as any)).toThrow(error);
   expect(() => new Email('')).toThrow(error);
-  expect(() => new Email('fulano')).toThrow(error);
-  expect(() => new Email('fulano@zmail')).toThrow(error);
+  expect(() => new Email('someone')).toThrow(error);
+  expect(() => new Email('someone@zmail')).toThrow(error);
 });
 
 test('tries to create an email and succeeds', () => {

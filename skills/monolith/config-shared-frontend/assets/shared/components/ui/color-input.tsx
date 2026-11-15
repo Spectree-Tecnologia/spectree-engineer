@@ -51,7 +51,7 @@ export function ColorInput({ id, value, onChange, disabled, placeholder = '#22C5
           disabled={disabled}
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
           onChange={(event) => onChange(event.target.value.toUpperCase())}
-          aria-label="Selecionar cor"
+          aria-label="Select color"
         />
       </div>
 

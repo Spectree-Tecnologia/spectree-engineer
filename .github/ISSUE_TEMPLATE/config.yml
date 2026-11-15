@@ -5,4 +5,4 @@ contact_links:
     about: Please report vulnerabilities privately, never in a public issue. See SECURITY.md.
   - name: How it works
     url: https://github.com/Spectree-Tecnologia/spectree-engineer/blob/main/docs/how-it-works.md
-    about: The reference for Goal Driven Development, the squad and the gates.
+    about: The reference for Goal-Driven Development (GDD), the squad and the gates.

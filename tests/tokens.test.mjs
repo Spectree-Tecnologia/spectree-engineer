@@ -16,28 +16,28 @@ const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
 
 test('a full-stack-developer builds one ticket, and leaves the next one what it needs', () => {
   const card = read('agents/full-stack-developer.md');
-  assert.match(card, /cada missão sua é \*\*uma parte de um objetivo\*\*/);
-  assert.match(card, /\*\*Um ticket por missão:\*\*/);
-  assert.match(card, /`Status: done`, `Done: <sha>` e `Next needs:`/);
-  assert.match(card, /com `to-tickets` para quebrar o objetivo/);
+  assert.match(card, /each mission of yours is \*\*one part of a goal\*\*/);
+  assert.match(card, /\*\*One ticket per mission:\*\*/);
+  assert.match(card, /`Status: done`, `Done: <sha>` and `Next needs:`/);
+  assert.match(card, /with `to-tickets` to break the goal down/);
   // a long mission costs more per call: the card says what to do when the panel says so
-  assert.match(card, /\*\*Missão curta\.\*\*[^\n]*Quando o painel recusar uma chamada com o aviso de handoff[^\n]*relate `handoff`/);
-  assert.doesNotMatch(card, /voltam para você mesmo/);
+  assert.match(card, /\*\*Short mission\.\*\*[^\n]*When the panel refuses a call with the handoff warning[^\n]*report `handoff`/);
+  assert.doesNotMatch(card, /come back to you yourself/);
 });
 
 test('the command dispatches a new full-stack-developer for each ticket, and a ticket is fixed by the one that built it', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /despache um full-stack-developer \*\*novo\*\* para o primeiro da frontier/);
-  assert.match(command, /despache um full-stack-developer novo com os achados, literais/);
+  assert.match(command, /dispatch a \*\*new\*\* full-stack-developer for the first of the frontier/);
+  assert.match(command, /dispatch a new full-stack-developer with the findings, literal/);
   // 0.30.0: three continuations, each of an agent whose context already holds what the message is about. Measured on
   // On the pilot project on 2026-11-13: fixes by a full-stack-developer starting cold were 44% of ci-time's tokens, and a one-line fix
   // cost 3.8M in ts7. The unit is still one ticket per agent: a fix is of the agent's own ticket, never of the goal.
-  assert.match(command, /a continuação \(SendMessage\) existe em três casos: o plano que o gate devolveu a quem o escreveu, a correção do ticket por quem o construiu, e a reconferência por quem achou/);
+  assert.match(command, /continuation \(SendMessage\) exists in three cases: the plan the gate returned to whoever wrote it, the ticket's fix by whoever built it, and the re-check by whoever found it/);
   // 0.33.0: measured on the pilot project's ci-time-20 (2026-11-14): the planner went on to ticket 01 with 191 thousand tokens of
   // context and its tool-call count already past the handoff point, and handed off after 5 calls
-  assert.match(command, /a missão de quem planejou termina aí: despache um full-stack-developer \*\*novo\*\* para o primeiro ticket da frontier/);
-  assert.doesNotMatch(command, /mande o mesmo full-stack-developer construir o primeiro ticket/);
-  assert.match(command, /ao \*\*mesmo\*\* full-stack-developer que construiu o ticket, pela mesma conversa \(SendMessage\)/);
+  assert.match(command, /the mission of whoever planned ends there: dispatch a \*\*new\*\* full-stack-developer for the first ticket of the frontier/);
+  assert.doesNotMatch(command, /send the same full-stack-developer to build the first ticket/);
+  assert.match(command, /to the \*\*same\*\* full-stack-developer that built the ticket, through the same conversation \(SendMessage\)/);
 });
 
 test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () => {
@@ -46,9 +46,13 @@ test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () =>
   assert.match(skill, /If you are the orchestrator[^\n]*stop: you never write tickets/);
   assert.match(skill, /Each slice is sized to fit in a single fresh context window/);
   assert.match(skill, /`\.scratch\/<slug>\/issues\/<NN>-<name>\.md`/);
-  assert.match(read('commands/engineer.md'), /quem quebra o trabalho em tickets é o full-stack-developer, olhando o código, nunca você/);
+  assert.match(read('commands/engineer.md'), /the one who breaks the work into tickets is the full-stack-developer, looking at the code, never you/);
   // the unit of work has one name
-  for (const rel of ['commands/engineer.md', ...fs.readdirSync(path.join(plugin, 'agents')).map((name) => `agents/${name}`)]) assert.doesNotMatch(read(rel), /fatia/i, `${rel} still says "fatia"`);
+  // the unit is a ticket in the command and the cards ("vertical slice" stays a term of the to-tickets skill only)
+  for (const rel of ['commands/engineer.md', ...fs.readdirSync(path.join(plugin, 'agents')).map((name) => `agents/${name}`)]) {
+    assert.doesNotMatch(read(rel), /fatia/i, `${rel} still says "fatia"`);
+    assert.doesNotMatch(read(rel), /\bslices?\b/i, `${rel} says "slice" for a ticket`);
+  }
 });
 
 test('a mission is short, and a ticket gets one fix and one re-check', () => {
@@ -60,11 +64,11 @@ test('a mission is short, and a ticket gets one fix and one re-check', () => {
   const command = read('commands/engineer.md');
   // 0.25.0 held `should` findings for the final verification because every fix was a cold mission; with the builder's
   // context alive (0.30.0) one message carries them all, and the loop is bounded instead of the list
-  assert.match(command, /achado de checkpoint \(`blocking`, `should`, `confirmed`\) volta, numa mensagem só e literal/);
-  assert.match(command, /\*\*Uma correção e uma reconferência por ticket\.\*\*/);
-  assert.match(command, /você grava literal em `\.scratch\/<slug>\/open\.md`/);
-  assert.match(command, /com os achados de `open\.md` na missão, literais/);
-  assert.match(command, /Relato `handoff`: um full-stack-developer novo continua o mesmo ticket/);
+  assert.match(command, /checkpoint finding \(`blocking`, `should`, `confirmed`\) goes back, in a single literal message/);
+  assert.match(command, /\*\*One fix and one re-check per ticket\.\*\*/);
+  assert.match(command, /you write literally in `\.scratch\/<slug>\/open\.md`/);
+  assert.match(command, /with the findings of `open\.md` in the mission, literal/);
+  assert.match(command, /A `handoff` report: a new full-stack-developer continues the same ticket/);
   assert.match(read('skills/engineering/to-tickets/SKILL.md'), /about 40 tool calls of work/);
   const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
   // the session is found by the title the app gives it, not only by its opening line
@@ -91,7 +95,7 @@ test('a stopped session is resumed by the panel, never one that ended in an answ
   const resume = read('hooks/engineer-desk/resume.ts');
   assert.match(resume, /export const BACKOFF_MINUTES = \[2, 5, 15, 30, 60, 60, 60, 60, 60\]/);
   assert.match(resume, /one\.percentUsed >= 100 && one\.resetsAt !== undefined/);
-  assert.match(resume, /Se o seu último passo foi uma pergunta ao fundador, repita a pergunta e pare/);
+  assert.match(resume, /If your last step was a question to the founder, repeat the question and stop/);
   // the stop is told apart from a wait for the Founder, and the fixes from the builds
   const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
   assert.match(script, /else if \(row\.isApiErrorMessage\) erroredAt \?\?= ts;/);
@@ -103,12 +107,12 @@ test('the planned proof is attacked at the plan gate, before the code', () => {
   // ci-time: the ticket that built the proof script cost 1.0M tokens to build and 25.6M in three checkpoint rounds,
   // and the attack on the contract, before the plan said how the proof would be built, had cost 0.2M
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*A prova é atacada antes do código\.\*\*[^\n]*despache o \*\*quality-engineer\*\* em modo prova, com o contrato e os tickets/);
-  assert.match(command, /volta na mesma mensagem do gate e vira linha de `Criteria` do ticket/);
+  assert.match(command, /\*\*The proof is attacked before the code\.\*\*[^\n]*dispatch the \*\*quality-engineer\*\* in proof mode, with the contract and the tickets/);
+  assert.match(command, /goes back in the same message as the gate and becomes a `Criteria` line of the ticket/);
   const card = read('agents/quality-engineer.md');
-  assert.match(card, /\*\*Modo prova, no gate do plano\.\*\*/);
-  assert.match(card, /ele aceita por lista fechada, ou recusa o que lembrou de listar\?/);
+  assert.match(card, /\*\*Proof mode, at the plan gate\.\*\*/);
+  assert.match(card, /does it accept by a closed list, or refuse what it remembered to list\?/);
   // the verdict stays independent: the one mission that reads tickets gives none
-  assert.match(card, /É a única missão em que você lê tickets, e nela não há veredito/);
-  assert.match(read('agents/full-stack-developer.md'), /o que o quality-engineer achou na prova planejada vira linha de `Criteria` do ticket/);
+  assert.match(card, /It is the only mission in which you read tickets, and in it there is no verdict/);
+  assert.match(read('agents/full-stack-developer.md'), /what the quality-engineer found in the planned proof becomes a `Criteria` line of the ticket/);
 });

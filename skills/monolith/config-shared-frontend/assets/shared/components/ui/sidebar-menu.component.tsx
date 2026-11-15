@@ -159,7 +159,7 @@ function SidebarMenuContent({ mainItem, sections, collapsed, homeHref = '/' }: S
       <nav className="flex min-h-full flex-col px-2 pb-4">
         <Link
           href={homeHref}
-          aria-label="Ir para o início"
+          aria-label="Go to home"
           className={joinClassNames([
             MENU_HEADER_HEIGHT_CLASS,
             'mb-3 flex shrink-0 items-center border-b border-white/8',
