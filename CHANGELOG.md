@@ -2,6 +2,25 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versão: [SemVer](https://semver.org/lang/pt-BR/) — `MAJOR` quando um projeto gerado pela versão anterior deixa de funcionar com a nova (layout, `skills.config.json`, `ARCHITECTURE.md`), `MINOR` para agente, skill, regra ou passo novo, `PATCH` para correção sem mudança de comportamento. **Todo merge na main é uma versão**: o PR já sobe `version` e escreve a seção dele aqui, e o merge leva a tag.
 
+## [0.35.0] - 2026-11-15
+
+**Três pontos em que o Goal Driven Development dizia uma coisa e o squad praticava outra.** Saíram de uma leitura do repositório inteiro, pedida pelo fundador em 2026-11-15 antes de evoluir o squad. Nenhum foi medido num objetivo: são contradições entre arquivos.
+
+### Fixed
+- **Quem verifica não lê o plano, e o plano ia dentro do diff.** `.scratch/` é versionado no projeto, então o `git diff <baseline>...HEAD` do `quality-engineer` e do `security-engineer` trazia `plan.md`, os tickets e o `decisions.md` de quem construiu. Todo diff de verificação agora exclui a pasta (`-- . ':(exclude).scratch'`): nos dois cards, no passo 8 e no `code-review`. No checkpoint, o Engineer passa os números dos critérios que o ticket avança, lidos de `npm run goal -- graph <slug> --json`, e o `quality-engineer` não abre o ticket: o card dizia que o modo prova era a única missão em que ele lê tickets e, quatro linhas abaixo, mandava ler o ticket.
+- **Um livro de regras para o monólito modular.** O gate do plano só reprova por regra numerada de `docs/architecture.md`, mas a verificação bloqueava por regras que só existiam nos cards: um plano passava no gate e a mesma decisão voltava `blocking` depois do código. Elas viraram as regras 16 a 19 do `ARCHITECTURE.md` (o agregado é a pasta e o nome diz o que o arquivo é, com `src/app/` para o use case de dois agregados; a entidade nasce por `tryCreate` e muda por `cloneWith`; lista paginada com página máxima de 50; controller fino). Os cards do `full-stack-developer` e do `quality-engineer` citam o número, e decisão de como construir só é achado contra regra numerada, `GLOSSARY.md` ou ADR.
+- **O bug tem contrato.** O fluxo de Bug dizia "sem contrato em arquivo" e mandava passar pelo passo 8, que roda `goal check` e `goal prove` sobre `docs/goals/<slug>.md` e entrega o contrato aos dois verificadores. Agora o Engineer grava o contrato mínimo pelo `to-goal` (`Type: fix`, um critério, duas rodadas, `approved by engineer`), o bug segue os passos 5 e 8 a 11 e aparece no `goal stats`. Na principal, roda numa sessão de item.
+
+### Changed
+- **Projeto existente recebe as regras 16 a 19** na próxima vez que um objetivo começa: o `goal-start` as acrescenta ao fim de `docs/architecture.md`, sem reescrever linha que o projeto tem. Código antigo que as contraria só é achado quando o diff de um objetivo o toca.
+- O orçamento de palavras subiu 66 no comando e 118 no conjunto: o contrato do bug, o diff sem `.scratch/` e o número da regra ao lado de cada item que o `quality-engineer` lê. O card do `full-stack-developer` encolheu 34.
+
+### O que não foi provado
+- Nenhum objetivo nem bug rodou com este texto, e os evals não foram rodados.
+- `.scratch/` versionado foi lido dos scripts do scaffold (`goal.mjs`, `ci.yml`, o `.gitignore` gerado), não de um projeto real.
+- As regras 16 a 19 foram tiradas dos cards como estavam. Nenhuma skill de monólito gera `src/app/` nem impõe a página de 50: quem cobra é a leitura.
+- O `check-pr.mjs` ainda aceita branch sem contrato, o que continua certo para um bump de dependência.
+
 ## [0.34.0] - 2026-11-14
 
 **Duas pistas: os tickets livres do grafo rodam ao mesmo tempo.** É a terceira entrega da engenharia de grafo. Medido no `ci-time-20` do SYND em 2026-11-14: o ticket 02 ficou livre e parado pelos 40 minutos do ticket 01, e o ticket 03 pelos 77 minutos do ticket 02 (paralelismo de 1,05), sem que o limite de uso do plano parasse a sessão em 3,8 horas. O mesmo objetivo mostrou a entrega 2 funcionando: o ticket 02 fechou em uma volta de conferência, com 9,8M tokens e 36 minutos depois de construído, contra três voltas, 25,6M e 83 minutos do ticket do mesmo tipo no `ci-time`.
