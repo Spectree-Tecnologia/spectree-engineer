@@ -11,10 +11,11 @@
 //   node <plugin>/skills/monolith/config-project/scripts/goal-start.mjs <slug> --baseline [--e2e]
 //       npm ci when the lockfile is newer than node_modules, then build, test and audit, in UTC as CI; --e2e adds the
 //       backend e2e on a database of its own. Minutes: run it in the background. Writes .scratch/<slug>/baseline.md
-//       and one log per step beside it. Exit 1: the baseline is red, which is a block and never a starting point.
-//       Exit 3: green, and the audit found high or critical.
+//       and one log per step in the system temp folder, outside the repository. Exit 1: the baseline is red, which
+//       is a block and never a starting point. Exit 3: green, and the audit found high or critical.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -67,8 +68,11 @@ if (mode === '--branch') {
 
 // --baseline
 if (rest.some((flag) => flag !== '--e2e')) fail(usage);
-const dir = path.join(root, '.scratch', slug, 'baseline');
+// the raw logs stay outside the repository: .scratch/ is committed with the plan, and an e2e log can hold the
+// request log's tokens (issue 105). baseline.md keeps the exit codes, which are the evidence.
+const dir = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, `baseline-${new Date().toISOString().replace(/[:.]/g, '-')}`);
 fs.mkdirSync(dir, { recursive: true });
+fs.mkdirSync(path.join(root, '.scratch', slug), { recursive: true });
 const lock = path.join(root, 'package-lock.json');
 const installed = path.join(root, 'node_modules', '.package-lock.json');
 const stale = fs.existsSync(lock) && (!fs.existsSync(installed) || fs.statSync(installed).mtimeMs < fs.statSync(lock).mtimeMs);
@@ -111,9 +115,9 @@ fs.writeFileSync(
     '',
     '| Step | Command | Exit | Seconds | Log |',
     '|------|---------|------|---------|-----|',
-    ...rows.map((row) => `| ${row.name} | \`${row.command}\` | ${row.status} | ${row.seconds ?? '-'} | \`.scratch/${slug}/baseline/${row.name}.log\` |`),
+    ...rows.map((row) => `| ${row.name} | \`${row.command}\` | ${row.status} | ${row.seconds ?? '-'} | \`${row.name}.log\`, outside the repository |`),
     '',
   ].join('\n'),
 );
-console.log(`goal-start: baseline of ${sha.slice(0, 8)} is ${verdict}; written to .scratch/${slug}/baseline.md`);
+console.log(`goal-start: baseline of ${sha.slice(0, 8)} is ${verdict}; written to .scratch/${slug}/baseline.md; logs in ${dir}`);
 process.exit(red ? 1 : audit ? 3 : 0);

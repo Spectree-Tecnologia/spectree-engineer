@@ -344,6 +344,9 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     if (!/frontier: 02, 03/.test(freed)) throw new Error('goal graph did not free the tickets that waited for 01');
     if (!/parallel: 02 \+ 03/.test(freed)) throw new Error('goal graph did not say that tickets 02 and 03 may be built at the same time');
     if (!/exit 0\s+ticket 02/.test(run('graph-prove-ticket', 'npm run goal -- graph probe-thing --prove 2'))) throw new Error('goal graph --prove did not run the proof of ticket 02 in UTC');
+    // the walk of the goal, read from the disk: the contract has Evidence, so it is in its verification rounds
+    const walked = run('goal-next', 'npm run goal -- next probe-thing');
+    if (!/goal next: probe-thing/.test(walked) || !/step \d+ /.test(walked)) throw new Error(`goal next did not say where the goal is:${walked.slice(-400)}`);
     const stats = run('goal-stats', 'npm run goal -- stats');
     if (!/probe-thing\s+approved\s+3\s+1\/3\s+1\s+1\s+1\s/.test(stats)) throw new Error(`goal stats did not count the round, the reproof, the user decision and the policy one:${stats.slice(-500)}`);
     // what the goal cost, read from a session's transcript: the wall-clock, the stop at the usage limit, the wait for
