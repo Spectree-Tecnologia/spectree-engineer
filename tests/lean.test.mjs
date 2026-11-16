@@ -85,8 +85,11 @@ test('the prompts stay inside their word budget', () => {
   // (issue 89): a criterion reproved three times at checkpoints stayed on Opus.
   // 0.40.0 raised both by 48 words: step 3's "you write the contract, not its proof", which the panel now enforces.
   // Measured on the pilot project on 2026-11-15: the Engineer's own proof script took 64% of a goal's first hour.
-  const COMMAND = 8667;
-  const SQUAD = 20298;
+  // 0.41.0 replaced the gate chains of steps 7 and 8 by `goal gate` and pointed the state reading at `goal next`; the
+  // rules that came with them (the deterministic layer first and alone, no raw log committed, the quality-engineer not
+  // rerunning a proof green on the sha) left the command 16 words longer and the two together 41.
+  const COMMAND = 8683;
+  const SQUAD = 20339;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

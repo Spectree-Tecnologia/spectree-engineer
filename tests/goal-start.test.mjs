@@ -87,7 +87,12 @@ test('--baseline runs build and test by exit code, writes the record, and a red 
   assert.match(record, /\| build \| `npm run build` \| 0 \|/);
   assert.match(record, /\| test \| `npm test` \| 0 \|/);
   assert.doesNotMatch(record, /\| (install|audit|e2e) \|/, 'no lockfile: nothing to install or audit; no backend: no e2e');
-  assert.ok(fs.existsSync(path.join(green.dir, '.scratch', 'things', 'baseline', 'test.log')));
+  // the raw logs stay outside the repository: .scratch/ is committed, and an e2e log can hold tokens (issue 105)
+  assert.ok(!fs.existsSync(path.join(green.dir, '.scratch', 'things', 'baseline')));
+  assert.match(record, /\| `test\.log`, outside the repository \|/);
+  const logs = ok.out.match(/logs in (.+)$/m)?.[1].trim();
+  assert.ok(logs && fs.existsSync(path.join(logs, 'test.log')), ok.out);
+  assert.ok(!path.resolve(logs).startsWith(path.resolve(green.dir)));
 
   // the tests see UTC, as on the runner
   const utc = project({ build: 'node -e "process.exit(0)"', test: 'node -e "process.exit(process.env.TZ === \'UTC\' ? 0 : 9)"' });

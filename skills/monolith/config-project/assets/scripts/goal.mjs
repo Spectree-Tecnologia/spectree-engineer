@@ -15,6 +15,11 @@
 //                                                  criterion reproved, checkpoints and rounds counted together
 //   npm run goal -- graph <slug> --plan            also, before any code: every ticket says what it touches and its proof
 //   npm run goal -- graph <slug> --prove <ticket>  runs the ticket's own proof, in UTC, and exits with it
+//   npm run goal -- gate <slug> --ticket <n> --since <sha>   a ticket's checkpoint gate, one command after the other,
+//                                                  one exit code (0 green, 1 red, 3 green with a report to read)
+//   npm run goal -- gate <slug> --final [--base <sha>]       the final verification's deterministic layer, the same way;
+//                                                  the raw logs go outside the repository and are never committed
+//   npm run goal -- next <slug> [--json]           where the goal is, read from the disk, and the next action
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
 //   npm run goal -- spent <slug> [--write]         what the goal cost, read from this machine's Claude Code transcripts
 //   npm run goal -- spent <slug> --agents          also one line per subagent: its turns, how its context grew, what filled it
@@ -43,7 +48,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n       npm run goal -- gate <slug> --ticket <n> --since <sha> | --final [--base <sha>]\n       npm run goal -- next <slug> [--json]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
     2,
   );
 
@@ -143,7 +148,7 @@ function parse(file) {
     commands: [...proof.matchAll(/run:\s*`([^`]+)`/g)].map((m) => m[1].trim()),
   }));
   const evidence = rows('evidence').map(([n, round = '', verdict = '', run = '']) => ({ n: Number(n), round, verdict: verdict.toLowerCase().replace(/[*_`]/g, '').trim(), run }));
-  const amendments = rows('amendments').map(([date, n = '', change = '', by = '', follow = '']) => ({ date, n: Number(n), change: change.toLowerCase().split(/[\s:,.]/)[0], by, follow }));
+  const amendments = rows('amendments').map(([date, n = '', change = '', by = '', follow = '']) => ({ date, n: Number(n), change: change.toLowerCase().split(/[\s:,.]/)[0], text: change, by, follow }));
   const sizeLine = (sections.budget ?? []).join('\n').match(/^Size:\s*([\d\s.,]+)\s*changed lines/im);
   const roundsLine = (sections.budget ?? []).join('\n').match(/^Verification rounds:\s*(\d+)/im);
   // "Landed: PR #23, 1842 product lines, CI 27 min", written by the orchestrator when the pull request merges
@@ -181,6 +186,11 @@ function latestVerdict(goal, n) {
   const last = Math.max(...mine.map((row) => Number(row.round)));
   return mine.filter((row) => Number(row.round) === last).at(-1)?.verdict;
 }
+
+// The contract's rounds plus what each `extended` amendment gives: the number in its cell ("extended: 2 more rounds"),
+// one when it names none.
+const roundsAllowed = (goal) =>
+  goal.roundsBudget + goal.amendments.filter((a) => a.change === 'extended').reduce((sum, a) => sum + Number(a.text.match(/\d+/)?.[0] ?? 1), 0);
 
 function lint(goal, ready) {
   const errors = [];
@@ -235,6 +245,9 @@ function lint(goal, ready) {
   }
   if (ready) {
     if (!/^(approved|landed|met)\b/.test(goal.status)) errors.push(`not ready: Status is "${goal.status}"`);
+    // The budget is a stop, not a count: a round past it needs the founder's `extended` amendment.
+    const rounds = Math.max(0, ...goal.evidence.map((row) => Number(row.round)).filter(Number.isFinite));
+    if (rounds > roundsAllowed(goal)) errors.push(`not ready: round ${rounds} is past the budget of ${roundsAllowed(goal)} rounds, and no "extended" amendment gives it`);
     for (const criterion of goal.criteria) {
       // moved to a continuation goal: the row stays so the numbers never change, and the verdict is given there
       if (goal.amendments.some((a) => a.n === criterion.n && a.change === 'moved')) continue;
@@ -892,11 +905,8 @@ function readTickets(slug) {
     });
 }
 
-function graph() {
-  const flags = parseArgs(args, ['--prove'], ['--plan', '--json']);
-  if (flags.positional.length !== 1) usage();
-  const slug = flags.positional[0];
-  const goal = parse(slugFile(slug));
+// The graph of a goal, read once: what `graph` prints and what `next` walks.
+function graphOf(slug, goal, plan = false) {
   const every = readTickets(slug);
   const tickets = every.filter((ticket) => !ticket.legacy);
   const byNumber = new Map(tickets.map((ticket) => [ticket.n, ticket]));
@@ -915,7 +925,7 @@ function graph() {
     if (ticket.done) continue;
     // what a plan must say before any code; a goal planned before the graph only gets a note
     const missing = [ticket.touches === null || ticket.touches.length === 0 ? '"Touches"' : null, ticket.proof.length === 0 ? '"Proof" with a run: command' : null].filter(Boolean);
-    if (missing.length > 0) (flags['--plan'] ? errors : notes).push(`ticket ${pad(ticket.n)} has no ${missing.join(' and no ')}`);
+    if (missing.length > 0) (plan ? errors : notes).push(`ticket ${pad(ticket.n)} has no ${missing.join(' and no ')}`);
   }
   const gone = new Set(goal.amendments.filter((a) => ['moved', 'waived'].includes(a.change)).map((a) => a.n));
   for (const criterion of goal.criteria) {
@@ -978,6 +988,15 @@ function graph() {
   // proved nothing, so it is built alone.
   const together = frontier.filter((ticket) => ticket.touches && ticket.touches.length > 0);
   const parallel = errors.length === 0 && together.length > 1 ? together : [];
+  return { tickets, byNumber, errors, notes, frontier, parallel, built, held, trust, reproved };
+}
+
+function graph() {
+  const flags = parseArgs(args, ['--prove'], ['--plan', '--json']);
+  if (flags.positional.length !== 1) usage();
+  const slug = flags.positional[0];
+  const goal = parse(slugFile(slug));
+  const { tickets, byNumber, errors, notes, frontier, parallel, built, held, trust, reproved } = graphOf(slug, goal, flags['--plan']);
 
   if (flags['--prove'] !== undefined) {
     const ticket = byNumber.get(Number(flags['--prove']));
@@ -1040,7 +1059,163 @@ function graph() {
   return errors.length === 0 ? 0 : 1;
 }
 
+// One gate per moment, run by a script instead of a chain the orchestrator types: the commands one after the other
+// (what is sensitive to load, the e2e and the perf, never beside another suite), one exit code, and the raw output
+// in a folder outside the repository. Measured on the pilot project: the orchestrator typed five to eight commands
+// per checkpoint and per round, its e2e and perf went red beside the verifiers' builds and were green alone (issue
+// 89), and the raw log it committed as evidence held 42 refresh tokens of the e2e run's request log (issue 105).
+// The evidence is the `R` lines; a raw log is never committed.
+const scriptsOf = (rel) => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8')).scripts ?? {};
+  } catch {
+    return {};
+  }
+};
+const baselineOf = (slug) => {
+  const file = path.join(root, '.scratch', slug, 'baseline.md');
+  return fs.existsSync(file) ? (fs.readFileSync(file, 'utf8').match(/Baseline sha:\s*`([0-9a-f]{7,40})`/)?.[1] ?? null) : null;
+};
+const headOf = () => spawnSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout?.trim() || 'no commit';
+// this script, as the steps call it: the project's copy under scripts/, or wherever it was run from
+const self = `"${process.execPath}" "${path.resolve(process.argv[1])}"`;
+
+function gate() {
+  const flags = parseArgs(args, ['--ticket', '--since', '--base'], ['--final']);
+  if (flags.positional.length !== 1 || Boolean(flags['--final']) === (flags['--ticket'] !== undefined)) usage();
+  const slug = flags.positional[0];
+  const goal = parse(slugFile(slug));
+  const base = flags['--base'] ? commitOf(flags['--base'], '--base') : baselineOf(slug);
+  const scripts = scriptsOf('package.json');
+  const scratch = (name, line) => (scripts['db:scratch'] ? `npm run db:scratch -- ${name} -- ${line}` : line);
+  let label;
+  let steps;
+  if (flags['--final']) {
+    label = 'final';
+    steps = [
+      { name: 'build', command: 'npm run build' },
+      { name: 'test', command: 'npm test' },
+      { name: 'check', command: `${self} check ${slug}` },
+      { name: 'proofs', command: scratch('gate', `${self} prove ${slug}`) },
+      scriptsOf(path.join('apps', 'backend', 'package.json'))['test:e2e'] ? { name: 'e2e', command: scratch('e2e', 'npm -w apps/backend run test:e2e') } : null,
+      // the p95 reports and never blocks (step 8): its lines are read for a non-2xx, which does
+      scripts.perf && base ? { name: 'perf', command: scratch('perf', `npm run perf -- --changed ${base}`), reported: 'the p95 reports; read its lines: a non-2xx blocks' } : null,
+    ];
+  } else {
+    const n = Number(flags['--ticket']);
+    if (!Number.isInteger(n) || n < 1) fail('--ticket needs a ticket number', 2);
+    if (!flags['--since']) fail('--ticket needs --since <the previous checkpoint sha>', 2);
+    const since = commitOf(flags['--since'], '--since');
+    if (!graphOf(slug, goal).byNumber.has(n)) fail(`.scratch/${slug}/issues has no ticket ${n}`);
+    label = `ticket ${pad(n)}`;
+    steps = [
+      fs.existsSync(path.join(root, 'scripts', 'check-boundaries.mjs')) ? { name: 'boundaries', command: 'node scripts/check-boundaries.mjs' } : null,
+      { name: 'build', command: 'npm run build' },
+      { name: 'test', command: `npx turbo run test --filter=...[${since}]` },
+      { name: 'proof', command: `${self} graph ${slug} --prove ${n}` },
+      scripts['format:check'] ? { name: 'format', command: 'npm run format:check' } : null,
+      // a blown size budget is a decision, not a red: the goal is delivered in parts (step 7)
+      base ? { name: 'size', command: `${self} size ${slug} --base ${base}`, reported: 'the size budget is blown: deliver in parts' } : null,
+    ];
+  }
+  steps = steps.filter(Boolean);
+  const dir = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, `${label.replace(' ', '-')}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+  fs.mkdirSync(dir, { recursive: true });
+  console.log(`goal gate: ${slug}, ${label}, at ${headOf()}${base ? `, baseline ${base.slice(0, 8)}` : ''}`);
+  let red = null;
+  const reported = [];
+  for (const step of steps) {
+    // what comes after a red would only repeat it, or run beside nothing to compare with
+    if (red) {
+      console.log(`  R ${step.name.padEnd(10)} not run`);
+      continue;
+    }
+    const log = path.join(dir, `${step.name}.log`);
+    const out = fs.openSync(log, 'w');
+    const started = Date.now();
+    const status = spawnSync(step.command, { cwd: root, shell: true, stdio: ['ignore', out, out], env: { ...process.env, TZ: 'UTC' } }).status ?? 1;
+    fs.closeSync(out);
+    console.log(`  R ${step.name.padEnd(10)} exit ${status}  ${Math.round((Date.now() - started) / 1000)}s  ${step.command.replace(self, 'goal')}`);
+    if (status === 0) continue;
+    if (step.reported) reported.push(`${step.name} exit ${status}: ${step.reported}`);
+    else red = step.name;
+  }
+  console.log(red ? `goal gate: RED at ${red}` : reported.length > 0 ? `goal gate: green, with a report to read: ${reported.join('; ')}` : 'goal gate: green');
+  console.log(`  logs: ${dir}  (outside the repository: a raw log can hold secrets and is never committed; the evidence is the R lines)`);
+  return red ? 1 : reported.length > 0 ? 3 : 0;
+}
+
+// Where the goal is, read from the disk, and the next action: the walk of steps 3 to 10 that the orchestrator
+// used to infer from prose after every wake-up. It runs nothing and changes nothing.
+function next() {
+  const flags = parseArgs(args, [], ['--json']);
+  if (flags.positional.length !== 1) usage();
+  const slug = flags.positional[0];
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) fail(`"${slug}" is not a goal slug (letters, digits and dashes)`, 2);
+  const actions = [];
+  const say = (step, action) => actions.push({ step, action });
+  const file = path.join(goalsDir, `${slug}.md`);
+  const goal = fs.existsSync(file) ? parse(file) : null;
+  const issues = path.join(root, '.scratch', slug, 'issues');
+  if (!goal) say(3, `write the contract with to-goal: docs/goals/${slug}.md does not exist`);
+  else if (/^proposed\b/.test(goal.status)) say(4, 'the contract waits for the founder: gate 2');
+  else if (/^(met|stopped)\b/.test(goal.status)) say(null, `nothing: the goal is ${goal.status}`);
+  else if (/^landed\b/.test(goal.status)) say(10, `on the merged main, run the after-merge proof: npm run goal -- prove ${slug} --after-merge`);
+  else if (!baselineOf(slug)) say(5, `cut the branch and start the baseline: goal-start.mjs ${slug} --branch <type>/${slug}, then --baseline in the background`);
+  else if (!fs.existsSync(issues)) {
+    if (/^Verdict: RED/m.test(fs.readFileSync(path.join(root, '.scratch', slug, 'baseline.md'), 'utf8'))) say(5, 'the baseline is red: a block, report it; nothing is built on it');
+    else say(6, 'dispatch one full-stack-developer for the plan, then the architecture gate');
+  } else {
+    const { tickets, errors, frontier, parallel, built, held, trust, reproved } = graphOf(slug, goal);
+    const evidence = goal.evidence.filter((row) => /^\d+$/.test(row.round));
+    if (errors.length > 0) say(6, `the plan's graph fails (${errors.length} errors, npm run goal -- graph ${slug} --plan): back to the full-stack-developer that planned`);
+    else if (evidence.length === 0) {
+      for (const ticket of built) {
+        say(7, `checkpoint of ticket ${pad(ticket.n)}: npm run goal -- gate ${slug} --ticket ${ticket.n} --since <previous checkpoint sha>, then the quality-engineer${trust.some((one) => one.n === ticket.n) ? ' and the security-engineer (trust)' : ''}`);
+      }
+      for (const one of held) say(7, `ticket ${pad(one.n)} is open: write "Carried:" with why the tickets after it can start, or a new full-stack-developer fixes its open findings`);
+      if (frontier.length > 0) {
+        say(7, `a new full-stack-developer for ticket ${pad(frontier[0].n)}${parallel.length > 1 ? `; two lanes allowed: ${parallel.map((ticket) => pad(ticket.n)).join(' + ')}` : ''}`);
+      }
+      if (tickets.every((ticket) => ticket.done)) say(8, `final verification: npm run goal -- gate ${slug} --final, then the quality-engineer and the security-engineer, in parallel, with the gate's R lines`);
+    } else {
+      const round = Math.max(...evidence.map((row) => Number(row.round)));
+      const open = goal.criteria.filter((criterion) => {
+        if (goal.amendments.some((a) => a.n === criterion.n && a.change === 'moved')) return false;
+        return !(criterion.deferred ? ['met', 'waived', 'pending'] : ['met', 'waived']).includes(latestVerdict(goal, criterion.n));
+      });
+      if (open.length === 0) say(10, 'pull request: the platform-engineer runs check:pr, opens it ready and waits for CI');
+      else if (round >= roundsAllowed(goal)) {
+        say(9, `the budget is spent (${round} of ${roundsAllowed(goal)} rounds) with criteria ${open.map((c) => c.n).join(', ')} open: read docs/risk-policy.md; what it does not cover is gate 4`);
+      } else {
+        const counted = (n) => reproved.find((one) => one.n === n)?.total ?? 0;
+        const fable = round + 1 >= 3 || open.some((c) => counted(c.n) >= 3);
+        const twice = open.filter((c) => counted(c.n) === 2).map((c) => c.n);
+        say(9, `round ${round + 1} for criteria ${open.map((c) => c.n).join(', ')}: a new full-stack-developer with the findings, literal${twice.length > 0 ? `; criteria ${twice.join(', ')} are on their second failure: Class: and Closed by:` : ''}${fable ? '; on fable, if the round failed with a criterion not met or weak proof, a blocking, or a confirmed of medium and up' : ''}`);
+      }
+    }
+  }
+  // the audit every five roadmap items, counted from the roadmap below its last "Audited on" line
+  const roadmap = path.join(root, 'docs', 'roadmap.md');
+  let since = 0;
+  if (fs.existsSync(roadmap)) {
+    const lines = fs.readFileSync(roadmap, 'utf8').split(/\r?\n/);
+    const last = lines.map((line) => /^Audited on /.test(line)).lastIndexOf(true);
+    since = lines.slice(last + 1).filter((line) => /^\s*- \[x\]/i.test(line)).length;
+    if (since >= 5) say(null, `before the next roadmap item: the quick audit is due (${since} items since the last "Audited on" line)`);
+  }
+  if (flags['--json']) {
+    console.log(JSON.stringify({ slug, actions, audit: since >= 5 }, null, 2));
+    return 0;
+  }
+  console.log(`goal next: ${slug}${goal ? `  (${goal.status})` : ''}`);
+  for (const one of actions) console.log(`  ${one.step === null ? '        ' : `step ${String(one.step).padEnd(3)}`} ${one.action}`);
+  return 0;
+}
+
 if (command === 'graph') process.exit(graph());
+else if (command === 'gate') process.exit(gate());
+else if (command === 'next') process.exit(next());
 else if (command === 'check') process.exit(check());
 else if (command === 'prove') process.exit(prove());
 else if (command === 'size') process.exit(size());
