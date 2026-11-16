@@ -83,8 +83,10 @@ test('the prompts stay inside their word budget', () => {
   // the Engineer writes into the ticket (`verified`, `open`, `Reproved:`, `Carried:`), the reproval that counts at a
   // checkpoint as in a round, and the security-engineer read from `trust:`. Measured on the pilot project's ts7
   // (issue 89): a criterion reproved three times at checkpoints stayed on Opus.
-  const COMMAND = 8619;
-  const SQUAD = 20250;
+  // 0.40.0 raised both by 48 words: step 3's "you write the contract, not its proof", which the panel now enforces.
+  // Measured on the pilot project on 2026-11-15: the Engineer's own proof script took 64% of a goal's first hour.
+  const COMMAND = 8667;
+  const SQUAD = 20298;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

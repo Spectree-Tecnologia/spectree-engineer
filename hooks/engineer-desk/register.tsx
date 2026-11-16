@@ -249,6 +249,17 @@ export const goalContractGuard = (tool: string, input: Record<string, unknown>):
   return null
 }
 
+// The mirror of the guard above (0.40.0): the Engineer writes the contract, never code. Measured on the pilot
+// project on 2026-11-15: the Engineer took 64% of a goal's first hour of tokens writing a 306-line proof script in
+// .scratch/, running it red at the baseline and trying it on an implementation of its own in a throwaway worktree;
+// the branch was cut 41 minutes in. A proof that does not exist yet is a ticket of the plan, a full-stack-developer's.
+// Only in an Engineer project, and only the main loop: a subagent that builds writes code.
+const CODE_FILE = /\.(?:[cm]?[jt]sx?|py|sh|ps1|sql|prisma)$/i
+export const ENGINEER_CODE_DENY =
+  'The Engineer writes the contract, never code: a proof the contract names that does not exist yet (a test, a script, a checker) is a ticket of the plan, and a fix or a tryout is a full-stack-developer mission. Dispatch it.'
+export const engineerCodeGuard = (tool: string, input: Record<string, unknown>): string | null =>
+  ['Write', 'Edit', 'MultiEdit', 'NotebookEdit'].includes(tool) && CODE_FILE.test(String(input.file_path ?? input.notebook_path ?? '')) ? ENGINEER_CODE_DENY : null
+
 // The panel only watches, except for the guards above: a failure in its
 // bookkeeping is logged and never stops a spawn, a tool call or a turn.
 function logFailure($: EngineInterface, error: unknown) {
@@ -400,6 +411,16 @@ export const register: Register = on => {
     if (id && shell && sharedStash(shell)) return { deny: STASH_DENY }
     const contractDeny = id ? goalContractGuard(String(e.tool), e as unknown as Record<string, unknown>) : null
     if (contractDeny) return { deny: contractDeny }
+    if (!id && engineerCodeGuard(String(e.tool), e as unknown as Record<string, unknown>)) {
+      const isProject = await $.session
+        .cwd()
+        .then(cwd => isEngineerProject($, cwd))
+        .catch(error => {
+          logFailure($, error)
+          return false
+        })
+      if (isProject) return { deny: ENGINEER_CODE_DENY }
+    }
     if (e.tool === PLAN_TOOL) {
       if (id) return { deny: 'Only the main loop keeps a plan. Carry on with your task.' }
       const input = (key: string) => (e as unknown as Record<string, unknown>)[key]

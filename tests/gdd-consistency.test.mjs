@@ -125,3 +125,13 @@ test('two full-stack-developers per machine, whichever way they are opened', () 
   assert.match(command, /the `Spent:` line of the last closed goal has no hours at the usage limit/);
   assert.match(command, /`git worktree list` shows only the main checkout \(the first is not in two lanes/);
 });
+
+// 0.40.0: on the pilot project on 2026-11-15 the Engineer wrote a 306-line proof script itself, ran it red at the
+// baseline and tried it on an implementation of its own; it took 64% of the goal's first hour of tokens.
+test('the Engineer writes the contract, not its proof: a proof that does not exist yet is a ticket', () => {
+  assert.match(command, /\*\*You write the contract, not its proof:\*\* a test, a new script or checker that does not exist yet is a ticket of the plan, never yours to write, run at the baseline or try out, and the panel refuses you a code file\./);
+  assert.match(command, /you apply at once when it fits in one line and is not code/);
+  assert.match(read('skills/engineering/to-goal/SKILL.md'), /built by the full-stack-developer, as a ticket of the plan, never by the orchestrator/);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /gets it in a ticket of its own, before the tickets it decides: nobody else writes it/);
+  assert.match(read('hooks/engineer-desk/register.tsx'), /if \(isProject\) return \{ deny: ENGINEER_CODE_DENY \}/);
+});
