@@ -46,8 +46,8 @@ Verification rounds: 3
 |---|---|---|---|
 ${extra}`;
 
-const ticket = ({ criteria, blockedBy = 'None (can start immediately)', touches, proof = 'run: `node -e "process.exit(0)"`', status = 'ready' }) =>
-  [`# ticket`, `**What to build:** it.`, `**Criteria:** ${criteria}`, `**Blocked by:** ${blockedBy}`, touches === undefined ? null : `**Touches:** ${touches}`, proof === null ? null : `**Proof:** ${proof}`, `**Status:** ${status}`]
+const ticket = ({ criteria, blockedBy = 'None (can start immediately)', touches, proof = 'run: `node -e "process.exit(0)"`', status = 'ready', extra = [] }) =>
+  [`# ticket`, `**What to build:** it.`, `**Criteria:** ${criteria}`, `**Blocked by:** ${blockedBy}`, touches === undefined ? null : `**Touches:** ${touches}`, proof === null ? null : `**Proof:** ${proof}`, `**Status:** ${status}`, ...extra]
     .filter(Boolean)
     .join('\n\n');
 
@@ -73,7 +73,7 @@ const good = {
 test('a plan that is a graph passes, with its waves and its frontier', () => {
   const res = run(project(good), '--plan');
   assert.equal(res.code, 0, res.out);
-  assert.match(res.out, /3 tickets, 0 done, 2 waves, 2 wide/);
+  assert.match(res.out, /3 tickets, 0 closed, 2 waves, 2 wide/);
   assert.match(res.out, /wave 2 {2}02 ready {2}list {2}\(criteria 2\) {2}after 01/);
   assert.match(res.out, /frontier: 01$/m);
 });
@@ -89,7 +89,67 @@ test('the frontier is every ticket whose blockers are done', () => {
   assert.deepEqual(json.tickets[0].touches, ['modules/things', 'apps/backend/src/modules/things']);
 
   const all = Object.fromEntries(Object.entries(good).map(([name, fields]) => [name, { ...fields, status: 'done' }]));
-  assert.match(run(project(all)).out, /frontier: none, every ticket is done/);
+  assert.match(run(project(all)).out, /frontier: none, every ticket is closed/);
+});
+
+// 0.39.0: the frontier moved past what the builder said about its own ticket (`Status: done`, written before the
+// checkpoint) and past a finding left `open`, which lived only in open.md. Now the builder writes `built`, the
+// Engineer writes the checkpoint's outcome into the ticket, and the graph reads that.
+const closedBy = (status, extra = []) => ({ ...good, '01-create': { ...good['01-create'], status, extra } });
+
+test('a built ticket waits for its checkpoint: the tickets after it do not start', () => {
+  const res = run(project(closedBy('built', ['**Built:** abc1234'])));
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /wave 1 {2}01 built {2}create/);
+  assert.match(res.out, /frontier: none, every ticket left waits for a checkpoint or for a held ticket/);
+  assert.match(res.out, /built: {4}01 {2}\(its checkpoint is not written yet/);
+  assert.deepEqual(JSON.parse(run(project(closedBy('built')), '--json').out).built, [1]);
+
+  assert.match(run(project(closedBy('verified'))).out, /frontier: 02, 03$/m, 'the checkpoint closed it');
+  assert.match(run(project(closedBy('done (merged at abc1234)'))).out, /frontier: 02, 03$/m, 'a ticket from before 0.39.0 reads as verified');
+});
+
+test('a ticket left open holds the tickets after it until the Engineer writes why they can start', () => {
+  const held = run(project(closedBy('open', ['**Reproved:** 1'])));
+  assert.equal(held.code, 0, held.out);
+  assert.match(held.out, /held: {5}01 {2}open at its checkpoint with no "Carried:" line; it holds 02, 03/);
+  assert.doesNotMatch(held.out, /frontier: 0/);
+
+  const carried = run(project(closedBy('open', ['**Carried:** the open should is a log line in the controller, which 02 and 03 do not build on'])));
+  assert.match(carried.out, /01 open, carried {2}create/);
+  assert.match(carried.out, /frontier: 02, 03$/m);
+  assert.doesNotMatch(carried.out, /held:/);
+});
+
+test('a reproval counts the same at a checkpoint and in a round: twice closes the class, three times is fable', () => {
+  const twice = closedBy('verified', ['**Reproved:** 1']);
+  const dir = project({ ...twice, '02-list': { ...good['02-list'], status: 'open', extra: ['**Reproved:** 1, 2', '**Carried:** reason'] } });
+  let res = run(dir);
+  assert.match(res.out, /reproved: criterion 1, twice \(checkpoint 01, 02\): the next fix closes the class \(Class: and Closed by:\)/);
+  assert.match(res.out, /reproved: criterion 2, once \(checkpoint 02\)$/m);
+
+  const round = contract('| 1 | 1 | not met | run: x exit 1 |\n| 2 | 1 | met | run: x exit 0 |\n');
+  const three = project({ ...twice, '02-list': { ...good['02-list'], status: 'verified', extra: ['**Reproved:** 1'] } }, round);
+  res = run(three);
+  assert.match(res.out, /reproved: criterion 1, 3 times \(checkpoint 01, 02; round 1\): the next fix and its verification run on fable/);
+  assert.doesNotMatch(res.out, /criterion 2,/, 'a met verdict is no reproval');
+  assert.deepEqual(JSON.parse(run(three, '--json').out).reproved, [{ n: 1, checkpoints: [1, 2], rounds: ['1'], total: 3 }]);
+  assert.doesNotMatch(run(project(closedBy('verified', ['**Reproved:** none']))).out, /reproved:/);
+});
+
+test('the graph marks the tickets whose checkpoint has the security-engineer, from what they touch', () => {
+  const dir = project({
+    '01-create': { criteria: '1', touches: '`modules/things`, `apps/backend/src/modules/things`' },
+    '02-list': { criteria: '2', touches: '`apps/frontend/src/modules/things/list`' },
+    '03-archive': { criteria: '3', touches: '`modules/things/src/archive`, `package-lock.json`', blockedBy: '01' },
+    '04-login': { criteria: '1', touches: '`apps/frontend/src/app/(public)/auth`' },
+    '05-core': { criteria: '2', touches: '`modules/billing`' },
+    '06-old': { criteria: '3', blockedBy: '05' },
+  });
+  const res = run(dir);
+  assert.match(res.out, /trust: {4}01, 03, 04, 06 {2}\(their checkpoint has the security-engineer too\)/);
+  assert.deepEqual(JSON.parse(run(dir, '--json').out).trust, [1, 3, 4, 6], 'a ticket with no Touches proved nothing and gets it too');
+  assert.doesNotMatch(run(project(closedBy('verified'))).out, /trust: {4}01/, 'a closed ticket is not checked again');
 });
 
 test('a cycle, a missing blocker and a criterion with no ticket fail', () => {
@@ -167,7 +227,7 @@ test('a ticket from before Goal-Driven stays in the folder and out of the graph'
   const res = run(dir, '--plan');
   assert.equal(res.code, 0, res.out);
   assert.match(res.out, /note: {2}\.scratch\/things\/issues\/01-old-create\.md has no "Criteria": a ticket from before Goal-Driven, left out of the graph/);
-  assert.match(res.out, /3 tickets, 0 done/);
+  assert.match(res.out, /3 tickets, 0 closed/);
 });
 
 test('a ticket planned before the graph has no proof to run, and that is not a failure', () => {
@@ -292,13 +352,30 @@ test('the graph says which tickets of the frontier may be built at the same time
   assert.deepEqual(JSON.parse(run(silent, '--json').out).parallel, []);
 });
 
+test('the checkpoint is written into the ticket by the Engineer, and the graph walks from it', () => {
+  const command = read('commands/engineer.md');
+  assert.match(command, /\*\*\(e\)\*\* you write the checkpoint into the ticket, never whoever built it/);
+  assert.match(command, /`Status: verified` when every finding closed, `Status: open` when one stays open, and `Reproved:`/);
+  assert.match(command, /an `open` ticket holds them \(`held:`\) until you write `Carried:`/);
+  assert.match(command, /\*\*A reproval counts the same at a checkpoint and in a round\*\* \(`reproved:` in `goal graph`\)/);
+  assert.match(command, /three times raises the next fix and its verification to Fable/);
+  assert.match(command, /or a criterion `goal graph` prints as reproved three times: the fix and the verification from then on run on Fable/);
+  assert.match(command, /A criterion failed for the second time, checkpoints counted/);
+  // the security-engineer's checkpoint is decided by what the ticket touches, and the Engineer can only add to it
+  assert.match(command, /when `goal graph` lists the ticket under `trust:` \(read from its `Touches`\)[^\n]*You may add a ticket to `trust:`, never skip one\./);
+  const skill = read('skills/engineering/to-tickets/SKILL.md');
+  assert.match(skill, /write in its file `\*\*Status:\*\* built`, `\*\*Built:\*\* <sha>`/);
+  assert.match(skill, /The rest of the ticket's state is the orchestrator's, after the checkpoint/);
+  assert.doesNotMatch(read('agents/full-stack-developer.md'), /`Status: done`/);
+});
+
 test('the Engineer runs two lanes, and a closed ticket is merged with the other lane stopped', () => {
   const command = read('commands/engineer.md');
   assert.match(command, /\*\*Two lanes, when the graph allows\.\*\*[^\n]*`parallel:`[^\n]*never with more than two/);
   assert.match(command, /`npm run worktree -- up <slug>-b --branch <type>\/<slug>-b`/);
   assert.match(command, /with lane 1 stopped: `git merge --no-ff --no-edit <closed sha>` and the proof of what it affects/);
   assert.match(command, /a conflict is `git merge --abort` and a platform-engineer mission/);
-  assert.match(command, /The graph sees as `done` only a merged ticket/);
+  assert.match(command, /The graph sees as `verified` only a merged ticket: a lane 2 checkpoint is written on the goal's branch, after the merge/);
   assert.match(command, /A session with `worktree` in the prompt runs a single lane/);
   // two verifiers at once never share a scratch database
   assert.match(command, /`npm run db:scratch -- <role>-t<NN> -- <command>`/);

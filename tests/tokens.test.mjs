@@ -18,7 +18,7 @@ test('a full-stack-developer builds one ticket, and leaves the next one what it 
   const card = read('agents/full-stack-developer.md');
   assert.match(card, /each mission of yours is \*\*one part of a goal\*\*/);
   assert.match(card, /\*\*One ticket per mission:\*\*/);
-  assert.match(card, /`Status: done`, `Done: <sha>` and `Next needs:`/);
+  assert.match(card, /`Status: built`, `Built: <sha>` and `Next needs:`; `verified` is the Engineer's, after the checkpoint/);
   assert.match(card, /with `to-tickets` to break the goal down/);
   // a long mission costs more per call: the card says what to do when the panel says so
   assert.match(card, /\*\*Short mission\.\*\*[^\n]*When the panel refuses a call with the handoff warning[^\n]*report `handoff`/);

@@ -333,8 +333,13 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     refuse('graph-two-tickets-in-one-folder', 'npm run goal -- graph probe-thing --plan', /tickets 02 and 03 both touch apps.frontend.src.modules.probe and neither waits for the other/);
     ticket('03-export.md', '2', '01', '`apps/backend/src/modules/probe`');
     const planned = run('graph-plan', 'npm run goal -- graph probe-thing --plan');
-    if (!/3 tickets, 0 done, 2 waves, 2 wide/.test(planned) || !/frontier: 01/.test(planned)) throw new Error(`goal graph did not read the plan:${planned.slice(-400)}`);
-    ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'done');
+    if (!/3 tickets, 0 closed, 2 waves, 2 wide/.test(planned) || !/frontier: 01/.test(planned)) throw new Error(`goal graph did not read the plan:${planned.slice(-400)}`);
+    // the builder's `built` frees nothing: only the Engineer's checkpoint (`verified`) does
+    ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'built');
+    const waiting = run('graph-built-waits', 'npm run goal -- graph probe-thing');
+    if (!/built: +01/.test(waiting) || /frontier: 0/.test(waiting)) throw new Error(`goal graph freed the tickets after a ticket with no checkpoint:${waiting.slice(-400)}`);
+    if (!/trust: +03/.test(waiting)) throw new Error('goal graph did not give the security-engineer the ticket that touches the backend');
+    ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'verified');
     const freed = run('graph-frontier', 'npm run goal -- graph probe-thing');
     if (!/frontier: 02, 03/.test(freed)) throw new Error('goal graph did not free the tickets that waited for 01');
     if (!/parallel: 02 \+ 03/.test(freed)) throw new Error('goal graph did not say that tickets 02 and 03 may be built at the same time');
