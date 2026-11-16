@@ -83,6 +83,6 @@ Run `npm run goal -- graph <slug> --plan` until it exits 0: no cycle, every crit
 
 ### 5. Working a ticket
 
-Work the **frontier**: a ticket whose blockers are all done, as `npm run goal -- graph <slug>` prints it. One ticket per agent. Your ticket is done when its own proof exits 0: `npm run goal -- graph <slug> --prove <NN>`.
+Work the **frontier**: a ticket whose blockers are all closed by their checkpoint, as `npm run goal -- graph <slug>` prints it. One ticket per agent. Your ticket is built when its own proof exits 0: `npm run goal -- graph <slug> --prove <NN>`.
 
-When yours is done, write in its file `**Status:** done`, `**Done:** <sha>`, and `**Next needs:**` with what the tickets it blocks need to know and cannot read in the code: the seam you opened, the fixture that serves, the trap you found. Whoever builds them starts from zero.
+When yours is built, write in its file `**Status:** built`, `**Built:** <sha>`, and `**Next needs:**` with what the tickets it blocks need to know and cannot read in the code: the seam you opened, the fixture that serves, the trap you found. Whoever builds them starts from zero. The rest of the ticket's state is the orchestrator's, after the checkpoint: `**Status:** verified` or `open`, `**Reproved:**` and, for an `open` ticket the next ones may build on, `**Carried:**`.

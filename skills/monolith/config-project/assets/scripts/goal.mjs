@@ -9,7 +9,10 @@
 //   npm run goal -- prove --in-ci --changed <ref>  runs the proofs written `in ci:` of the contracts this branch changed (a CI step)
 //   npm run goal -- size <slug> --base <ref>       the product code changed since <ref> against the contract's size budget
 //   npm run goal -- graph <slug>                   the tickets as a graph: no cycle, every criterion has a ticket, the frontier,
-//                                                  and which tickets of the frontier may be built at the same time
+//                                                  and which tickets of the frontier may be built at the same time;
+//                                                  the tickets waiting for their checkpoint or held by an open one,
+//                                                  the ones whose checkpoint has the security-engineer, and every
+//                                                  criterion reproved, checkpoints and rounds counted together
 //   npm run goal -- graph <slug> --plan            also, before any code: every ticket says what it touches and its proof
 //   npm run goal -- graph <slug> --prove <ticket>  runs the ticket's own proof, in UTC, and exits with it
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
@@ -829,6 +832,25 @@ function spent() {
 // that it has no cycle, that every criterion has a ticket, that two tickets that could run at the same time never
 // write the same place, and which tickets are free to start now (the frontier).
 const pad = (n) => String(n).padStart(2, '0');
+// A ticket's state. Whoever builds it writes `built`; only the Engineer writes `verified` or `open`, after the
+// ticket's checkpoint. `done` is what tickets said before 0.39.0, read as `verified`. Anything else is `ready`.
+const STATES = ['ready', 'built', 'verified', 'open'];
+const stateOf = (status) => {
+  const word = (status ?? '').toLowerCase().match(/^[a-z]+/)?.[0] ?? '';
+  if (word === 'done') return 'verified';
+  return STATES.includes(word) ? word : 'ready';
+};
+// Paths whose change crosses a trust boundary of the monolith: the backend (routes, guards, persistence,
+// migrations, configuration, external clients), the shared package, a dependency, CI, an env file, and any auth,
+// middleware, api or upload folder. A ticket that touches one of them has the security-engineer at its checkpoint.
+const TRUST = [
+  /^apps\/backend(\/|$)/,
+  /^packages\/shared(\/|$)/,
+  /(^|\/)package(-lock)?\.json$/,
+  /^\.github(\/|$)/,
+  /(^|\/)\.env/,
+  /(^|\/)(auth|middleware|proxy|api|uploads?)(\/|$|\.)/,
+];
 const cleanPath = (one) => one.replace(/`/g, '').trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/\*{1,2}$/, '').replace(/\/+$/, '');
 const samePlace = (a, b) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
 
@@ -844,6 +866,9 @@ function readTickets(slug) {
       const field = (label) => text.match(new RegExp(`^(?:\\*\\*)?${label}:(?:\\*\\*)?[ \\t]*(.*)$`, 'im'))?.[1].trim() ?? null;
       const numbers = (value) => [...(value ?? '').matchAll(/\d+/g)].map((m) => Number(m[0]));
       const touches = field('Touches');
+      const paths = touches === null ? null : touches.split(',').map(cleanPath).filter(Boolean);
+      const state = stateOf(field('Status'));
+      const carried = field('Carried');
       return {
         n: Number(name.match(/^\d+/)[0]),
         file: `.scratch/${slug}/issues/${name}`,
@@ -852,9 +877,17 @@ function readTickets(slug) {
         legacy: field('Criteria') === null,
         criteria: numbers((field('Criteria') ?? '').match(/^\d+(?:\s*\([^)]*\))?(?:\s*(?:,|;|and|e|&)\s*\d+(?:\s*\([^)]*\))?)*/)?.[0].replace(/\([^)]*\)/g, '')),
         blockedBy: numbers(field('Blocked by')),
-        touches: touches === null ? null : touches.split(',').map(cleanPath).filter(Boolean),
+        touches: paths,
         proof: [...(field('Proof') ?? '').matchAll(/run:\s*`([^`]+)`/g)].map((m) => m[1].trim()),
-        done: /^done\b/i.test(field('Status') ?? ''),
+        state,
+        // an `open` ticket frees the tickets it blocks only with the Engineer's `Carried:` reason
+        carried: state === 'open' && Boolean(carried),
+        // closed: the tickets it blocks may start
+        done: state === 'verified' || (state === 'open' && Boolean(carried)),
+        // the criteria the checkpoint found `not met` or `weak proof` before the fix
+        reproved: /^(none|-)?$/i.test(field('Reproved') ?? '') ? [] : numbers(field('Reproved')),
+        // a ticket that does not say what it touches proved nothing: it has the security-engineer too
+        trust: paths === null || paths.length === 0 || paths.some((one) => TRUST.some((pattern) => pattern.test(one))),
       };
     });
 }
@@ -923,7 +956,23 @@ function graph() {
   // the wave of a ticket is the longest chain of tickets it waits for
   const wave = (ticket) => (cycle ? 1 : 1 + Math.max(0, ...ticket.blockedBy.filter((n) => byNumber.has(n)).map((n) => wave(byNumber.get(n)))));
   for (const ticket of tickets) ticket.wave = wave(ticket);
-  const frontier = cycle ? [] : tickets.filter((ticket) => !ticket.done && ticket.blockedBy.every((n) => byNumber.get(n)?.done));
+  // The frontier is what the Engineer's checkpoint closed, never what the builder said: a `built` ticket waits for
+  // its checkpoint, and an `open` one holds the tickets after it until the Engineer writes why they can start.
+  const frontier = cycle ? [] : tickets.filter((ticket) => ticket.state === 'ready' && ticket.blockedBy.every((n) => byNumber.get(n)?.done));
+  const built = tickets.filter((ticket) => ticket.state === 'built');
+  const held = tickets
+    .filter((ticket) => ticket.state === 'open' && !ticket.carried)
+    .map((ticket) => ({ n: ticket.n, holds: tickets.filter((other) => other.state === 'ready' && other.blockedBy.includes(ticket.n)).map((other) => other.n) }));
+  const trust = tickets.filter((ticket) => !ticket.done && ticket.trust);
+  // A reproval counts the same at a ticket's checkpoint and in a final round: twice is the second reproval of step 9
+  // (the next fix closes the class), three times raises the next fix to fable.
+  const reproved = goal.criteria
+    .map((criterion) => {
+      const checkpoints = tickets.filter((ticket) => ticket.reproved.includes(criterion.n)).map((ticket) => ticket.n);
+      const rounds = [...new Set(goal.evidence.filter((row) => row.n === criterion.n && /^(not met|weak proof)/.test(row.verdict)).map((row) => row.round.match(/^\d+/)?.[0] ?? row.round))];
+      return { n: criterion.n, checkpoints, rounds, total: checkpoints.length + rounds.length };
+    })
+    .filter((one) => one.total > 0);
   // Two tickets of the frontier have no order between them, and the check above proved they write no folder in
   // common: they may be built at the same time, each in its own checkout. A ticket that does not say what it touches
   // proved nothing, so it is built alone.
@@ -948,20 +997,46 @@ function graph() {
   }
 
   if (flags['--json']) {
-    console.log(JSON.stringify({ slug, tickets, frontier: frontier.map((ticket) => ticket.n), parallel: parallel.map((ticket) => ticket.n), errors, notes }, null, 2));
+    const out = {
+      slug,
+      tickets,
+      frontier: frontier.map((ticket) => ticket.n),
+      parallel: parallel.map((ticket) => ticket.n),
+      built: built.map((ticket) => ticket.n),
+      held,
+      trust: trust.map((ticket) => ticket.n),
+      reproved,
+      errors,
+      notes,
+    };
+    console.log(JSON.stringify(out, null, 2));
     return errors.length === 0 ? 0 : 1;
   }
   const waves = Math.max(0, ...tickets.map((ticket) => ticket.wave));
   const width = Math.max(0, ...Array.from({ length: waves }, (_, i) => tickets.filter((ticket) => ticket.wave === i + 1).length));
-  console.log(`goal graph: .scratch/${slug}/issues  (${tickets.length} tickets, ${tickets.filter((ticket) => ticket.done).length} done, ${waves} waves, ${width} wide)`);
+  const closed = tickets.filter((ticket) => ticket.done).length;
+  console.log(`goal graph: .scratch/${slug}/issues  (${tickets.length} tickets, ${closed} closed, ${waves} waves, ${width} wide)`);
   for (const ticket of tickets.slice().sort((a, b) => a.wave - b.wave || a.n - b.n)) {
     const after = ticket.blockedBy.length > 0 ? `  after ${ticket.blockedBy.map(pad).join(', ')}` : '';
-    console.log(`  wave ${ticket.wave}  ${pad(ticket.n)} ${ticket.done ? 'done ' : 'ready'}  ${ticket.name}  (criteria ${ticket.criteria.join(', ') || '-'})${after}`);
+    const state = ticket.carried ? 'open, carried' : ticket.state;
+    console.log(`  wave ${ticket.wave}  ${pad(ticket.n)} ${state}  ${ticket.name}  (criteria ${ticket.criteria.join(', ') || '-'})${after}`);
   }
   for (const error of errors) console.log(`      error: ${error}`);
   for (const note of notes) console.log(`      note:  ${note}`);
-  if (errors.length === 0) console.log(frontier.length > 0 ? `  frontier: ${frontier.map((ticket) => pad(ticket.n)).join(', ')}` : '  frontier: none, every ticket is done');
+  if (errors.length === 0) {
+    if (frontier.length > 0) console.log(`  frontier: ${frontier.map((ticket) => pad(ticket.n)).join(', ')}`);
+    else if (closed === tickets.length) console.log('  frontier: none, every ticket is closed');
+    else console.log('  frontier: none, every ticket left waits for a checkpoint or for a held ticket');
+  }
   if (parallel.length > 0) console.log(`  parallel: ${parallel.map((ticket) => pad(ticket.n)).join(' + ')}  (no order between them, no folder in common: each in its own checkout)`);
+  for (const ticket of built) console.log(`  built:    ${pad(ticket.n)}  (its checkpoint is not written yet: the tickets after it wait)`);
+  for (const one of held) console.log(`  held:     ${pad(one.n)}  open at its checkpoint with no "Carried:" line${one.holds.length > 0 ? `; it holds ${one.holds.map(pad).join(', ')}` : ''}`);
+  if (trust.length > 0) console.log(`  trust:    ${trust.map((ticket) => pad(ticket.n)).join(', ')}  (their checkpoint has the security-engineer too)`);
+  for (const one of reproved) {
+    const where = [one.checkpoints.length > 0 ? `checkpoint ${one.checkpoints.map(pad).join(', ')}` : null, one.rounds.length > 0 ? `round ${one.rounds.join(', ')}` : null].filter(Boolean).join('; ');
+    const next = one.total >= 3 ? ': the next fix and its verification run on fable' : one.total === 2 ? ': the next fix closes the class (Class: and Closed by:)' : '';
+    console.log(`  reproved: criterion ${one.n}, ${one.total === 1 ? 'once' : one.total === 2 ? 'twice' : `${one.total} times`} (${where})${next}`);
+  }
   return errors.length === 0 ? 0 : 1;
 }
 
