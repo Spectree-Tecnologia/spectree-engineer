@@ -61,7 +61,7 @@ One file per ticket, `.scratch/<slug>/issues/<NN>-<name>.md`, numbered from `01`
 
 **Touches:** the folders this ticket writes, comma separated, as narrow as is true (`modules/accounts`, `apps/backend/src/modules/accounts`). A ticket that adds or changes a dependency also lists `package-lock.json`: two tickets that both touch the lockfile cannot be merged without a conflict.
 
-**Proof:** run: `<command>`, the one command that exits 0 when this ticket is done and not before.
+**Proof:** run: `<command>`, the one command that exits 0 when this ticket is done and not before. A criterion whose contract proof is a script or checker that does not exist yet gets it in a ticket of its own, before the tickets it decides: nobody else writes it.
 
 **Status:** ready
 

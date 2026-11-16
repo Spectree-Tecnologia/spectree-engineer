@@ -276,6 +276,36 @@ test("the goal contract is the Engineer's: a subagent neither calls to-goal nor 
   }
 })
 
+test('in an Engineer project the main loop writes no code: a proof that does not exist yet is a ticket', async ($, on) => {
+  engine(on, 'd1')
+  let isProject = true
+  on('fs.exists', () => ({ value: isProject }))
+  on('session.cwd', () => ({ value: '/repo' }))
+  await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'goal')
+  const denied = async (call: Record<string, unknown>) => String(((await $.tool.call(call as any)) as any).deny ?? '')
+  for (const call of [
+    { tool: 'Write', file_path: '/repo/.scratch/e2e-hardening/engineer/refusals.mjs', content: 'x' },
+    { tool: 'Edit', file_path: 'C:\\repo-try\\apps\\backend\\src\\modules\\things\\things.controller.ts', old_string: 'a', new_string: 'b' },
+    { tool: 'Write', file_path: '/repo/scripts/check.sh', content: 'x' },
+    { tool: 'Write', file_path: '/repo/apps/backend/prisma/models/things.model.prisma', content: 'x' },
+  ]) {
+    expect(await denied(call)).toContain('The Engineer writes the contract, never code')
+  }
+  for (const call of [
+    { tool: 'Write', file_path: '/repo/docs/goals/things.md', content: 'x' },
+    { tool: 'Edit', file_path: '/repo/.scratch/things/issues/01-create.md', old_string: 'built', new_string: 'verified' },
+    { tool: 'Write', file_path: '/repo/.engineer.local.json', content: '{}' },
+    { tool: 'Read', file_path: '/repo/scripts/check.sh' },
+    // whoever builds writes code
+    { tool: 'Write', file_path: '/repo/.scratch/things/proof.mjs', content: 'x', agentId: 'd1' },
+  ]) {
+    expect(await denied(call)).toBe('')
+  }
+  // outside an Engineer project (the plugin's own repository, say) the main loop writes code as usual
+  isProject = false
+  expect(await denied({ tool: 'Write', file_path: '/repo/hooks/engineer-desk/register.tsx', content: 'x' })).toBe('')
+})
+
 test('a subagent never touches the shared stash; the main loop may, and reading the list is free', async ($, on) => {
   engine(on, 'd1')
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'goal')
