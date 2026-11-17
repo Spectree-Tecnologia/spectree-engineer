@@ -88,8 +88,12 @@ test('the prompts stay inside their word budget', () => {
   // 0.41.0 replaced the gate chains of steps 7 and 8 by `goal gate` and pointed the state reading at `goal next`; the
   // rules that came with them (the deterministic layer first and alone, no raw log committed, the quality-engineer not
   // rerunning a proof green on the sha) left the command 16 words longer and the two together 41.
-  const COMMAND = 8683;
-  const SQUAD = 20339;
+  // 0.42.0 raised the command by 108 words and the two together by 221: the final verification is one round and the
+  // checkpoint's re-check (step 9), it does not review again what a checkpoint reviewed (step 8, `Checked by:`), and a
+  // checker's criterion lists the classes it refuses (step 3). Measured on the pilot project on 2026-11-15: the final
+  // verification of `e2e-hardening` took 9 h 05 in four rounds, each one opened by a new class of bypass.
+  const COMMAND = 8791;
+  const SQUAD = 20560;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

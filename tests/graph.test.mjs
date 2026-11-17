@@ -288,7 +288,7 @@ test('a ticket closes whole: nobody writes while it is verified, the builder fix
   assert.doesNotMatch(command, /without waiting for them/);
   assert.match(command, /whoever found it re-checks, through the same conversation, with the fix's diff: each finding `closed` or `open`/);
   assert.match(command, /It is not a new hunt: the whole goal belongs to the final verification/);
-  assert.match(read('agents/quality-engineer.md'), /\*\*Re-check\.\*\*[^\n]*`closed` or `open`[^\n]*Do not look for a new finding outside that diff/);
+  assert.match(read('agents/quality-engineer.md'), /\*\*Re-check\*\*, at a checkpoint or after the final round\.[^\n]*`closed` or `open`[^\n]*Do not look for a new finding outside that diff/);
   assert.match(read('agents/security-engineer.md'), /`closed` or `open` per finding of yours, no new hunt/);
   assert.match(read('agents/full-stack-developer.md'), /You may be called back once, through the same conversation, with the findings of your ticket's checkpoint/);
   // the handoff notice no longer assumes a ticket: a fix or a bug mission has none
@@ -355,7 +355,7 @@ test('the graph says which tickets of the frontier may be built at the same time
 test('the checkpoint is written into the ticket by the Engineer, and the graph walks from it', () => {
   const command = read('commands/engineer.md');
   assert.match(command, /\*\*\(e\)\*\* you write the checkpoint into the ticket, never whoever built it/);
-  assert.match(command, /`Status: verified` when every finding closed, `Status: open` when one stays open, and `Reproved:`/);
+  assert.match(command, /`Status: verified` when every finding closed, `Status: open` when one stays open, `Reproved:`[^\n]*`Checked by:` with who verified it/);
   assert.match(command, /an `open` ticket holds them \(`held:`\) until you write `Carried:`/);
   assert.match(command, /\*\*A reproval counts the same at a checkpoint and in a round\*\* \(`reproved:` in `goal graph`\)/);
   assert.match(command, /three times raises the next fix and its verification to Fable/);
