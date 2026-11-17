@@ -116,8 +116,21 @@ test('scope: the criteria are the Engineer\'s, and the test of a new business ru
 test('a should pays for one round, and only a real failure climbs to fable', () => {
   assert.match(command, /\*\*`should` pays one round, not two\.\*\*/);
   assert.match(command, /Failed in the second with a criterion `not met` or `weak proof`, a `blocking`, or a `confirmed` of `medium` and up/);
-  assert.match(command, /or from the second final round on/);
+  assert.match(command, /or after the final re-check, and what remains open/);
   assert.doesNotMatch(read('README.md'), /`should` waits for the final verification/);
+});
+
+test('the final verification is one round and its re-check, and does not redo a checkpoint', () => {
+  assert.match(command, /9\. \*\*One round and its re-check\.\*\*/);
+  assert.match(command, /the \*\*same\*\* quality-engineer and security-engineer \(SendMessage\) get the fix's diff/);
+  assert.match(command, /A new finding the fix did not cause goes to `open\.md` and the `<area>-hardening` goal, never a round/);
+  assert.match(command, /\*\*A second round only for what the re-check left open\*\*/);
+  assert.match(command, /\*\*A checkpoint's review is not redone:\*\* criteria on the whole goal, code only where no checkpoint looked/);
+  assert.match(command, /A criterion about a new script or checker lists the classes it refuses; a class outside the list is a hardening item, never a reproval/);
+  assert.doesNotMatch(command, /Loop until met/);
+  assert.match(read('skills/engineering/to-goal/SKILL.md'), /\*\*Closed when it is a checker\.\*\*/);
+  assert.match(read('agents/quality-engineer.md'), /a class outside the list is a `nit` marked `hardening`, never a verdict/);
+  assert.match(read('agents/security-engineer.md'), /\*\*Re-check\*\*, at a checkpoint or after the final round\./);
 });
 
 test('two full-stack-developers per machine, whichever way they are opened', () => {
