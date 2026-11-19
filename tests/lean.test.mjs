@@ -92,8 +92,11 @@ test('the prompts stay inside their word budget', () => {
   // checkpoint's re-check (step 9), it does not review again what a checkpoint reviewed (step 8, `Checked by:`), and a
   // checker's criterion lists the classes it refuses (step 3). Measured on the pilot project on 2026-11-15: the final
   // verification of `e2e-hardening` took 9 h 05 in four rounds, each one opened by a new class of bypass.
-  const COMMAND = 8791;
-  const SQUAD = 20560;
+  // 0.43.0 raised the command by 47 words and the two together by 61: Fable raises only the fix, its re-check stays
+  // with the same agents (step 9), and a screen criterion lists its states, widths and data cases (step 3). Measured on
+  // statement-of-accounts (2026-11-18): new Fable agents hunted again at the re-check and opened round 3.
+  const COMMAND = 8838;
+  const SQUAD = 20621;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
