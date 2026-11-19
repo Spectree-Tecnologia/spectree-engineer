@@ -359,7 +359,7 @@ test('the checkpoint is written into the ticket by the Engineer, and the graph w
   assert.match(command, /an `open` ticket holds them \(`held:`\) until you write `Carried:`/);
   assert.match(command, /\*\*A reproval counts the same at a checkpoint and in a round\*\* \(`reproved:` in `goal graph`\)/);
   assert.match(command, /three times raises the next fix and its verification to Fable/);
-  assert.match(command, /or a criterion `goal graph` prints as reproved three times: the fix and the verification from then on run on Fable/);
+  assert.match(command, /or a criterion `goal graph` prints as reproved three times: the fix runs on Fable from then on/);
   assert.match(command, /A criterion failed for the second time, checkpoints counted/);
   // the security-engineer's checkpoint is decided by what the ticket touches, and the Engineer can only add to it
   assert.match(command, /when `goal graph` lists the ticket under `trust:` \(read from its `Touches`\)[^\n]*You may add a ticket to `trust:`, never skip one\./);

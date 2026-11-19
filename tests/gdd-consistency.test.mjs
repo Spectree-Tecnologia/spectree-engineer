@@ -126,11 +126,25 @@ test('the final verification is one round and its re-check, and does not redo a 
   assert.match(command, /A new finding the fix did not cause goes to `open\.md` and the `<area>-hardening` goal, never a round/);
   assert.match(command, /\*\*A second round only for what the re-check left open\*\*/);
   assert.match(command, /\*\*A checkpoint's review is not redone:\*\* criteria on the whole goal, code only where no checkpoint looked/);
-  assert.match(command, /A criterion about a new script or checker lists the classes it refuses; a class outside the list is a hardening item, never a reproval/);
+  assert.match(command, /A criterion about a new script or checker lists the classes it refuses/);
   assert.doesNotMatch(command, /Loop until met/);
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /\*\*Closed when it is a checker\.\*\*/);
-  assert.match(read('agents/quality-engineer.md'), /a class outside the list is a `nit` marked `hardening`, never a verdict/);
+  assert.match(read('agents/quality-engineer.md'), /a case outside the list is a `nit` marked `hardening`, never a verdict/);
   assert.match(read('agents/security-engineer.md'), /\*\*Re-check\*\*, at a checkpoint or after the final round\./);
+});
+
+test('Fable raises only the fix: the re-check stays with the same agents', () => {
+  // statement-of-accounts (2026-11-18): the escalation sent the re-check to new agents, who hunted again and opened round 3
+  assert.match(command, /the fix runs on Fable from then on/);
+  assert.match(command, /\*\*its re-check stays with the same quality-engineer and security-engineer\*\*, through their conversations, on their model: a new agent is a new hunt/);
+  assert.doesNotMatch(command, /the quality-engineer and security-engineer who verify its fix, go with `model: "fable"`/);
+});
+
+test('a screen criterion is closed by the approved artboards, and no finding widens it', () => {
+  // statement-of-accounts (2026-11-18): criterion 6 was reproved four times and widened by amendment from a checkpoint finding
+  assert.match(command, /a criterion about a screen lists the states, widths and data cases it covers, read from the approved artboards: a case outside the list is a hardening item, never a reproval, and no finding widens the criterion by amendment/);
+  assert.match(read('skills/engineering/to-goal/SKILL.md'), /It also lists, closed, the states \(loading, empty, error, ready\), the widths and the data cases it covers/);
+  assert.match(read('agents/quality-engineer.md'), /or a screen whose criterion lists the states, widths and data cases it covers/);
 });
 
 test('two full-stack-developers per machine, whichever way they are opened', () => {
