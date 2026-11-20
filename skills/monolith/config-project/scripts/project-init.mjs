@@ -1139,6 +1139,12 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'the pull-request-only gates of ci.yml, run locally before the PR',
   });
+  const e2eScopeScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'e2e-scope.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'e2e-scope.mjs'), await fs.readFile(e2eScopeScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'the Playwright specs a ready pull request can reach, read by the scope step of ci.yml',
+  });
   const dbScratchScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'db-scratch.mjs');
   await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'db-scratch.mjs'), await fs.readFile(dbScratchScript, 'utf8'), {
     ensureNewline: false,
@@ -1699,7 +1705,7 @@ NestJS API of the modular monolith: one Nest module per domain module under \`sr
     if (!(await pathExists(ciPath))) {
       const ciAsset = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'workflows', 'ci.yml');
       await activeRunOps.writeTextFile(ciPath, await fs.readFile(ciAsset, 'utf8'), {
-        note: 'CI: one job on pull requests, scanners included, by moment: fast checks on every push, the merge gate on a ready PR, the full run nightly on main',
+        note: 'CI: one job on pull requests, scanners included, by moment: fast checks on every push, the merge gate on a ready PR, the full run weekly on main',
       });
     }
     // root typescript follows the backend scaffold: create-turbo's TS 7 breaks typescript-eslint in the frontend

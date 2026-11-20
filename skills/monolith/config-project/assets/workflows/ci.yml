@@ -7,14 +7,18 @@
 # - every push to a pull request, draft or not: the title, the scanners, the goal contract and its `in ci:` proofs,
 #   the build and `npm test` (boundaries, type-check, unit tests). Minutes, the same in every pull request.
 # - a pull request that is not a draft (opened ready, or marked "Ready for review"): also the backend e2e (the query
-#   budget of rule 11) and, when the project has Playwright, its smoke: the specs of
-#   apps/frontend/e2e/smoke.txt plus every spec the pull request adds or edits (the whole suite when it touches the
-#   suite's harness). The merge gate.
-# - every night on main (only when something merged in the last 26 h; otherwise the scanners alone) and on demand from
-#   the Actions tab: everything, the whole Playwright suite and every route's latency budget, which reports (a warning
-#   and a line in the run's summary) and never fails the run. A p95 on a shared 2-vCPU runner cannot say a change made
-#   a route slow: on the pilot project the same route on the same code measured 1362 ms and 625 ms minutes apart.
+#   budget of rule 11) and, when the project has Playwright, the specs it can reach: apps/frontend/e2e/smoke.txt, every
+#   spec it adds or edits, and every spec that imports an e2e helper it changed (scripts/e2e-scope.mjs; the whole suite
+#   when it touches the config, the lockfile or a file it cannot follow). The merge gate.
+# - once a week on main (only when something merged in the last 7 days; otherwise the scanners alone) and on demand
+#   from the Actions tab: everything, the whole Playwright suite and every route's latency budget, which reports (a
+#   warning and a line in the run's summary) and never fails the run. Weekly, not nightly: on the pilot project the
+#   nightly run repeated, on main's tree, the suite each merged pull request had just run, at about 20 minutes a day.
+#   A p95 on a shared 2-vCPU runner cannot say a change made a route slow: the same route on the same code measured
+#   1362 ms and 625 ms minutes apart.
 # - before a release: on demand with stage `pre-release`, everything, and the latency budget fails the run.
+# The runner is `ubuntu-latest` unless the repository variable CI_RUNNER names another label (a self-hosted runner
+# the founder registered): the same job and the same gate, on minutes nobody bills.
 # Never add a second job, a matrix or a `push:` trigger: extend the steps of this job. `npm run check:pr` runs the
 # pull-request-only gates locally, before the PR exists.
 name: CI
@@ -28,17 +32,17 @@ on:
       - reopened
       - ready_for_review
   schedule:
-    # every night; the scope step makes it the scanners alone when nothing merged in the last 26 h
-    - cron: '17 6 * * *'
+    # every Monday; the scope step makes it the scanners alone when nothing merged in the last 7 days
+    - cron: '17 6 * * 1'
   workflow_dispatch:
     inputs:
       stage:
-        description: 'nightly: the latency budget reports. pre-release: the latency budget fails the run.'
+        description: 'weekly: the latency budget reports. pre-release: the latency budget fails the run.'
         type: choice
         options:
-          - nightly
+          - weekly
           - pre-release
-        default: nightly
+        default: weekly
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -51,7 +55,8 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # a repository variable, never an input: who can run the workflow cannot choose the machine
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     # a hung job is billed until this limit
     timeout-minutes: 20
     defaults:
@@ -62,7 +67,7 @@ jobs:
       TURBO_TELEMETRY_DISABLED: 1
       # empty outside a pull request; reaches the shell through env, never through ${{ }} inside run
       BASE_REF: ${{ github.base_ref }}
-      # 'pre-release' makes the latency budget a gate; empty on a pull request and on the nightly schedule
+      # 'pre-release' makes the latency budget a gate; empty on a pull request and on the weekly schedule
       STAGE: ${{ inputs.stage }}
     steps:
       # squash merges carry the PR title into main's history. Read from the API, so a re-run sees a title fixed after the
@@ -87,6 +92,12 @@ jobs:
           # nothing after the checkout talks to GitHub
           persist-credentials: false
 
+      # before the scope step, which runs a node script; a self-hosted runner brings no node of its own
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
       - name: What this run has to prove
         id: scope
         env:
@@ -108,28 +119,15 @@ jobs:
               exit 1
             fi
             migrations=$(git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- apps/backend/prisma/migrations | grep '\.sql$' | tr '\n' ' ' || true)
-            # the suite's harness (its config, a helper, a fixture) changed: the whole suite; else the smoke and the
-            # specs this pull request wrote. A name outside the pattern or a missing file fails here, named: the smoke
-            # never shrinks by a typo
-            harness=$(grep -E '^apps/frontend/(playwright\.config\.|e2e/)' <<<"$changed" | grep -vE '(\.spec\.ts$|^apps/frontend/e2e/smoke\.txt$)' || true)
-            if [ -z "$harness" ] && [ -f apps/frontend/e2e/smoke.txt ]; then
-              smoke=$(tr -d '\r' < apps/frontend/e2e/smoke.txt | sed 's/#.*//' | tr -s ' \t' '\n' | grep . || true)
-              if [ -z "$smoke" ]; then
-                echo "apps/frontend/e2e/smoke.txt lists no spec"
-                exit 1
-              fi
-              written=$(git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- 'apps/frontend/e2e/*.spec.ts' | sed 's#^apps/frontend/##' || true)
-              playwright=$(printf '%s\n%s\n' "$smoke" "$written" | grep . | sort -u | tr '\n' ' ' || true)
-              for spec in $playwright; do
-                if [[ ! "$spec" =~ ^e2e/[A-Za-z0-9_.-]+\.spec\.ts$ ]] || [ ! -f "apps/frontend/$spec" ]; then
-                  echo "refused Playwright spec: $spec (e2e/<name>.spec.ts, an existing file)"
-                  exit 1
-                fi
-              done
+            # the smoke, the specs this pull request wrote and those that import a helper it changed; the whole suite
+            # when the change reaches every spec in a way the script does not follow. A smoke name that does not exist
+            # fails here, named: the smoke never shrinks by a typo
+            if [ -f apps/frontend/e2e/smoke.txt ]; then
+              playwright=$(node scripts/e2e-scope.mjs "origin/$BASE_REF")
             fi
-          elif [ "$EVENT" = schedule ] && [ -z "$(git log -1 --since='26 hours ago' --format=%h)" ]; then
-            # nothing merged since the last nightly run (26 h, not 24: a scheduled run can start late): only the
-            # scanners have something new to say
+          elif [ "$EVENT" = schedule ] && [ -z "$(git log -1 --since='170 hours ago' --format=%h)" ]; then
+            # nothing merged since last week's run (170 h, not 168: a scheduled run can start late): only the scanners
+            # have something new to say
             code=false
           fi
           echo "code=$code lockfile=$lockfile migrations=${migrations:-none}"
@@ -145,11 +143,6 @@ jobs:
       # Image pinned by tag and digest; Dependabot does not track it: the platform-engineer bumps it with the stack review.
       - name: gitleaks (secrets in the git history)
         run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact --no-banner /repo
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
 
       # the contract of the goal this pull request delivers: approved, every criterion's latest verdict met, or waived
       # by an amendment. No dependency needed; a pull request with no contract has nothing to check.
@@ -177,12 +170,19 @@ jobs:
         run: npm ci
 
       # the same database as development: the backend's own compose file and the example env (test-only values; CI
-      # never sees a real secret)
+      # never sees a real secret). On host port 55433 (POSTGRES_HOST_PORT in the compose file): a self-hosted runner
+      # shares the network with a developer's database (WSL2 distros all do). down -v first: a self-hosted runner keeps
+      # volumes between runs, and every run starts from the empty database a hosted runner has.
       - name: Postgres
         if: steps.scope.outputs.code == 'true'
         working-directory: apps/backend
         run: |
           cp .env.example .env
+          sed -i -E 's#@localhost:[0-9]+/#@localhost:55433/#' .env
+          echo 'POSTGRES_HOST_PORT=55433' >> .env
+          grep -q '@localhost:55433/' .env
+          if grep -E '@localhost:[0-9]+/' .env | grep -vq '@localhost:55433/'; then echo 'a database URL kept another port' >&2; exit 1; fi
+          docker compose down -v --remove-orphans
           docker compose up -d --wait postgres
 
       # before the seed: the backend prebuild generates the Prisma client the seed imports
@@ -202,7 +202,7 @@ jobs:
         run: npm test
 
       # the p95 budget (rule 11) on a database nothing has written to yet, and with nothing else running on the runner.
-      # Never on a pull request: every night and on demand, every route, and a red result is a warning and a line in the
+      # Never on a pull request: every week and on demand, every route, and a red result is a warning and a line in the
       # run's summary, never a failed run; with stage pre-release, the gate before production, it fails the run. The
       # budgets in perf.config.json are the same in both: only whether a red result stops the run changes.
       - name: Latency budget
