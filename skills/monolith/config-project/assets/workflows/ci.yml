@@ -170,12 +170,19 @@ jobs:
         run: npm ci
 
       # the same database as development: the backend's own compose file and the example env (test-only values; CI
-      # never sees a real secret)
+      # never sees a real secret). On host port 55433 (POSTGRES_HOST_PORT in the compose file): a self-hosted runner
+      # shares the network with a developer's database (WSL2 distros all do). down -v first: a self-hosted runner keeps
+      # volumes between runs, and every run starts from the empty database a hosted runner has.
       - name: Postgres
         if: steps.scope.outputs.code == 'true'
         working-directory: apps/backend
         run: |
           cp .env.example .env
+          sed -i -E 's#@localhost:[0-9]+/#@localhost:55433/#' .env
+          echo 'POSTGRES_HOST_PORT=55433' >> .env
+          grep -q '@localhost:55433/' .env
+          if grep -E '@localhost:[0-9]+/' .env | grep -vq '@localhost:55433/'; then echo 'a database URL kept another port' >&2; exit 1; fi
+          docker compose down -v --remove-orphans
           docker compose up -d --wait postgres
 
       # before the seed: the backend prebuild generates the Prisma client the seed imports

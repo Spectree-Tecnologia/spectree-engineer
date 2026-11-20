@@ -49,6 +49,38 @@ test('the runner is a repository variable with the hosted runner as default, nev
   assert.equal(ci.match(/actions\/setup-node/g).length, 1);
 });
 
+// measured on the pilot's self-hosted runner (2026-11-20): WSL2 distros share one network, so CI asked for the
+// developer's 5433; and a self-hosted runner keeps the volume between runs
+test('CI Postgres has its own host port and an empty volume, development keeps its port', { skip: !bash && 'no bash' }, () => {
+  const prisma = read('skills/monolith/config-prisma/scripts/init-prisma-backend.js');
+  assert.match(prisma, /- '\\\$\{POSTGRES_HOST_PORT:-\$\{dbConfig\.port\}\}:5432'/, 'the compose port defaults to the project port');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-pg-'));
+  fs.mkdirSync(path.join(dir, 'bin'));
+  fs.writeFileSync(path.join(dir, 'bin', 'docker'), '#!/bin/sh\necho "$@" >> "$CALLS"\n', { mode: 0o755 });
+  const example = [
+    'MIGRATION_DATABASE_URL="postgresql://docker:docker@localhost:5433/docker?schema=public"',
+    'DATABASE_URL="postgresql://app_runtime:x@localhost:5433/docker?schema=public"',
+    'FRONTEND_URL="http://localhost:3000"',
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(dir, '.env.example'), example);
+  const r = spawnSync('bash', ['-e', '-c', stepRun('Postgres')], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${path.join(dir, 'bin')}:${process.env.PATH}`, CALLS: path.join(dir, 'calls') },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  const env = fs.readFileSync(path.join(dir, '.env'), 'utf8');
+  assert.equal(env.match(/@localhost:55433\//g).length, 2, 'both database URLs moved');
+  assert.match(env, /^POSTGRES_HOST_PORT=55433$/m);
+  assert.match(env, /localhost:3000/, 'other localhost values are untouched');
+  assert.deepEqual(fs.readFileSync(path.join(dir, 'calls'), 'utf8').trim().split('\n'), [
+    'compose down -v --remove-orphans',
+    'compose up -d --wait postgres',
+  ]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('the latency budget never runs on a pull request and gates only pre-release', () => {
   assert.equal(stepIf('Latency budget'), "steps.scope.outputs.code == 'true' && github.event_name != 'pull_request'");
   assert.doesNotMatch(stepRun('Latency budget'), /--changed/);

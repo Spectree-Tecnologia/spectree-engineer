@@ -695,7 +695,9 @@ function renderDockerCompose(dbConfig, rootDir) {
       POSTGRES_PASSWORD: ${dbConfig.password}
       POSTGRES_DB: ${dbConfig.database}
     ports:
-      - '${dbConfig.port}:5432'
+      # CI sets POSTGRES_HOST_PORT in its .env: a self-hosted runner beside a developer's database (WSL2 distros share
+      # one network) never asks for the same port
+      - '\${POSTGRES_HOST_PORT:-${dbConfig.port}}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
