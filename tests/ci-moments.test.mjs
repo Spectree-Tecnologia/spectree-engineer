@@ -33,10 +33,20 @@ const stepIf = (name) => ci.match(new RegExp(`- name: ${name}\\n\\s+if: (.+)`))?
 
 test('the template runs by moment and never on push', () => {
   assert.match(ci, /pull_request:\n\s+#[^\n]*\n\s+types:\n\s+- opened\n\s+- synchronize\n\s+- reopened\n\s+- ready_for_review\n/);
-  assert.match(ci, /- cron: '17 6 \* \* \*'/, 'every night, not once a week');
-  assert.match(ci, /workflow_dispatch:\n\s+inputs:\n\s+stage:[\s\S]*?options:\n\s+- nightly\n\s+- pre-release\n\s+default: nightly/);
+  // weekly, not nightly (0.44.0): the nightly run repeated on main what each merged pull request had just run
+  assert.match(ci, /- cron: '17 6 \* \* 1'/, 'once a week, on Monday');
+  assert.match(ci, /--since='170 hours ago'/, 'the full run only when something merged in the last week');
+  assert.match(ci, /workflow_dispatch:\n\s+inputs:\n\s+stage:[\s\S]*?options:\n\s+- weekly\n\s+- pre-release\n\s+default: weekly/);
   assert.doesNotMatch(ci.replace(/#.*$/gm, ''), /^\s+push:/m);
   assert.match(ci, /STAGE: \$\{\{ inputs\.stage \}\}/);
+});
+
+test('the runner is a repository variable with the hosted runner as default, never an input', () => {
+  assert.match(ci, /^ {4}runs-on: \$\{\{ vars\.CI_RUNNER \|\| 'ubuntu-latest' \}\}$/m);
+  assert.doesNotMatch(ci, /runs-on: .*inputs\./);
+  // node before the scope step, which runs scripts/e2e-scope.mjs
+  assert.ok(ci.indexOf('actions/setup-node') < ci.indexOf('- name: What this run has to prove'));
+  assert.equal(ci.match(/actions\/setup-node/g).length, 1);
 });
 
 test('the latency budget never runs on a pull request and gates only pre-release', () => {
@@ -57,7 +67,7 @@ test('a red latency budget reports, and fails only the pre-release run', { skip:
     });
     return { code: res.status, out: `${res.stdout}${res.stderr}`, summary: fs.readFileSync(summary, 'utf8') };
   };
-  for (const stage of ['', 'nightly']) {
+  for (const stage of ['', 'weekly']) {
     assert.equal(run(stage, 0).code, 0);
     for (const exit of [1, 3]) {
       const r = run(stage, exit);
@@ -93,18 +103,48 @@ test('the scope step chooses the Playwright smoke from the diff', { skip: !bash 
     return { code: res.status, playwright: res.stdout.match(/^playwright=(.*)$/m)?.[1]?.trim(), out: `${res.stdout}${res.stderr}` };
   };
   sh('git init -q -b main');
+  fs.mkdirSync(path.join(repo, 'scripts'));
+  fs.copyFileSync(path.join(plugin, 'skills/monolith/config-project/assets/scripts/e2e-scope.mjs'), path.join(repo, 'scripts', 'e2e-scope.mjs'));
   fs.writeFileSync(path.join(e2e, 'smoke.txt'), '# the journeys\r\ne2e/a.spec.ts\r\ne2e/b.spec.ts # why\r\n');
-  for (const f of ['a.spec.ts', 'b.spec.ts', 'c.spec.ts', 'login.ts']) fs.writeFileSync(path.join(e2e, f), '');
+  // login.ts reaches every spec; state.ts only c, through its import; deep.ts reaches c through state.ts; seed.mjs
+  // only d, which spawns it by path; orphan.ts nothing
+  const files = {
+    'a.spec.ts': "import { login } from './login';\n",
+    'b.spec.ts': "import { login } from './login.ts';\n",
+    'c.spec.ts': "import { login } from './login';\nimport { state } from './state';\n",
+    'd.spec.ts': "import { login } from './login';\nspawnSync('node', ['e2e/seed.mjs']);\n",
+    'e.spec.ts': "import { login } from './login';\n",
+    'login.ts': 'export const login = 1;\n',
+    'state.ts': "export { deep as state } from './deep';\n",
+    'deep.ts': 'export const deep = 1;\n',
+    'seed.mjs': '',
+    'orphan.ts': '',
+    'rows.json': '{}',
+  };
+  for (const [f, text] of Object.entries(files)) fs.writeFileSync(path.join(e2e, f), text);
+  fs.writeFileSync(path.join(repo, 'apps', 'frontend', 'playwright.config.ts'), '');
+  fs.writeFileSync(path.join(repo, 'package-lock.json'), '{}');
   commit('base');
   sh('git update-ref refs/remotes/origin/main HEAD && git switch -q -c change');
+  const touch = (rel, msg) => {
+    sh('git reset -q --hard origin/main');
+    fs.appendFileSync(path.join(repo, rel), '\n// x\n');
+    commit(msg);
+    return scope();
+  };
 
-  fs.writeFileSync(path.join(e2e, 'c.spec.ts'), 'x');
-  commit('spec');
-  assert.equal(scope().playwright, 'e2e/a.spec.ts e2e/b.spec.ts e2e/c.spec.ts', 'the smoke and the spec this change wrote');
-
-  fs.writeFileSync(path.join(e2e, 'login.ts'), 'x');
-  commit('helper');
-  assert.equal(scope().playwright, 'full', 'the harness changed: the whole suite');
+  assert.equal(touch('apps/frontend/e2e/c.spec.ts', 'spec').playwright, 'e2e/a.spec.ts e2e/b.spec.ts e2e/c.spec.ts', 'the smoke and the spec this change wrote');
+  assert.equal(touch('apps/frontend/e2e/state.ts', 'state').playwright, 'e2e/a.spec.ts e2e/b.spec.ts e2e/c.spec.ts', 'the spec that imports the helper');
+  assert.equal(touch('apps/frontend/e2e/deep.ts', 'deep').playwright, 'e2e/a.spec.ts e2e/b.spec.ts e2e/c.spec.ts', 'and through another helper');
+  assert.equal(touch('apps/frontend/e2e/seed.mjs', 'seed').playwright, 'e2e/a.spec.ts e2e/b.spec.ts e2e/d.spec.ts', 'the spec that spawns it by path');
+  assert.equal(touch('apps/frontend/e2e/login.ts', 'login').playwright, 'full', 'a helper every spec imports: the whole suite');
+  assert.equal(touch('apps/frontend/e2e/orphan.ts', 'orphan').playwright, 'full', 'a module nothing names: the whole suite');
+  assert.equal(touch('apps/frontend/e2e/rows.json', 'rows').playwright, 'full', 'a file that is not a module: the whole suite');
+  assert.equal(touch('apps/frontend/playwright.config.ts', 'config').playwright, 'full', 'the config: the whole suite');
+  assert.equal(touch('package-lock.json', 'lock').playwright, 'full', 'the lockfile: the whole suite');
+  sh('git reset -q --hard origin/main && git rm -q apps/frontend/e2e/orphan.ts');
+  commit('gone');
+  assert.equal(scope().playwright, 'full', 'a deleted module: the whole suite');
 
   sh('git reset -q --hard origin/main');
   fs.appendFileSync(path.join(e2e, 'smoke.txt'), 'e2e/gone.spec.ts\n');

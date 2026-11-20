@@ -104,7 +104,7 @@ if (fs.existsSync(path.join(root, 'scripts', 'goal.mjs'))) {
 const scripts = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts ?? {};
 if (scripts['format:check']) results.push(['format:check', run('npm run format:check', [], { shell: true })]);
 
-// 5. gitleaks over the commits this branch adds; main's history is scanned by the nightly run.
+// 5. gitleaks over the commits this branch adds; main's history is scanned by the weekly run.
 // gitleaks exits 0 even when git fails under it ("fatal: not a git repository", "0 commits scanned"), and its own count
 // skips merge, empty and delete-only commits, so neither its exit nor its count proves the scan read the branch. The
 // proof is git itself, run with the same repository view first (same mounts and GIT_DIR in Docker): it must count the

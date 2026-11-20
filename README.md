@@ -176,8 +176,8 @@ claude plugin update spectree-engineer
 - **Stack, never pinned:** Turborepo, NestJS (ESM, `nodenext`, Vitest), Next.js with Cache Components, Prisma + PostgreSQL, Node LTS via `.nvmrc`, and a shared `@<ns>/shared` package with the domain base types (`Entity`, `ValueObject`, `Result`, `UseCase`, repositories, `TransactionManager`, `DomainEvent`). Only supported majors, installed at `@latest`.
 - **Secure by default:** a global JWT guard (every route closed unless marked `@Public()`), a `JWT_SECRET` with no default, rate limiting, helmet, CORS limited to the frontend URL, a strict `ValidationPipe`, structured JSON logs, an env schema checked at boot, and `/health` and `/ready` probes.
 - **Supply chain:** a `.npmrc` with `min-release-age=3`, Dependabot with the same cooldown, `npm audit` in CI, gitleaks, osv-scanner, and squawk on new migrations.
-- **Capacity as a test:** a query budget per use case gated on every ready PR, and a p95 budget per route measured nightly and gated before release. The p95 is compared against the base branch on the same machine, so a slow runner does not fail anyone.
-- **CI that fits the GitHub Free plan:** one workflow, one job, never on push. Fast checks run on PR pushes, e2e and Playwright smoke run when a PR is ready, the full suite runs nightly, and a pre-release run gates the p95.
+- **Capacity as a test:** a query budget per use case gated on every ready PR, and a p95 budget per route measured weekly and gated before release. The p95 is compared against the base branch on the same machine, so a slow runner does not fail anyone.
+- **CI that fits the GitHub Free plan:** one workflow, one job, never on push. Fast checks run on PR pushes, e2e and the Playwright specs a change can reach run when a PR is ready, the full suite runs weekly, and a pre-release run gates the p95.
 - **Disposable databases:** `npm run db:scratch -- <name> -- <command>` creates, migrates, seeds and drops a database around any command, whatever its exit code.
 - **Mutation testing** per module with StrykerJS.
 - **English UI by default**, with error messages in English and Portuguese (`shared/i18n`) and a place for more locales.
