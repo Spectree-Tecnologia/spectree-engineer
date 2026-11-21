@@ -51,7 +51,7 @@ const stamp = fs.existsSync(stampFile) ? JSON.parse(fs.readFileSync(stampFile, '
 stamp.installed ??= {};
 stamp.kept ??= {};
 
-const files = fs.readdirSync(assets).filter((name) => name.endsWith('.mjs')).sort().map((name) => {
+const files = fs.readdirSync(assets).filter((name) => /\.(mjs|d\.mts)$/.test(name)).sort().map((name) => {
   const rel = `scripts/${name}`;
   const asset = path.join(assets, name);
   const mine = path.join(root, rel);

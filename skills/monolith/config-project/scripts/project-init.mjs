@@ -1159,6 +1159,14 @@ async function patchRootPackageJson(rootDir, scope) {
     markRiskOnOverwrite: false,
     note: 'the Playwright specs of a proof, run alone: own database, both servers, killed at the end or the timeout',
   });
+  for (const name of ['artboard.mjs', 'artboard.d.mts']) {
+    const asset = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', name);
+    await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', name), await fs.readFile(asset, 'utf8'), {
+      ensureNewline: false,
+      markRiskOnOverwrite: false,
+      note: 'a built screen against its approved artboard, by computed style, for a Playwright spec',
+    });
+  }
   const goalScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'goal.mjs');
   await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'goal.mjs'), await fs.readFile(goalScript, 'utf8'), {
     ensureNewline: false,
@@ -1174,7 +1182,7 @@ async function patchRootPackageJson(rootDir, scope) {
   // What the plugin installed, by hash: tooling-sync.mjs later replaces only the scripts the project never changed.
   const scriptAssets = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts');
   const installed = {};
-  for (const name of (await fs.readdir(scriptAssets)).filter((one) => one.endsWith('.mjs')).sort()) {
+  for (const name of (await fs.readdir(scriptAssets)).filter((one) => /\.(mjs|d\.mts)$/.test(one)).sort()) {
     const text = (await fs.readFile(path.join(scriptAssets, name), 'utf8')).replace(/\r\n/g, '\n');
     installed[`scripts/${name}`] = createHash('sha256').update(text).digest('hex');
   }
