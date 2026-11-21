@@ -71,10 +71,10 @@ test('a route over budget twice that the base serves as slowly does not block: i
 
 test('a base within budget is not called over budget: this change took the route over, by less than the ratio', async (t) => {
   // 0.47.0 (issue 87): 64 ms on the base, budget 72, 79 here passed with "not this change", which was not true
-  // about 12 ms of the machine on top of each delay: about 152 here, 132 on the base, under a budget of 142
-  const head = await server(t, () => 140);
-  const base = await server(t, () => 120);
-  const res = await run(project(route(1000), route(142)), { PERF_URL: head.url, PERF_BASE_URL: base.url });
+  // 500 here and 420 on the base (1.19x) around a budget of 465: some 40 ms of margin each way for a loaded machine
+  const head = await server(t, () => 500);
+  const base = await server(t, () => 420);
+  const res = await run(project(route(1000), route(465)), { PERF_URL: head.url, PERF_BASE_URL: base.url });
   assert.equal(res.code, 0, res.out);
   assert.match(res.out, /OVER, WITHIN RATIO/);
   assert.match(res.out, /within 1\.25x of the base's [\d.]+ms on this machine \([\d.]+x\), which was within budget: this change took it over/);
