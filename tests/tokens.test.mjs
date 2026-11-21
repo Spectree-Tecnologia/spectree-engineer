@@ -21,7 +21,15 @@ test('a full-stack-developer builds one ticket, and leaves the next one what it 
   assert.match(card, /`Status: built`, `Built: <sha>` and `Next needs:`; `verified` is the Engineer's, after the checkpoint/);
   assert.match(card, /with `to-tickets` to break the goal down/);
   // a long mission costs more per call: the card says what to do when the panel says so
-  assert.match(card, /\*\*Short mission\.\*\*[^\n]*When the panel refuses a call with the handoff warning[^\n]*report `handoff`/);
+  assert.match(card, /\*\*Short mission\.\*\*[^\n]*At the panel's handoff warning[^\n]*report `handoff`/);
+  // 0.45.0 (issues 122 and 118): measured on statement-of-accounts-2, 11 of 27 missions passed 60 calls (45% of the
+  // full-stack-developer's tokens), and each continuation explored the codebase again before building
+  assert.match(card, /in your ticket's `Next needs:` when you learn it, not at the end/);
+  assert.match(card, /A mission that continues a `handoff` reads that `Next needs:`[^\n]*it does not explore again/);
+  assert.match(card, /Past call 45, start no command that may run long: commit `wip` and report `handoff`/);
+  assert.match(read('commands/engineer.md'), /"every command is bounded — [^"]*a hung one is killed with its children and reported"/);
+  assert.match(read('commands/engineer.md'), /More than three findings of different classes go to two full-stack-developers in sequence, split by class/);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /A screen ticket covers at most one artboard group/);
   assert.doesNotMatch(card, /come back to you yourself/);
 });
 
