@@ -1,0 +1,3 @@
+# The assets are copied into projects that check out LF: a byte comparison against them holds only when they are LF
+# here too, on Windows as well (issue 88).
+skills/monolith/config-project/assets/** text eol=lf

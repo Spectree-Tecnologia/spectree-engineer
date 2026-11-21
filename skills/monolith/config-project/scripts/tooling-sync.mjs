@@ -154,4 +154,18 @@ if (differs.length > 0) {
   console.log('  plugin added, then record that the project\'s version stays:');
   for (const file of differs) console.log(`    diff ${file.rel} ${path.relative(root, file.asset) || file.asset}\n    node ${path.relative(root, fileURLToPath(import.meta.url))} --keep ${file.rel}`);
 }
+// the plugin's goal.mjs on the project's open contracts: what a newer checker refuses is said now, with its line, not
+// found by the first `goal check` of the goal (issue 88). It changes nothing and decides nothing here.
+if (fs.existsSync(path.join(root, 'docs', 'goals'))) {
+  const checked = spawnSync(process.execPath, [path.join(assets, 'goal.mjs'), 'check'], { cwd: root, encoding: 'utf8' });
+  const refused = (checked.stdout ?? '').split(/\r?\n/).reduce((out, line) => {
+    if (/^FAIL /.test(line)) out.push([line.replace(/^FAIL\s+/, '').replace(/\s+\(.*$/, '')]);
+    else if (/^\s+error: /.test(line) && out.length) out.at(-1).push(line.trim());
+    return out;
+  }, []);
+  if (refused.length > 0) {
+    console.log(`\n  contracts the plugin's goal check refuses (fix them on this branch, before the goal's own check):`);
+    for (const [file, ...errors] of refused) console.log(`    ${file}\n${errors.map((error) => `      ${error}`).join('\n')}`);
+  }
+}
 process.exit(behind.length + scriptsBehind.length === 0 ? 0 : 1);

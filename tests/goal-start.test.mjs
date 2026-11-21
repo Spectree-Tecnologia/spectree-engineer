@@ -106,6 +106,20 @@ test('--baseline runs build and test by exit code, writes the record, and a red 
   assert.match(redRecord, /\| test \| `npm test` \| not run \|/, 'a test run on a red build would only repeat the red');
 });
 
+test('--baseline runs the tests once more when a worker died while starting, and only then (issue 114)', () => {
+  const crash = "const fs=require('fs');if(!fs.existsSync('m')){fs.writeFileSync('m','');console.log('Error: Worker exited unexpectedly');process.exit(1)}";
+  const flaky = project({ build: 'node -e "process.exit(0)"', test: `node -e "${crash}"` });
+  const res = run(flaky.dir, 'things', '--baseline');
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /test {4}exit 0 .*\(run again: a worker died while starting\)/);
+  assert.match(fs.readFileSync(path.join(flaky.dir, '.scratch', 'things', 'baseline.md'), 'utf8'), /\| test \| `npm test` \| 0 \(run again: a worker died while starting\) \|/);
+  // a test that fails for a reason of its own is red the first time
+  const red = project({ build: 'node -e "process.exit(0)"', test: `node -e "${crash.replace("console.log('Error: Worker exited unexpectedly');", '')}"` });
+  assert.equal(run(red.dir, 'things', '--baseline').code, 1);
+  // npm ci empties the Prisma client: it is generated again before the build
+  assert.match(read('skills/monolith/config-project/scripts/goal-start.mjs'), /stale && fs\.existsSync\(prismaDir\) \? \{ name: 'prisma', command: 'npx prisma generate'/);
+});
+
 test('the Engineer starts a goal by the script, and the plan does not wait for the baseline', () => {
   const command = read('commands/engineer.md');
   assert.match(command, /goal-start\.mjs <slug> --branch <type>\/<slug>/);

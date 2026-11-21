@@ -14,7 +14,8 @@
 // `body`, `{{uuid}}` is a new UUID per request (the same one everywhere in that request) and `{{n}}` a per-route
 // counter, so `{ "name": "perf-{{uuid}}" }` measures the real create. `accept: [409]` lists the statuses besides 2xx
 // that the route may answer under load without failing; use it only when the status is the expected answer.
-//   PERF_MAX_CPU=<percent>     the machine load above which nothing is measured (default 50; 100 measures anyway)
+//   PERF_MAX_CPU=<percent>     the machine load above which nothing is measured (default 50; 100 measures anyway),
+//                              sampled before the run and again, with the server stopped, before a red: exit 3
 // A route over budget whose responses were all fine is measured once more, after the others, and the second
 // measurement decides: one spike on a shared machine is not a regression. A wrong status is never re-measured.
 // A route over budget twice that the base already had is then measured on the BASE's code, on this machine, now:
@@ -278,7 +279,11 @@ async function measureBase(routes) {
   fs.writeFileSync(path.join(work, 'match.json'), JSON.stringify(wanted));
   const self = [fileURLToPath(import.meta.url), '--match', path.join(work, 'match.json'), '--json', out];
   const quiet = { PERF_MAX_CPU: '100', PERF_COMPARE: '0' };
-  const lastLine = (r) => String(r.stderr || r.stdout || r.error?.message || '').trim().split(/\r?\n/).filter(Boolean).at(-1) ?? `exit ${r.status}`;
+  // the reason a run died: its first error line, else its last line that is not Node's crash banner ("Node.js v26.1.0")
+  const lastLine = (r) => {
+    const lines = String(r.stderr || r.stdout || r.error?.message || '').trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    return lines.find((line) => /^(?:Uncaught )?[A-Z]?\w*Error\b(?: \[[A-Z_]+\])?:/.test(line)) ?? lines.filter((line) => !/^Node\.js v\d/.test(line)).at(-1) ?? `exit ${r.status}`;
+  };
   const capture = { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 };
   let checkout = null;
   try {
@@ -384,8 +389,14 @@ try {
         row.why = `${ratio.toFixed(2)}x the base's ${ms(was.p95)} on this machine: this change made it slower`;
       } else {
         row.ok = true;
-        row.verdict = 'OVER, AS THE BASE';
-        notes.push(`${row.path} p95 ${ms(best)} > ${row.budget}ms, and the base measures ${ms(was.p95)} on this machine (${ratio.toFixed(2)}x): not this change. The route has no slack here: a line for the roadmap, not a round.`);
+        if (was.p95 > row.budget) {
+          row.verdict = 'OVER, AS THE BASE';
+          notes.push(`${row.path} p95 ${ms(best)} > ${row.budget}ms, and the base measures ${ms(was.p95)} on this machine (${ratio.toFixed(2)}x): over budget here and on the base, not this change. The route has no slack here: a line for the roadmap, not a round.`);
+        } else {
+          // the base was within budget: this change took the route over it, by less than the regression ratio
+          row.verdict = 'OVER, WITHIN RATIO';
+          notes.push(`${row.path} p95 ${ms(best)} > ${row.budget}ms, within ${regressionRatio}x of the base's ${ms(was.p95)} on this machine (${ratio.toFixed(2)}x), which was within budget: this change took it over by less than the ratio. A line for the roadmap, not a round.`);
+        }
       }
     }
   }
@@ -403,6 +414,16 @@ try {
       result: r.verdict ?? (r.ok ? 'OK' : 'OVER BUDGET'),
     })),
   );
+  // the machine was quiet when the run started; another agent's build may have begun since. A red taken while it was
+  // busy is "not measured", like a busy start (issue 87: twice exit 1 under two verifiers' builds, 32 of 32 OK quiet)
+  if (rows.some((r) => !r.ok) && Number.isFinite(maxCpu) && maxCpu < 100) {
+    child?.kill();
+    const busy = await cpuBusy();
+    if (busy > maxCpu) {
+      console.error(`perf: a route is over budget, and the machine is at ${busy}% CPU with the server stopped (limit ${maxCpu}%): not measured. Stop what is running and try again, or let the pull request's CI run decide.`);
+      process.exit(3);
+    }
+  }
   for (const r of rows.filter((r) => !r.ok)) {
     failed = true;
     console.error(`perf: ${r.path} p95 ${ms(r.p95)} > ${r.budget}ms${r.non2xx ? ` (${r.non2xx})` : ''}${r.why ? `, ${r.why}` : ''}`);

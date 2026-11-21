@@ -135,6 +135,10 @@ test('a reproval counts the same at a checkpoint and in a round: twice closes th
   assert.doesNotMatch(res.out, /criterion 2,/, 'a met verdict is no reproval');
   assert.deepEqual(JSON.parse(run(three, '--json').out).reproved, [{ n: 1, checkpoints: [1, 2], rounds: ['1'], total: 3 }]);
   assert.doesNotMatch(run(project(closedBy('verified', ['**Reproved:** none']))).out, /reproved:/);
+  // 0.47.0 (issue 116): the digits of a sha after the list are not criteria
+  const sha = run(project(closedBy('verified', ['**Reproved:** 1 (weak proof at checkpoint, closed in 62db31b6)'])));
+  assert.match(sha.out, /reproved: criterion 1, once/);
+  assert.doesNotMatch(sha.out, /criterion (6|2|3),/);
 });
 
 test('the graph marks the tickets whose checkpoint has the security-engineer, from what they touch', () => {
