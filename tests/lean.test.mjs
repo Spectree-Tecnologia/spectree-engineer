@@ -97,8 +97,10 @@ test('the prompts stay inside their word budget', () => {
   // statement-of-accounts (2026-11-18): new Fable agents hunted again at the re-check and opened round 3.
   // 0.45.0 lowered both to what they left: bounded commands, a handoff before a long command, `Next needs:` written as
   // facts are learned and a big fix split by class paid for themselves with text `npm run pw` and the guard-rails made redundant.
+  // 0.46.0 lowered the squad to what it left: the tool's own parser for a proof's input (issue 90), and a push that
+  // cancels the PR's run with a run's verdict by its jobs (issue 96), paid with text the panel already enforces.
   const COMMAND = 8836;
-  const SQUAD = 20618;
+  const SQUAD = 20593;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);
