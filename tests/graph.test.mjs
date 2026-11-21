@@ -364,7 +364,7 @@ test('the checkpoint is written into the ticket by the Engineer, and the graph w
   // the security-engineer's checkpoint is decided by what the ticket touches, and the Engineer can only add to it
   assert.match(command, /when `goal graph` lists the ticket under `trust:` \(read from its `Touches`\)[^\n]*You may add a ticket to `trust:`, never skip one\./);
   const skill = read('skills/engineering/to-tickets/SKILL.md');
-  assert.match(skill, /write in its file `\*\*Status:\*\* built`, `\*\*Built:\*\* <sha>`/);
+  assert.match(skill, /write in its file `\*\*Status:\*\* built` and `\*\*Built:\*\* <sha>`/);
   assert.match(skill, /The rest of the ticket's state is the orchestrator's, after the checkpoint/);
   assert.doesNotMatch(read('agents/full-stack-developer.md'), /`Status: done`/);
 });

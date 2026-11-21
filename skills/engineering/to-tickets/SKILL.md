@@ -31,6 +31,7 @@ Look for prefactoring that makes the goal easier. "Make the change easy, then ma
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests): vertical, NOT a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
 - Each slice is sized to fit in a single fresh context window, with room to spare: about 40 tool calls of work. Past 60 calls every call costs more, so a ticket that needs more is two tickets
+- A screen ticket covers at most one artboard group (one component's family of states) and names the spec and the fixture it extends. When the component and its spec with fixtures are both new, they are two tickets, the spec blocked by the component: together they pass 60 calls
 - Any prefactoring is done first, in a ticket that changes no behaviour
 - The first ticket is the tracer bullet: the smallest path from the test of one success criterion down to the database
 - Every success criterion of the contract is advanced by at least one ticket
@@ -61,7 +62,7 @@ One file per ticket, `.scratch/<slug>/issues/<NN>-<name>.md`, numbered from `01`
 
 **Touches:** the folders this ticket writes, comma separated, as narrow as is true (`modules/accounts`, `apps/backend/src/modules/accounts`). A ticket that adds or changes a dependency also lists `package-lock.json`: two tickets that both touch the lockfile cannot be merged without a conflict.
 
-**Proof:** run: `<command>`, the one command that exits 0 when this ticket is done and not before. A criterion whose contract proof is a script or checker that does not exist yet gets it in a ticket of its own, before the tickets it decides: nobody else writes it.
+**Proof:** run: `<command>`, the one command that exits 0 when this ticket is done and not before. A Playwright proof is `npm run pw -- <spec...>`, the same command the contract's line runs, never a harness under `.scratch/`. A criterion whose contract proof is a script or checker that does not exist yet gets it in a ticket of its own, before the tickets it decides: nobody else writes it.
 
 **Status:** ready
 
@@ -85,4 +86,4 @@ Run `npm run goal -- graph <slug> --plan` until it exits 0: no cycle, every crit
 
 Work the **frontier**: a ticket whose blockers are all closed by their checkpoint, as `npm run goal -- graph <slug>` prints it. One ticket per agent. Your ticket is built when its own proof exits 0: `npm run goal -- graph <slug> --prove <NN>`.
 
-When yours is built, write in its file `**Status:** built`, `**Built:** <sha>`, and `**Next needs:**` with what the tickets it blocks need to know and cannot read in the code: the seam you opened, the fixture that serves, the trap you found. Whoever builds them starts from zero. The rest of the ticket's state is the orchestrator's, after the checkpoint: `**Status:** verified` or `open`, `**Reproved:**` and, for an `open` ticket the next ones may build on, `**Carried:**`.
+Write `**Next needs:**` as you learn each fact, not only at the end: what the tickets it blocks, or a continuation after a `handoff`, need to know and cannot read in the code: the seam you opened, the fixture that serves, the selector, the seed id, the trap you found. Whoever builds them starts from zero. When yours is built, write in its file `**Status:** built` and `**Built:** <sha>`. The rest of the ticket's state is the orchestrator's, after the checkpoint: `**Status:** verified` or `open`, `**Reproved:**` and, for an `open` ticket the next ones may build on, `**Carried:**`.

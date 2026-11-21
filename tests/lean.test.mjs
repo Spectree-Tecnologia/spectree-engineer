@@ -95,8 +95,10 @@ test('the prompts stay inside their word budget', () => {
   // 0.43.0 raised the command by 47 words and the two together by 61: Fable raises only the fix, its re-check stays
   // with the same agents (step 9), and a screen criterion lists its states, widths and data cases (step 3). Measured on
   // statement-of-accounts (2026-11-18): new Fable agents hunted again at the re-check and opened round 3.
-  const COMMAND = 8838;
-  const SQUAD = 20621;
+  // 0.45.0 lowered both to what they left: bounded commands, a handoff before a long command, `Next needs:` written as
+  // facts are learned and a big fix split by class paid for themselves with text `npm run pw` and the guard-rails made redundant.
+  const COMMAND = 8836;
+  const SQUAD = 20618;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

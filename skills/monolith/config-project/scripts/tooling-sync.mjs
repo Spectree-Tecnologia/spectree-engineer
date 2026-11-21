@@ -30,6 +30,7 @@ const NPM_SCRIPTS = {
   mutation: 'node scripts/mutation.mjs',
   'check:pr': 'node scripts/check-pr.mjs',
   'db:scratch': 'node scripts/db-scratch.mjs',
+  pw: 'node scripts/pw.mjs',
   goal: 'node scripts/goal.mjs',
   prebuild: 'node scripts/clean-next.mjs',
 };

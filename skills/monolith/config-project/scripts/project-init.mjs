@@ -1090,6 +1090,8 @@ async function patchRootPackageJson(rootDir, scope) {
   pkg.scripts.mutation = 'node scripts/mutation.mjs';
   pkg.scripts['check:pr'] = pkg.scripts['check:pr'] ?? 'node scripts/check-pr.mjs';
   pkg.scripts['db:scratch'] = pkg.scripts['db:scratch'] ?? 'node scripts/db-scratch.mjs';
+  // the Playwright specs of a proof, run alone: own database, both servers started and killed by the run
+  pkg.scripts.pw = pkg.scripts.pw ?? 'node scripts/pw.mjs';
   pkg.scripts.goal = pkg.scripts.goal ?? 'node scripts/goal.mjs';
   // a turbo cache restore never deletes: an old .next would sit next to the restored build (#78)
   pkg.scripts.prebuild = pkg.scripts.prebuild ?? 'node scripts/clean-next.mjs';
@@ -1150,6 +1152,12 @@ async function patchRootPackageJson(rootDir, scope) {
     ensureNewline: false,
     markRiskOnOverwrite: false,
     note: 'a throwaway database for one command: created, migrated, seeded, dropped',
+  });
+  const pwScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'pw.mjs');
+  await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'pw.mjs'), await fs.readFile(pwScript, 'utf8'), {
+    ensureNewline: false,
+    markRiskOnOverwrite: false,
+    note: 'the Playwright specs of a proof, run alone: own database, both servers, killed at the end or the timeout',
   });
   const goalScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'goal.mjs');
   await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'goal.mjs'), await fs.readFile(goalScript, 'utf8'), {
