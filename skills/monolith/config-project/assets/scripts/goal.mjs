@@ -285,9 +285,16 @@ function check() {
     return 0;
   }
   let bad = 0;
+  // every contract at once: a finished one is history, written in the shape of the checker it finished under, so a
+  // later checker's errors on it are notes (issue 88: two met contracts held `goal check` red for a whole ticket). A
+  // contract named by its slug or changed by the branch is checked in full.
+  const all = flags.positional.length === 0 && !flags['--changed'];
   for (const file of files) {
     const goal = parse(file);
-    const { errors, warnings } = lint(goal, Boolean(flags['--ready']));
+    const linted = lint(goal, Boolean(flags['--ready']));
+    const history = all && /^(met|stopped|landed)\b/i.test(goal.status) && linted.errors.length > 0;
+    const errors = history ? [] : linted.errors;
+    const warnings = history ? [...linted.errors.map((error) => `history (finished, not reformatted): ${error}`), ...linted.warnings] : linted.warnings;
     console.log(`${errors.length === 0 ? 'ok  ' : 'FAIL'}  docs/goals/${goal.slug}.md  (${goal.status || 'no status'}, ${goal.criteria.length} criteria)`);
     // one contract: every command its proofs will run, as the script reads the cell and not as its author meant it
     if (files.length === 1) {
@@ -898,7 +905,8 @@ function readTickets(slug) {
         // closed: the tickets it blocks may start
         done: state === 'verified' || (state === 'open' && Boolean(carried)),
         // the criteria the checkpoint found `not met` or `weak proof` before the fix
-        reproved: /^(none|-)?$/i.test(field('Reproved') ?? '') ? [] : numbers(field('Reproved')),
+        // only the list that opens the field: "3 (weak proof, closed in 62db31b6)" is criterion 3, not the sha's digits
+        reproved: numbers((field('Reproved') ?? '').match(/^\d+(?:\s*(?:,|;|and|e|&)\s*\d+)*(?!\w)/)?.[0]),
         // a ticket that does not say what it touches proved nothing: it has the security-engineer too
         trust: paths === null || paths.length === 0 || paths.some((one) => TRUST.some((pattern) => pattern.test(one))),
       };

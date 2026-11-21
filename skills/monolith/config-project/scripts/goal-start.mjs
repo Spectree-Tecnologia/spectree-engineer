@@ -78,10 +78,16 @@ const installed = path.join(root, 'node_modules', '.package-lock.json');
 const stale = fs.existsSync(lock) && (!fs.existsSync(installed) || fs.statSync(installed).mtimeMs < fs.statSync(lock).mtimeMs);
 const backend = path.join(root, 'apps', 'backend', 'package.json');
 const hasE2e = fs.existsSync(backend) && Boolean(JSON.parse(fs.readFileSync(backend, 'utf8')).scripts?.['test:e2e']);
+// npm ci empties node_modules/.prisma: the backend's tests then fail on "Cannot find module '.prisma/client/default'"
+// on green code (issue 114), so the client is generated again before anything reads it
+const prismaDir = path.join(root, 'apps', 'backend', 'prisma');
+// a test runner whose worker died while starting (Vitest's fork on Windows, exit 2147483651) proved nothing: once again
+const CRASH = /Worker (?:exited|terminated) unexpectedly|Failed to start (?:forks|threads) worker|ERR_IPC_CHANNEL_CLOSED|Channel closed|Timeout starting (?:forks|threads) runner/i;
 const steps = [
   stale ? { name: 'install', command: 'npm ci' } : null,
+  stale && fs.existsSync(prismaDir) ? { name: 'prisma', command: 'npx prisma generate', cwd: path.dirname(prismaDir) } : null,
   { name: 'build', command: 'npm run build' },
-  { name: 'test', command: 'npm test' },
+  { name: 'test', command: 'npm test', retry: true },
   fs.existsSync(lock) ? { name: 'audit', command: 'npm audit --audit-level=high', advisory: true } : null,
   rest.includes('--e2e') && hasE2e ? { name: 'e2e', command: 'npm run db:scratch -- baseline -- npm -w apps/backend run test:e2e' } : null,
 ].filter(Boolean);
@@ -95,13 +101,22 @@ for (const step of steps) {
     continue;
   }
   const log = path.join(dir, `${step.name}.log`);
-  const out = fs.openSync(log, 'w');
   const started = Date.now();
-  const status = spawnSync(step.command, { cwd: root, shell: true, stdio: ['ignore', out, out], env: { ...process.env, TZ: 'UTC' } }).status ?? 1;
-  fs.closeSync(out);
-  rows.push({ ...step, status, seconds: Math.round((Date.now() - started) / 1000) });
+  const once = (file) => {
+    const out = fs.openSync(file, 'w');
+    const code = spawnSync(step.command, { cwd: step.cwd ?? root, shell: true, stdio: ['ignore', out, out], env: { ...process.env, TZ: 'UTC' } }).status ?? 1;
+    fs.closeSync(out);
+    return code;
+  };
+  let status = once(log);
+  let retried = false;
+  if (status !== 0 && step.retry && (status >= 2 ** 31 || CRASH.test(fs.readFileSync(log, 'utf8')))) {
+    retried = true;
+    status = once(path.join(dir, `${step.name}-retry.log`));
+  }
+  rows.push({ ...step, status, retried, seconds: Math.round((Date.now() - started) / 1000) });
   if (status !== 0 && !step.advisory) red = true;
-  console.log(`goal-start: ${step.name.padEnd(7)} ${status === 0 ? 'exit 0' : `EXIT ${status}`}  ${rows.at(-1).seconds}s  ${step.command}`);
+  console.log(`goal-start: ${step.name.padEnd(7)} ${status === 0 ? 'exit 0' : `EXIT ${status}`}  ${rows.at(-1).seconds}s  ${step.command}${retried ? '  (run again: a worker died while starting)' : ''}`);
 }
 const audit = rows.find((row) => row.advisory && row.status !== 0);
 const verdict = red ? 'RED: a block, never a starting point' : audit ? 'green; the audit found high or critical: a fix a simple bump gives is a criterion of this goal, a new major is a roadmap item' : 'green';
@@ -115,7 +130,7 @@ fs.writeFileSync(
     '',
     '| Step | Command | Exit | Seconds | Log |',
     '|------|---------|------|---------|-----|',
-    ...rows.map((row) => `| ${row.name} | \`${row.command}\` | ${row.status} | ${row.seconds ?? '-'} | \`${row.name}.log\`, outside the repository |`),
+    ...rows.map((row) => `| ${row.name} | \`${row.command}\` | ${row.status}${row.retried ? ' (run again: a worker died while starting)' : ''} | ${row.seconds ?? '-'} | \`${row.name}.log\`${row.retried ? ` and \`${row.name}-retry.log\`` : ''}, outside the repository |`),
     '',
   ].join('\n'),
 );

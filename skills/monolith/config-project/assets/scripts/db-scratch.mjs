@@ -71,6 +71,8 @@ async function withOwner(fn) {
     await client.end();
   }
 }
+// The key every db:scratch run takes around db:roles, on the development cluster.
+const ROLES_LOCK = 7310115;
 const exists = async (client) => (await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName])).rowCount > 0;
 const dropDatabase = (client) => client.query(`DROP DATABASE ${client.escapeIdentifier(dbName)} WITH (FORCE)`);
 
@@ -110,7 +112,16 @@ async function main() {
       ...(fs.existsSync(path.join(backendDir, 'prisma', 'seed', 'main.ts')) ? [['npx prisma db seed', backendDir]] : []),
     ];
     for (const [line, cwd] of steps) {
-      status = sh(line, cwd);
+      // the roles are the cluster's, not the database's: two runs that set them up together die on "tuple
+      // concurrently updated" (a quality-engineer and a security-engineer verifying one ticket), so one waits
+      status = line.includes('db:roles') ? await withOwner(async (client) => {
+        await client.query('SELECT pg_advisory_lock($1)', [ROLES_LOCK]);
+        try {
+          return sh(line, cwd);
+        } finally {
+          await client.query('SELECT pg_advisory_unlock($1)', [ROLES_LOCK]);
+        }
+      }) : sh(line, cwd);
       if (status !== 0) {
         console.error(`db:scratch: "${line}" exited ${status}; the command was not run`);
         return status;
