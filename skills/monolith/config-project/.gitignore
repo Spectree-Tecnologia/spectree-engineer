@@ -41,3 +41,6 @@ yarn-error.log*
 
 # Engineer: each person's conversation language, never committed
 .engineer.local.json
+
+# Squad: .scratch/ is committed, a raw log never is (it can hold tokens)
+.scratch/**/*.log

@@ -81,6 +81,12 @@ const turbo = fs.existsSync(turboFile) ? JSON.parse(fs.readFileSync(turboFile, '
 const buildOutputs = turbo?.tasks?.build?.outputs;
 const turboBehind = Array.isArray(buildOutputs) && buildOutputs.includes('.next/**') && !buildOutputs.includes('!.next/cache/**');
 
+// .gitignore: .scratch/ is committed, so a raw log an agent leaves there would be too, tokens included (issue 105).
+const GITIGNORE = ['.scratch/**/*.log'];
+const gitignoreFile = path.join(root, '.gitignore');
+const gitignore = fs.existsSync(gitignoreFile) ? fs.readFileSync(gitignoreFile, 'utf8') : '';
+const missingIgnores = GITIGNORE.filter((line) => !gitignore.split(/\r?\n/).includes(line));
+
 // The numbered rules of docs/architecture.md: a rule the plugin gained after the project was bootstrapped is appended
 // below the last one. A row the project has is never rewritten, whatever it says.
 // shortcut: a project that gave its own rule a number the plugin uses keeps it and never gets the plugin's rule;
@@ -130,6 +136,7 @@ if (mode === '--apply') {
     buildOutputs.splice(buildOutputs.indexOf('.next/**') + 1, 0, '!.next/cache/**');
     fs.writeFileSync(turboFile, `${JSON.stringify(turbo, null, 2)}\n`);
   }
+  if (missingIgnores.length > 0) fs.writeFileSync(gitignoreFile, `${gitignore.replace(/\s*$/, '')}\n${missingIgnores.join('\n')}\n`.replace(/^\n/, ''));
   if (missingRules.length > 0) {
     const eol = architecture.includes('\r\n') ? '\r\n' : '\n';
     const last = [...projectRules.values()].at(-1);
@@ -142,11 +149,12 @@ if (mode === '--apply') {
 }
 
 const behind = files.filter((file) => ['missing', 'outdated', 'differs'].includes(file.state));
-const scriptsBehind = mode === '--check' ? [...missingScripts, ...missingRules, ...(turboBehind ? ['turbo'] : [])] : [];
+const scriptsBehind = mode === '--check' ? [...missingScripts, ...missingRules, ...missingIgnores, ...(turboBehind ? ['turbo'] : [])] : [];
 console.log(`tooling-sync ${mode.slice(2)}: plugin ${plugin}, project stamped ${stamp.plugin ?? 'never'}`);
 for (const file of files) console.log(`  ${(file.done ?? file.state).padEnd(8)}  ${file.rel}`);
 for (const name of missingScripts) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  package.json script "${name}"`);
 if (turboBehind) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  turbo.json build output "!.next/cache/**"`);
+for (const line of missingIgnores) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  .gitignore "${line}"`);
 for (const [number] of missingRules) console.log(`  ${mode === '--apply' ? 'added   ' : 'missing '}  docs/architecture.md rule ${number}`);
 const differs = files.filter((file) => file.state === 'differs');
 if (differs.length > 0) {

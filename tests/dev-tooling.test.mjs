@@ -111,3 +111,28 @@ test('#78 a new project caches .next without its cache, and tooling-sync brings 
   assert.ok(fs.existsSync(path.join(dir, 'scripts', 'clean-next.mjs')));
   assert.equal(sync('--check').status, 0);
 });
+
+// The pilot project's feat/data-import-3 showed +61k lines: ~900 raw logs the verifiers left in .scratch/<slug>/<role>/,
+// which is committed, because the mission's guard-rail sent them there (and a log can hold tokens, issue 105).
+test('raw agent logs stay outside git: the mission sends them to the temp dir, and .gitignore drops any left in .scratch/', () => {
+  const command = fs.readFileSync(path.join(plugin, 'commands', 'engineer.md'), 'utf8');
+  assert.match(command, /"raw logs and throwaway scripts go in `<os tmpdir>\/spectree-gate\/<project>\/<slug>\/<role>\/`, never in the repository"/);
+  assert.doesNotMatch(command, /your scripts and logs go in `\.scratch/);
+  const template = fs.readFileSync(path.join(plugin, 'skills', 'monolith', 'config-project', '.gitignore'), 'utf8');
+  assert.ok(template.split(/\r?\n/).includes('.scratch/**/*.log'));
+  assert.match(fs.readFileSync(path.join(plugin, 'skills', 'monolith', 'config-project', 'scripts', 'project-init.mjs'), 'utf8'), /const missing = \[[^\]]*'\.scratch\/\*\*\/\*\.log'[^\]]*\]/);
+
+  // an old project gets the line from tooling-sync, keeps its own lines, and git then ignores a nested log, not the plan
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'old', scripts: {} }));
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules\n');
+  const sync = (mode) => spawnSync(process.execPath, [path.join(plugin, 'skills', 'monolith', 'config-project', 'scripts', 'tooling-sync.mjs'), mode], { cwd: dir, encoding: 'utf8' });
+  assert.match(sync('--check').stdout, /missing   \.gitignore "\.scratch\/\*\*\/\*\.log"/);
+  sync('--apply');
+  sync('--apply');
+  assert.equal(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'node_modules\n.scratch/**/*.log\n');
+  spawnSync('git', ['init', '-q'], { cwd: dir });
+  const ignored = (file) => spawnSync('git', ['check-ignore', '-q', file], { cwd: dir }).status === 0;
+  assert.ok(ignored('.scratch/data-import-3/quality-engineer/t04/mutation.log'));
+  assert.ok(!ignored('.scratch/data-import-3/plan.md'));
+});
