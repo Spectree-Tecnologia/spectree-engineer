@@ -11,7 +11,7 @@
 //   npm run check:pr -- --base <ref>
 //
 // The gitleaks image and the squawk version are read from .github/workflows/ci.yml, so there is one pin. gitleaks runs
-// from the local binary when its version is the pinned one, otherwise from the pinned image in Docker.
+// from the pinned image whenever Docker answers, which proves the digest; from a local binary of the pinned version only without Docker.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -137,11 +137,15 @@ function gitleaks() {
     }
     return 0;
   };
-  const local = spawnSync('gitleaks', ['version'], { encoding: 'utf8' });
-  const localVersion = local.status === 0 ? local.stdout.trim().replace(/^v/, '') : undefined;
+  // The pinned image whenever Docker answers: pulling it by digest is what proves the pin in ci.yml (issue 99: a zeroed
+  // digest passed on the local binary). The local binary only without Docker, and then the digest is CI's to prove.
+  const docker = spawnSync('docker', ['version', '--format', '{{.Server.Version}}'], { encoding: 'utf8' }).status === 0;
+  const local = docker ? undefined : spawnSync('gitleaks', ['version'], { encoding: 'utf8' });
+  const localVersion = local?.status === 0 ? local.stdout.trim().replace(/^v/, '') : undefined;
   // --config: the repo's rules when it has them, never a GITLEAKS_CONFIG from the caller's environment
   const hasConfig = fs.existsSync(path.join(root, '.gitleaks.toml'));
-  if (localVersion === gitleaksImage[2]) {
+  if (!docker && localVersion === gitleaksImage[2]) {
+    console.log(`\ngitleaks: no Docker here, local binary ${localVersion}; the image digest is not checked (CI pulls it)`);
     return scan(
       ['git', '-C', root, 'rev-list', '--count', range],
       'gitleaks',
@@ -149,7 +153,9 @@ function gitleaks() {
     );
   }
   console.log(
-    `\ngitleaks: local binary is ${localVersion ?? 'missing'}, CI pins ${gitleaksImage[2]}; using the pinned image`,
+    docker
+      ? `\ngitleaks: the pinned image ${gitleaksImage[1]}`
+      : `\ngitleaks: no Docker, and the local binary is ${localVersion ?? 'missing'}, not the pinned ${gitleaksImage[2]}`,
   );
   // A linked worktree's .git is a file pointing into the main checkout: mount the common dir and point GIT_DIR at this
   // tree's own gitdir inside it, so the scan works from a ticket worktree too.

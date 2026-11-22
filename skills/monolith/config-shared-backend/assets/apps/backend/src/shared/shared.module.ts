@@ -10,6 +10,7 @@ import { DbModule } from '../db/db.module.js';
 import { JwtStrategy } from './auth/jwt.strategy.js';
 import { JwtGuard } from './auth/jwt.guard.js';
 import { validateEnv } from './config/env.schema.js';
+import { LOG_REDACT_PATHS, REQUEST_LOG_SERIALIZERS } from './config/log-redact.js';
 import { HealthController } from './health/health.controller.js';
 
 @Global()
@@ -33,7 +34,9 @@ import { HealthController } from './health/health.controller.js';
           },
           customAttributeKeys: { reqId: 'requestId' },
           quietReqLogger: true,
-          redact: ['req.headers.authorization', 'req.headers.cookie'],
+          // the request line by allowlist: no header, no query (a refresh token in set-cookie, a magic link's ?token=)
+          redact: LOG_REDACT_PATHS,
+          serializers: REQUEST_LOG_SERIALIZERS,
           autoLogging: { ignore: (req) => req.url === '/health' || req.url === '/ready' },
         },
       }),

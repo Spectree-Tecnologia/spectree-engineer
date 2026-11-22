@@ -20,7 +20,7 @@ Rebuild `apps/backend/src/shared/` from this skill's assets, leaving the backend
 
 And **operable in production**:
 
-- JSON logging via `nestjs-pino`: one line per request with `requestId` (the received `x-request-id` header or a UUID, returned in the response), `userId` set by `JwtGuard` when there is a token, `authorization`/`cookie` redacted, `/health` and `/ready` excluded from auto-logging; level via `LOG_LEVEL` (default `info`). Nest's `Logger` now outputs JSON (`app.useLogger`).
+- JSON logging via `nestjs-pino`: one line per request with `requestId` (the received `x-request-id` header or a UUID, returned in the response), `userId` set by `JwtGuard` when there is a token, the request line by allowlist in `config/log-redact.ts` (method, path cut at the query, ip, status: no header of the request or response, no query string), `/health` and `/ready` excluded from auto-logging; level via `LOG_LEVEL` (default `info`). Nest's `Logger` now outputs JSON (`app.useLogger`).
 - The whole `.env` validated at boot by `config/env.schema.ts` (zod) via `ConfigModule.forRoot({ validate })`: `PORT` (number, default from the config), `DATABASE_URL` (`postgresql://`), `JWT_SECRET` (32+ characters), `FRONTEND_URL` (optional), `LOG_LEVEL` (enum). A missing or invalid variable brings the app down with `Invalid environment:` and the list of problems.
 - `GET /health` (process alive) and `GET /ready` (`SELECT 1` on `PrismaService`; 503 if the database does not respond), both `@Public()` and `@SkipThrottle()`.
 - `app.enableShutdownHooks()` in `main.ts`: SIGTERM closes connections (Prisma `onModuleDestroy`) before exiting.
@@ -96,7 +96,7 @@ The command's e2e does `spawnSync('node', ['dist/cli/onboard.js', ...])` with `N
 - Never add a specific module's fields to `AuthenticatedUser`.
 - Never give `JWT_SECRET` a default value nor register an open route without `@Public()`.
 - A new environment variable goes into `config/env.schema.ts`; a loose `process.env.X` outside the schema is a 500 waiting to happen.
-- Never log a token, cookie or body: `redact` covers the headers, the rest is the discipline of whoever logs.
+- Never log a token, cookie or body: the request line's allowlist covers headers and query, the rest is the discipline of whoever logs.
 - Never duplicate error classes that already exist in `packages/shared`.
 
 ## Internal references
