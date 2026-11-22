@@ -390,6 +390,8 @@ async function main() {
     'apps/backend/src/shared/auth/auth-user.mapper.ts',
     'apps/backend/src/shared/auth/index.ts',
     'apps/backend/src/shared/config/env.schema.ts',
+    'apps/backend/src/shared/config/log-redact.ts',
+    'apps/backend/src/shared/config/log-redact.spec.ts',
     'apps/backend/src/shared/health/health.controller.ts',
     'apps/backend/src/shared/decorators/public.decorator.ts',
     'apps/backend/src/shared/decorators/roles.decorator.ts',
