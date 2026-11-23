@@ -320,6 +320,23 @@ test('a proof written `in ci:` is run by the pull request\'s run, and by nothing
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /An `in ci:` proof is run by the pull request's run \(the CI step `Goal proofs written in ci`/);
 });
 
+// 0.50.0 (issue 126): on the pilot project's data-import, `gate --final` went red on the proofs of criteria moved to
+// the continuation goal, whose specs live there.
+test('goal prove skips a criterion moved to a continuation goal or waived', () => {
+  const failing = contract().replace('| 3 | a thing is archived | run: `node -e "process.exit(0)"` |', '| 3 | a thing is archived | run: `node -e "process.exit(7)"` |');
+  const prove = (amendment) => {
+    const res = spawnSync(process.execPath, [goal, 'prove', 'things'], { cwd: project({}, `${failing}\n## Amendments\n\n| Date | # | Change | By | Follows |\n|---|---|---|---|---|\n${amendment}`), encoding: 'utf8' });
+    return { code: res.status, out: res.stdout + res.stderr };
+  };
+  for (const change of ['moved', 'waived']) {
+    const res = prove(`| 2026-11-21 | 3 | ${change} | Engineer | \`things-2\` |\n`);
+    assert.equal(res.code, 0, res.out);
+    assert.match(res.out, new RegExp(`skip\\s+criterion 3\\s+\\(${change}: not run here\\)`));
+    assert.match(res.out, /exit 0\s+criterion 1/);
+  }
+  assert.equal(prove('| 2026-11-21 | 3 | reworded | Engineer | |\n').code, 1, 'any other amendment still runs the proof');
+});
+
 // 0.33.0, from the pilot project's ci-time-20 (2026-11-14): the wording of a by-hand half of a proof held a second `run:`, and the
 // pull request's own step would have run it. The quality-engineer found it; the author can see it when it writes.
 test('goal check prints every command a contract will run, as the script reads the cell', () => {

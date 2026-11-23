@@ -335,6 +335,12 @@ function proveOne(goal, only, now) {
   const env = { ...process.env, TZ: 'UTC' };
   const results = [];
   for (const criterion of criteria) {
+    // moved to a continuation goal or waived: its proof is not this goal's to run (issue 126), as in check and next
+    const gone = goal.amendments.find((a) => a.n === criterion.n && ['moved', 'waived'].includes(a.change));
+    if (gone) {
+      results.push({ n: criterion.n, command: `(${gone.change}: not run here)`, status: null, skip: true });
+      continue;
+    }
     // what only the pull request's run or the merged main can show does not run here
     if (criterion.deferred && criterion.deferred !== now) {
       results.push({ n: criterion.n, command: `(${criterion.deferred}: not run now)`, status: null, waits: true });
@@ -349,7 +355,7 @@ function proveOne(goal, only, now) {
     }
   }
   console.log(`\ngoal prove: docs/goals/${goal.slug}.md`);
-  for (const row of results) console.log(`  ${row.waits ? 'waits ' : row.status === null ? 'manual' : row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
+  for (const row of results) console.log(`  ${row.skip ? 'skip  ' : row.waits ? 'waits ' : row.status === null ? 'manual' : row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
   const failed = results.filter((row) => row.status !== null && row.status !== 0);
   if (results.every((row) => row.status === null)) console.log('  nothing to run: no criterion has a run: proof');
   return failed.length === 0 ? 0 : 1;
