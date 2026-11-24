@@ -153,6 +153,16 @@ test('two full-stack-developers per machine, whichever way they are opened', () 
   assert.match(command, /`git worktree list` shows only the main checkout \(the first is not in two lanes/);
 });
 
+// 0.50.1: the two residues the reading of 2026-11-15 left as they were.
+test('the interview is not gate 4, and no step of code-review sends a reader to .scratch/', () => {
+  const rule14 = read('ARCHITECTURE.md').split('\n').find((line) => line.startsWith('| 14 |'));
+  assert.match(rule14, /is decided in the interview, before the first migration/);
+  assert.doesNotMatch(rule14, /gate 4/);
+  const review = read('skills/engineering/code-review/SKILL.md');
+  const step2 = review.slice(review.indexOf('### 2. Identify the spec source'), review.indexOf('### 3.'));
+  assert.doesNotMatch(step2, /\.scratch/);
+});
+
 // 0.40.0: on the pilot project on 2026-11-15 the Engineer wrote a 306-line proof script itself, ran it red at the
 // baseline and tried it on an implementation of its own; it took 64% of the goal's first hour of tokens.
 test('the Engineer writes the contract, not its proof: a proof that does not exist yet is a ticket', () => {
