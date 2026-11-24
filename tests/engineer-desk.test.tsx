@@ -380,10 +380,10 @@ test('the main loop adds no card and its task list fills the plan bar', async ($
   await $.tool.call({ tool: 'TaskCreate', subject: 'inner', description: 'inner', agentId: 'd1' } as any)
 
   for (const surface of ['terminal', 'desktop'] as const) {
-    ui = await $.ui.mount({ ...PANE, surface })
-    expect(await ui.find({ type: 'Text', text: /^Tasks 1\/3 · 33%$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^Now: Doing Identity$/ })).toBeDefined()
-    await ui.unmount()
+    const view = await $.ui.mount({ ...PANE, surface })
+    expect(await view.find({ type: 'Text', text: /^Tasks 1\/3 · 33%$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: /^Now: Doing Identity$/ })).toBeDefined()
+    await view.unmount()
   }
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   const bar = await svgSource(ui, 'Tasks 1 of 3')
