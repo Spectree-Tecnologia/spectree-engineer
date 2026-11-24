@@ -17,14 +17,15 @@ type Limit = { kind: string; percentUsed: number; resetsAt?: string }
 
 // When to try again after a turn died, or null once the tries are spent.
 export function nextResume(now: number, attempts: number, limits: readonly Limit[]): Resume | null {
-  if (attempts >= BACKOFF_MINUTES.length) return null
+  const minutes = BACKOFF_MINUTES[attempts]
+  if (minutes === undefined) return null
   const resets = limits
     .filter(one => one.percentUsed >= 100 && one.resetsAt !== undefined)
     .map(one => Date.parse(one.resetsAt as string))
     .filter(at => Number.isFinite(at) && at > now)
   // Every exhausted window has to reopen: the weekly one outlasts the 5-hour one.
   if (resets.length > 0) return { at: Math.max(...resets) + AFTER_RESET_MS, attempts: attempts + 1, why: 'limit' }
-  return { at: now + BACKOFF_MINUTES[attempts] * 60_000, attempts: attempts + 1, why: 'error' }
+  return { at: now + minutes * 60_000, attempts: attempts + 1, why: 'error' }
 }
 
 export const resumePrompt = (why: Resume['why']) =>
