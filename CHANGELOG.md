@@ -26,6 +26,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - No goal ran with this text: every gain is an estimate from one goal's transcript (2.5 to 3 hours per goal for the ticket review, about 25 minutes for the receipt). How much longer the final verification gets was not measured.
 - The panel cannot see a mission's context size while it runs, so the handoff point is still a count of calls.
 - The evals were not run.
+- The smoke is red at its `gitleaks` step, before any `goal` step ran: gitleaks flags the placeholder secret of `log-redact.spec.ts`, a template from 0.48.0 that this release does not touch. So the smoke did not exercise the changed `goal.mjs` in a generated project; `tests/gate.test.mjs` and `tests/graph.test.mjs` did.
 
 ## [0.51.0] - 2026-11-24
 
