@@ -19,11 +19,10 @@ test('whoever verifies never reads the plan, and the plan is committed: the diff
   assert.ok(read('skills/engineering/code-review/SKILL.md').includes(`git diff <fixed-point>...HEAD ${EXCLUDE}`));
   const command = read('commands/engineer.md');
   assert.ok(command.includes(`without \`.scratch/\` (\`${EXCLUDE}\`)`));
-  // at a checkpoint the criteria come from the graph, by number, and the ticket stays with whoever built it
-  assert.match(command, /with the numbers of the criteria the ticket advances \(`npm run goal -- graph <slug> --json`\), never the ticket/);
+  // 0.52.0: nobody reviews a ticket. The verifiers read the whole diff once, and tickets only in proof mode
+  assert.match(command, /the quality-engineer and the security-engineer do not read a ticket, and the whole diff is theirs once, at step 8/);
   const card = read('agents/quality-engineer.md');
-  assert.match(card, /Give the verdict on the criteria the mission numbers/);
-  assert.doesNotMatch(card, /criteria the ticket says it advances/);
+  assert.doesNotMatch(card, /Give the verdict on the criteria the mission numbers/);
   assert.match(card, /It is the only mission in which you read tickets/);
 });
 
@@ -120,17 +119,40 @@ test('a should pays for one round, and only a real failure climbs to fable', () 
   assert.doesNotMatch(read('README.md'), /`should` waits for the final verification/);
 });
 
-test('the final verification is one round and its re-check, and does not redo a checkpoint', () => {
+test('the final verification is one round and its re-check, and reads the whole goal once', () => {
   assert.match(command, /9\. \*\*One round and its re-check\.\*\*/);
   assert.match(command, /the \*\*same\*\* quality-engineer and security-engineer \(SendMessage\) get the fix's diff/);
   assert.match(command, /A new finding the fix did not cause goes to `open\.md` and the `<area>-hardening` goal, never a round/);
   assert.match(command, /\*\*A second round only for what the re-check left open\*\*/);
-  assert.match(command, /\*\*A checkpoint's review is not redone:\*\* criteria on the whole goal, code only where no checkpoint looked/);
+  assert.match(command, /\*\*They read the whole goal, once:\*\* every criterion, and the diff `<baseline>\.\.\.HEAD`, which nobody reviewed before them/);
   assert.match(command, /A criterion about a new script or checker lists the classes it refuses/);
   assert.doesNotMatch(command, /Loop until met/);
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /\*\*Closed when it is a checker\.\*\*/);
   assert.match(read('agents/quality-engineer.md'), /a case outside the list is a `nit` marked `hardening`, never a verdict/);
-  assert.match(read('agents/security-engineer.md'), /\*\*Re-check\*\*, at a checkpoint or after the final round\./);
+  assert.match(read('agents/security-engineer.md'), /\*\*Re-check\*\*, after the final round\./);
+});
+
+// 0.52.0, measured on the pilot project's data-import-2 (2026-11-24): the prototype and the wait for the founder held
+// the goal for 47 minutes, the answer changed no rule, and the screens it approved left the goal at the plan anyway.
+test('the prototype holds only the criteria that show it', () => {
+  assert.match(command, /\*\*The prototype holds only what shows it:\*\* while the founder looks, steps 3 to 7 go on for the criteria that name no artboard/);
+  assert.match(command, /a goal that is only screens stops here/);
+  assert.match(command, /A criterion that names an artboard enters the contract only when the founder says the prototype is approved/);
+  assert.match(command, /by an `added` amendment when the contract is already approved; their tickets come from a full-stack-developer's plan mission for those criteria, through the same gate/);
+  assert.doesNotMatch(command, /Go on to step 3 only when the founder says the prototype is approved/);
+  // the stage is still the founder's, with no ceiling on rounds
+  assert.match(command, /No ceiling on rounds\./);
+  assert.match(command, /\*\*define each screen together with the ui-ux-designer until they approve the prototype\*\*/);
+});
+
+// 0.52.0: mutants are read once, at the final verification, and a survivor is hardening. Measured on data-import-2:
+// the whole fix round of ticket 02 (11.7 minutes and a 4.2-minute re-check) was two surviving mutants.
+test('a surviving mutant is hardening, never a round', () => {
+  const card = read('agents/quality-engineer.md');
+  assert.match(card, /\*\*Mutants\*\*, in the first final round only, never in a re-check\./);
+  assert.match(card, /A surviving mutant in a file of the diff is a `nit` marked `hardening`/);
+  assert.match(card, /It is `weak proof` only when the test it shows missing is the proof of a criterion/);
+  assert.match(command, /A `nit` marked `hardening` \(a surviving mutant, a case outside a closed list\) is never a round/);
 });
 
 test('Fable raises only the fix: the re-check stays with the same agents', () => {

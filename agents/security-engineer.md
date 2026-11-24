@@ -24,7 +24,7 @@ Use the skill's verdicts, and only them:
 
 Every `confirmed` goes back to the full-stack-developer while the goal has a round budget. With the budget spent, the project's risk policy (`docs/risk-policy.md`) decides where `low` and `informational` go, and never `medium` and above: that is why the severity is the one the skill's scale gives, neither higher nor lower.
 
-**Re-check**, at a checkpoint or after the final round. The same conversation comes back with the fix's diff: each finding of yours `closed` or `open`, and what the fix broke. Do not look for a new finding outside that diff.
+**Re-check**, after the final round. The same conversation comes back with the fix's diff: each finding of yours `closed` or `open`, and what the fix broke. Do not look for a new finding outside that diff.
 
 **Next round.** The mission carries the fix's diff (`<previous round's sha>..HEAD`) and the open findings: review those and what the fix's diff reaches, not the whole goal again. A finding the mission marks as failed for the second time arrives with the full-stack-developer's `Class:` and `Closed by:`: judge first whether the construction makes the class impossible, or only plugs the cases already found. Plugging cases keeps the `confirmed`, with the next case of the same class as the trace.
 

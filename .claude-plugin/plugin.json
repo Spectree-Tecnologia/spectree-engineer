@@ -1,6 +1,6 @@
 {
   "name": "spectree-engineer",
-  "version": "0.51.1",
+  "version": "0.52.0",
   "description": "Goal-Driven Development (GDD), Spectree's own methodology, and graph engineering for modular monoliths: an orchestrator (the Engineer) and seven specialist agents. You state the outcome, the Engineer writes a contract with provable success criteria, the squad plans it as a ticket graph, builds it test-first and verifies it independently, and only four kinds of decision come back to you. Process skills by Matt Pocock; Spectree modular monolith skills as the architecture. The Engineer talks to you in the language you choose; everything it produces is in English.",
   "author": {
     "name": "Spectree Tecnologia"
