@@ -42,6 +42,28 @@ import { execFileSync, spawnSync } from 'node:child_process';
 const root = process.cwd();
 const goalsDir = path.join(root, 'docs', 'goals');
 const [command, ...args] = process.argv.slice(2);
+
+// The env a proof runs in is CI's: UTC, and no key of an app's local .env that CI's .env (its .env.example) does not
+// give a value. Issue 133: a developer's OIDC_* turned two e2e specs red that CI ran green. Blank wins over .env:
+// dotenv and Nest never override a variable that is set.
+function ciEnv() {
+  const keys = (file, empty) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split(/\r?\n/) : [])
+    .map((line) => line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/))
+    .filter((m) => m && (!empty || /^(?:""|'')?$/.test(m[2])))
+    .map((m) => m[1]);
+  const apps = path.join(root, 'apps');
+  const blanked = new Set();
+  for (const app of fs.existsSync(apps) ? fs.readdirSync(apps) : []) {
+    const example = path.join(apps, app, '.env.example');
+    if (!fs.existsSync(example)) continue;
+    const given = new Set(keys(example).filter((key) => !keys(example, true).includes(key)));
+    for (const key of keys(path.join(apps, app, '.env'))) if (!given.has(key) && !(key in process.env)) blanked.add(key);
+  }
+  return { env: { ...process.env, TZ: 'UTC', ...Object.fromEntries([...blanked].map((key) => [key, ''])) }, blanked: [...blanked].sort() };
+}
+const proofEnv = ciEnv();
+const sayBlanked = () => proofEnv.blanked.length > 0 && console.log(`  env: blank as in CI (local .env only): ${proofEnv.blanked.join(', ')}`);
+
 const fail = (message, code = 1) => {
   console.error(`goal: ${message}`);
   process.exit(code);
@@ -243,6 +265,12 @@ function lint(goal, ready) {
     if (['waived', 'moved', 'narrowed'].includes(amendment.change) && !amendment.follow) errors.push(`amendment of ${amendment.date}: a ${amendment.change} criterion names where the rest continues`);
     if (!['moved', 'added', 'extended'].includes(amendment.change) && !numbers.has(amendment.n)) errors.push(`amendment of ${amendment.date} names criterion ${amendment.n}, which the contract does not have`);
   }
+  // a moved criterion left this goal whole: a row that changes it afterwards is a part kept by the wrong form (issue 134)
+  goal.amendments.forEach((amendment, i) => {
+    if (amendment.change !== 'moved') return;
+    const later = goal.amendments.slice(i + 1).find((a) => a.n === amendment.n && ['reworded', 'narrowed'].includes(a.change));
+    if (later) errors.push(`criterion ${amendment.n} is moved, and the amendment of ${later.date} ${later.change} it here: move the whole row and add the part that stays as a new criterion (added)`);
+  });
   if (ready) {
     if (!/^(approved|landed|met)\b/.test(goal.status)) errors.push(`not ready: Status is "${goal.status}"`);
     // The budget is a stop, not a count: a round past it needs the founder's `extended` amendment.
@@ -332,7 +360,8 @@ function proveOne(goal, only, now) {
   }
   if (criteria.length === 0) fail(only === null ? `docs/goals/${goal.slug}.md has no criterion` : `docs/goals/${goal.slug}.md has no criterion ${only}`);
   // CI runs in UTC: a proof that passes only in the local zone is not a proof.
-  const env = { ...process.env, TZ: 'UTC' };
+  const env = proofEnv.env;
+  sayBlanked();
   const results = [];
   for (const criterion of criteria) {
     // moved to a continuation goal or waived: its proof is not this goal's to run (issue 126), as in check and next
@@ -357,6 +386,11 @@ function proveOne(goal, only, now) {
   console.log(`\ngoal prove: docs/goals/${goal.slug}.md`);
   for (const row of results) console.log(`  ${row.skip ? 'skip  ' : row.waits ? 'waits ' : row.status === null ? 'manual' : row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
   const failed = results.filter((row) => row.status !== null && row.status !== 0);
+  // every criterion moved or waived: nothing of this goal is proved here, which is a contract to read, not a green (issue 134)
+  if (only === null && !now && results.every((row) => row.skip)) {
+    console.log('  RED: every criterion is moved or waived; nothing of this goal is proved here');
+    return 1;
+  }
   if (results.every((row) => row.status === null)) console.log('  nothing to run: no criterion has a run: proof');
   return failed.length === 0 ? 0 : 1;
 }
@@ -366,10 +400,14 @@ function size() {
   if (flags.positional.length !== 1 || !flags['--base']) usage();
   const goal = parse(slugFile(flags.positional[0]));
   const base = commitOf(flags['--base'], '--base');
-  const totals = { product: 0, tests: 0, documents: 0, lockfile: 0 };
+  const totals = { product: 0, tests: 0, documents: 0, lockfile: 0, tooling: 0 };
+  // the squad's own scripts, synced from the plugin by tooling-sync, are not this goal's code (issue 132: ~1,000 lines)
+  const stampFile = path.join(root, 'scripts', '.squad-tooling.json');
+  const stamp = fs.existsSync(stampFile) ? JSON.parse(fs.readFileSync(stampFile, 'utf8')) : {};
+  const tooling = new Set(['scripts/.squad-tooling.json', ...Object.keys(stamp.installed ?? {}), ...Object.keys(stamp.kept ?? {})]);
   let files = 0;
   for (const [added, deleted, file] of git(['diff', '--numstat', '--end-of-options', `${base}...HEAD`]).map((line) => line.split('\t'))) {
-    const kind = kindOf(file);
+    const kind = tooling.has(file) ? 'tooling' : kindOf(file);
     totals[kind] += (Number(added) || 0) + (Number(deleted) || 0);
     if (kind === 'product') files++;
   }
@@ -377,7 +415,7 @@ function size() {
   const over = totals.product > goal.sizeBudget;
   console.log(`goal size: docs/goals/${goal.slug}.md since ${flags['--base']}`);
   console.log(`  product code   ${totals.product} changed lines in ${files} files  (budget ${goal.sizeBudget})`);
-  console.log(`  not counted    tests ${totals.tests}, documents ${totals.documents}, lockfile ${totals.lockfile}`);
+  console.log(`  not counted    tests ${totals.tests}, documents ${totals.documents}, lockfile ${totals.lockfile}, squad tooling ${totals.tooling}`);
   console.log(`  commits        ${commits}`);
   if (over) console.log('  OVER THE SIZE BUDGET: land the criteria that are met, and move the rest to a continuation goal (an amendment of kind "moved").');
   return over ? 1 : 0;
@@ -1022,7 +1060,7 @@ function graph() {
     let failed = 0;
     for (const line of ticket.proof) {
       console.log(`\n=== ticket ${pad(ticket.n)}\n$ ${line}`);
-      const status = spawnSync(line, { cwd: root, shell: true, stdio: 'inherit', env: { ...process.env, TZ: 'UTC' } }).status ?? 1;
+      const status = spawnSync(line, { cwd: root, shell: true, stdio: 'inherit', env: proofEnv.env }).status ?? 1;
       console.log(`  ${status === 0 ? 'exit 0' : `EXIT ${status}`}  ticket ${pad(ticket.n)}  ${line}`);
       if (status !== 0) failed++;
     }
@@ -1136,8 +1174,10 @@ function gate() {
   const dir = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, `${label.replace(' ', '-')}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   fs.mkdirSync(dir, { recursive: true });
   console.log(`goal gate: ${slug}, ${label}, at ${headOf()}${base ? `, baseline ${base.slice(0, 8)}` : ''}`);
+  sayBlanked();
   let red = null;
   const reported = [];
+  const stepMinutes = Number(process.env.GATE_STEP_MINUTES) || 60;
   for (const step of steps) {
     // what comes after a red would only repeat it, or run beside nothing to compare with
     if (red) {
@@ -1147,9 +1187,12 @@ function gate() {
     const log = path.join(dir, `${step.name}.log`);
     const out = fs.openSync(log, 'w');
     const started = Date.now();
-    const status = spawnSync(step.command, { cwd: root, shell: true, stdio: ['ignore', out, out], env: { ...process.env, TZ: 'UTC' } }).status ?? 1;
+    // a step that hangs is a red with its log, never a gate that waits for hours (issue 130: 16 h in perf)
+    const res = spawnSync(step.command, { cwd: root, shell: true, stdio: ['ignore', out, out], env: proofEnv.env, timeout: stepMinutes * 60_000 });
+    const status = res.status ?? 1;
     fs.closeSync(out);
-    console.log(`  R ${step.name.padEnd(10)} exit ${status}  ${Math.round((Date.now() - started) / 1000)}s  ${step.command.replace(self, 'goal')}`);
+    const timedOut = res.error?.code === 'ETIMEDOUT' ? ` (timed out after ${stepMinutes} min: GATE_STEP_MINUTES)` : '';
+    console.log(`  R ${step.name.padEnd(10)} exit ${status}${timedOut}  ${Math.round((Date.now() - started) / 1000)}s  ${step.command.replace(self, 'goal')}`);
     if (status === 0) continue;
     if (step.reported) reported.push(`${step.name} exit ${status}: ${step.reported}`);
     else red = step.name;
