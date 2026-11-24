@@ -143,6 +143,52 @@ test("a ticket's gate runs the ticket's checkpoint commands, and asks where the 
   assert.equal(run(dir, 'gate', 'things', '--ticket', '7', '--since', sha).code, 1, 'a ticket that does not exist');
 });
 
+// 0.52.0: measured on the pilot project's data-import-2 (2026-11-24): the full-stack-developer ran the ticket's gate
+// (140 to 181 s) and the Engineer ran the same gate on the same code again (142 to 145 s), for each ticket.
+test("a ticket's gate that was green on this code answers from its receipt, and runs again when the code changes", () => {
+  const { dir, sha } = project({ tickets: { '01-create': ticket('1, 2, 3', 'built') } });
+  const git = (...argv) => spawnSync('git', ['-c', 'user.email=probe@example.com', '-c', 'user.name=probe', ...argv], { cwd: dir, encoding: 'utf8' });
+  const gate = (...more) => run(dir, 'gate', 'things', '--ticket', '1', '--since', sha, ...more);
+  // the affected tests run through turbo, which the probe project does not install: a local bin that exits 0
+  fs.mkdirSync(path.join(dir, 'node_modules', '.bin'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'node_modules', '.bin', 'turbo'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'node_modules', '.bin', 'turbo.cmd'), '@exit /b 0\r\n');
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules\n');
+  // a dirty tree is nobody's sha: the gate runs and keeps no receipt
+  assert.doesNotMatch(gate().out, /receipt:/);
+  assert.doesNotMatch(gate().out, /receipt:/);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'ticket 01');
+  const first = gate();
+  assert.equal(first.code, 0, first.out);
+  assert.doesNotMatch(first.out, /receipt:/);
+  // the ticket's own notes change after the gate, and they are not the code
+  fs.appendFileSync(path.join(dir, '.scratch', 'things', 'issues', '01-create.md'), '\n\n**Built:** abc\n');
+  git('commit', '-q', '-am', 'docs: ticket 01 built');
+  const again = gate();
+  assert.equal(again.code, 0, again.out);
+  assert.match(again.out, /R build +exit 0/);
+  assert.match(again.out, /^goal gate: green$/m);
+  assert.match(again.out, /receipt: green at [0-9a-f]{8} on \S+, and nothing outside \.scratch\/ changed since: not run again \(--rerun runs it\)/);
+  assert.doesNotMatch(gate('--rerun').out, /receipt:/);
+  // another starting point, or code that moved, is another gate
+  const base = git('rev-parse', 'HEAD~1').stdout.trim();
+  assert.doesNotMatch(run(dir, 'gate', 'things', '--ticket', '1', '--since', base).out, /receipt:/);
+  fs.writeFileSync(path.join(dir, 'index.js'), '// product code\n');
+  assert.doesNotMatch(gate().out, /receipt:/, 'an uncommitted change');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'feat: more');
+  const moved = gate();
+  assert.doesNotMatch(moved.out, /receipt:/, 'a new commit of product code');
+  // a red gate keeps no receipt: it is run again
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'probe', private: true, scripts: { build: exit(2), test: exit(0) } }, null, 2));
+  git('commit', '-q', '-am', 'feat: red');
+  assert.equal(gate().code, 1);
+  assert.doesNotMatch(gate().out, /receipt:/);
+  assert.match(read('commands/engineer.md'), /Green already on this code, by whoever built the ticket, it prints `receipt:` and runs nothing again/);
+  assert.match(read('agents/full-stack-developer.md'), /The Engineer's same command reads your gate's receipt and runs nothing again/);
+});
+
 test('a round past the budget is not ready without the founder\'s "extended" amendment', () => {
   const evidence = '| 1 | 1 | not met | x |\n| 2 | 1 | met | x |\n| 3 | 1 | met | x |\n| 1 | 2 | not met | x |\n| 1 | 3 | met | x |\n';
   const { dir } = project({ goalText: contract({ rounds: 2, evidence }) });
@@ -164,7 +210,7 @@ test('goal next walks the goal from the disk, one step at a time', () => {
   assert.match(next({}), /step 6 +dispatch one full-stack-developer for the plan/);
 
   const building = next({ tickets: { '01-create': ticket('1, 2', 'built'), '02-archive': ticket('3', 'ready', '01') } });
-  assert.match(building, /step 7 +checkpoint of ticket 01: npm run goal -- gate things --ticket 1 --since <previous checkpoint sha>, then the quality-engineer$/m);
+  assert.match(building, /step 7 +checkpoint of ticket 01: npm run goal -- gate things --ticket 1 --since <previous checkpoint sha>, then write its Status: verified$/m);
   const after = next({ tickets: { '01-create': ticket('1, 2', 'verified'), '02-archive': ticket('3', 'ready', '01') } });
   assert.match(after, /step 7 +a new full-stack-developer for ticket 02/);
   const held = next({ tickets: { '01-create': ticket('1, 2', 'open'), '02-archive': ticket('3', 'ready', '01') } });

@@ -141,19 +141,16 @@ test('a reproval counts the same at a checkpoint and in a round: twice closes th
   assert.doesNotMatch(sha.out, /criterion (6|2|3),/);
 });
 
-test('the graph marks the tickets whose checkpoint has the security-engineer, from what they touch', () => {
+// 0.52.0: the graph gives no ticket to the security-engineer, because nobody reviews a ticket. Measured on the pilot
+// project's data-import-2 (2026-11-24): all 10 tickets of the plan were under `trust:`, so the list chose nothing.
+test('the graph marks no ticket for a review', () => {
   const dir = project({
     '01-create': { criteria: '1', touches: '`modules/things`, `apps/backend/src/modules/things`' },
     '02-list': { criteria: '2', touches: '`apps/frontend/src/modules/things/list`' },
     '03-archive': { criteria: '3', touches: '`modules/things/src/archive`, `package-lock.json`', blockedBy: '01' },
-    '04-login': { criteria: '1', touches: '`apps/frontend/src/app/(public)/auth`' },
-    '05-core': { criteria: '2', touches: '`modules/billing`' },
-    '06-old': { criteria: '3', blockedBy: '05' },
   });
-  const res = run(dir);
-  assert.match(res.out, /trust: {4}01, 03, 04, 06 {2}\(their checkpoint has the security-engineer too\)/);
-  assert.deepEqual(JSON.parse(run(dir, '--json').out).trust, [1, 3, 4, 6], 'a ticket with no Touches proved nothing and gets it too');
-  assert.doesNotMatch(run(project(closedBy('verified'))).out, /trust: {4}01/, 'a closed ticket is not checked again');
+  assert.doesNotMatch(run(dir).out, /trust:/);
+  assert.equal(JSON.parse(run(dir, '--json').out).trust, undefined);
 });
 
 test('a cycle, a missing blocker and a criterion with no ticket fail', () => {
@@ -285,16 +282,20 @@ test('no skill sends an agent to a user it cannot reach, or to a command the flo
 // Delivery 2 (0.30.0): a ticket closes whole before the next one starts. Measured on the pilot project on 2026-11-13: tickets 02
 // and 06 of ci-time took three verification rounds each, every re-verification hunted again and found new things,
 // and the quality-engineer verified a checkout the next full-stack-developer was already changing.
-test('a ticket closes whole: nobody writes while it is verified, the builder fixes, whoever found re-checks, once', () => {
+// 0.52.0: the ticket still closes before the next one starts, on its gate alone. Measured on the pilot project's
+// data-import-2 (2026-11-24): the review, the fix and the re-check of each ticket took 16, 22 and more than 41
+// minutes, half of the 156 minutes that built three tickets and 438 product lines, and the third ticket's 37 lines
+// went through three fixes. The whole diff is reviewed once, at the final verification.
+test('a ticket closes on its gate: nobody reviews it, and a red gate goes back to whoever built it', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*Checkpoint per ticket: the ticket closes before the next one starts\.\*\*/);
-  assert.match(command, /While they verify, nobody writes in the checkout: what they run is the ticket's commit/);
+  assert.match(command, /\*\*Checkpoint per ticket: the ticket closes before the next one starts\.\*\* The checkpoint is the gate, by exit code/);
+  assert.doesNotMatch(command, /While they verify, nobody writes in the checkout/);
   assert.doesNotMatch(command, /without waiting for them/);
-  assert.match(command, /whoever found it re-checks, through the same conversation, with the fix's diff: each finding `closed` or `open`/);
-  assert.match(command, /It is not a new hunt: the whole goal belongs to the final verification/);
-  assert.match(read('agents/quality-engineer.md'), /\*\*Re-check\*\*, at a checkpoint or after the final round\.[^\n]*`closed` or `open`[^\n]*Do not look for a new finding outside that diff/);
+  assert.match(command, /Exit 1: back, in a single literal message, to the \*\*same\*\* full-stack-developer that built the ticket/);
+  assert.match(read('agents/quality-engineer.md'), /\*\*Re-check\*\*, after the final round\.[^\n]*`closed` or `open`[^\n]*Do not look for a new finding outside that diff/);
+  assert.match(read('agents/quality-engineer.md'), /You read the whole goal, once, at the final verification: nobody reviewed a ticket before you/);
   assert.match(read('agents/security-engineer.md'), /`closed` or `open` per finding of yours, no new hunt/);
-  assert.match(read('agents/full-stack-developer.md'), /You may be called back once, through the same conversation, with the findings of your ticket's checkpoint/);
+  assert.match(read('agents/full-stack-developer.md'), /You may be called back once, through the same conversation, when the Engineer's gate is red on your ticket/);
   // the handoff notice no longer assumes a ticket: a fix or a bug mission has none
   assert.match(read('hooks/engineer-desk/register.tsx'), /in your ticket, or in your report when the mission has no ticket/);
 });
@@ -375,15 +376,11 @@ test('the graph says which tickets of the frontier may be built at the same time
 
 test('the checkpoint is written into the ticket by the Engineer, and the graph walks from it', () => {
   const command = read('commands/engineer.md');
-  assert.match(command, /\*\*\(e\)\*\* you write the checkpoint into the ticket, never whoever built it/);
-  assert.match(command, /`Status: verified` when every finding closed, `Status: open` when one stays open, `Reproved:`[^\n]*`Checked by:` with who verified it/);
-  assert.match(command, /an `open` ticket holds them \(`held:`\) until you write `Carried:`/);
-  assert.match(command, /\*\*A reproval counts the same at a checkpoint and in a round\*\* \(`reproved:` in `goal graph`\)/);
-  assert.match(command, /three times raises the next fix and its verification to Fable/);
+  assert.match(command, /\*\*\(b\)\*\* you write the checkpoint into the ticket, never whoever built it: `Status: verified`/);
+  assert.match(command, /The graph frees the next tickets only from `verified`/);
   assert.match(command, /or a criterion `goal graph` prints as reproved three times: the fix runs on Fable from then on/);
-  assert.match(command, /A criterion failed for the second time, checkpoints counted/);
-  // the security-engineer's checkpoint is decided by what the ticket touches, and the Engineer can only add to it
-  assert.match(command, /when `goal graph` lists the ticket under `trust:` \(read from its `Touches`\)[^\n]*You may add a ticket to `trust:`, never skip one\./);
+  assert.match(command, /A criterion failed for the second time \(`reproved:` in `goal graph`\) does not get one more patch/);
+  assert.doesNotMatch(command, /`trust:`/);
   const skill = read('skills/engineering/to-tickets/SKILL.md');
   assert.match(skill, /write in its file `\*\*Status:\*\* built` and `\*\*Built:\*\* <sha>`/);
   assert.match(skill, /The rest of the ticket's state is the orchestrator's, after the checkpoint/);
@@ -399,7 +396,7 @@ test('the Engineer runs two lanes, and a closed ticket is merged with the other 
   assert.match(command, /The graph sees as `verified` only a merged ticket: a lane 2 checkpoint is written on the goal's branch, after the merge/);
   assert.match(command, /A session with `worktree` in the prompt runs a single lane/);
   // two verifiers at once never share a scratch database
-  assert.match(command, /`npm run db:scratch -- <role>-t<NN> -- <command>`/);
+  assert.match(command, /`npm run db:scratch -- qe-<round> -- …`, `-- se-<round> -- …`/);
   assert.match(read('skills/engineering/to-tickets/SKILL.md'), /also lists `package-lock\.json`/);
   assert.match(read('agents/full-stack-developer.md'), /^description:[^\n]*One per checkout\./m);
 });

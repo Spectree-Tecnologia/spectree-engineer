@@ -225,7 +225,11 @@ const STASH_DENY =
 // thousand in missions past 110, and six long missions were 76% of its tokens. A sentence in the card did not change
 // how the agents work, so the panel says it once, at the call where the cost turns: that call is refused, with the
 // way out, and passes when repeated.
-export const HANDOFF_AT = 60
+// 0.52.0 moved the point from 60 to 90. Measured on the pilot project's data-import-2 (2026-11-24): two of three
+// tickets were handed off at call 60, one before it had run anything; the missions cut at 60 cost 118 and 123
+// thousand tokens a turn, and the two that went on to 89 turns cost 100 and 140. The panel does not see a mission's
+// context size while it runs, so the point is still a count of calls.
+export const HANDOFF_AT = 90
 const HANDOFF_NOTICE =
   `Handoff point: this is tool call ${HANDOFF_AT} of this mission, and every further call re-reads your whole context. ` +
   'If what is left fits in 15 calls, finish it. Otherwise close what is in hand: commit, write `Next needs:` with what is left and what you learned (in your ticket, or in your report when the mission has no ticket), ' +

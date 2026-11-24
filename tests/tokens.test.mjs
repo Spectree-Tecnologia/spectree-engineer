@@ -26,7 +26,7 @@ test('a full-stack-developer builds one ticket, and leaves the next one what it 
   // full-stack-developer's tokens), and each continuation explored the codebase again before building
   assert.match(card, /in your ticket's `Next needs:` when you learn it, not at the end/);
   assert.match(card, /A mission that continues a `handoff` reads that `Next needs:`[^\n]*it does not explore again/);
-  assert.match(card, /Past call 45, start no command that may run long: commit `wip` and report `handoff`/);
+  assert.match(card, /Past call 75, start no command that may run long: commit `wip` and report `handoff`/);
   assert.match(read('commands/engineer.md'), /"every command is bounded — [^"]*a hung one is killed with its children and reported"/);
   assert.match(read('commands/engineer.md'), /More than three findings of different classes go to two full-stack-developers in sequence, split by class/);
   assert.match(read('skills/engineering/to-tickets/SKILL.md'), /A screen ticket covers at most one artboard group/);
@@ -63,21 +63,25 @@ test('tickets are the full-stack-developer\'s, never the orchestrator\'s', () =>
   }
 });
 
-test('a mission is short, and a ticket gets one fix and one re-check', () => {
+test('a mission is short, and a ticket closes on its gate', () => {
   // measured on the pilot project's ci-time (2026-11-12): 98 thousand tokens a call in missions of up to 60 calls, 162 thousand
   // past 110; the sentence that asked for batched calls changed nothing, so the panel says it
   const panel = read('hooks/engineer-desk/register.tsx');
-  assert.match(panel, /export const HANDOFF_AT = 60/);
+  // 0.52.0, measured on data-import-2 (2026-11-24): two of three tickets were handed off at call 60, one before it
+  // had run anything, and the missions that went on to 89 turns cost no more a turn (100 and 140 thousand tokens
+  // against 118 and 123)
+  assert.match(panel, /export const HANDOFF_AT = 90/);
   assert.match(panel, /count === HANDOFF_AT && \/\(\?:\^\|:\)full-stack-developer\$\//);
   const command = read('commands/engineer.md');
   // 0.25.0 held `should` findings for the final verification because every fix was a cold mission; with the builder's
   // context alive (0.30.0) one message carries them all, and the loop is bounded instead of the list
-  assert.match(command, /checkpoint finding \(`blocking`, `should`, `confirmed`\) goes back, in a single literal message/);
-  assert.match(command, /\*\*One fix and one re-check per ticket\.\*\*/);
-  assert.match(command, /you write literally in `\.scratch\/<slug>\/open\.md`/);
+  assert.match(command, /Exit 1: back, in a single literal message, to the \*\*same\*\* full-stack-developer/);
+  assert.doesNotMatch(command, /One fix and one re-check per ticket/);
+  assert.match(command, /you write it literally in `\.scratch\/<slug>\/open\.md`, for the `<area>-hardening` goal/);
   assert.match(command, /with the findings of `open\.md` in the mission, literal/);
   assert.match(command, /A `handoff` report: a new full-stack-developer continues the same ticket/);
-  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /about 40 tool calls of work/);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /about 60 tool calls of work/);
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /Use the fewest tickets that each fit: one per success criterion is the usual size/);
   const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
   // the session is found by the title the app gives it, not only by its opening line
   assert.ok(script.includes('"customTitle":"${goal.slug}"'), 'goal spent does not look for the session by its title');
@@ -89,7 +93,7 @@ test('the retro records what the goal cost', () => {
   const script = read('skills/monolith/config-project/assets/scripts/goal.mjs');
   assert.match(script, /else if \(command === 'spent'\) process\.exit\(spent\(\)\);/);
   // the transcripts are read, never written
-  const body = script.slice(script.indexOf('function spent()'), script.indexOf("if (command === 'check')"));
+  const body = script.slice(script.indexOf('function spent()'), script.indexOf('// The tickets of a goal are a graph'));
   assert.equal([...body.matchAll(/fs\.writeFileSync\(([^,]+),/g)].map((call) => call[1]).join(), 'goal.file');
 });
 

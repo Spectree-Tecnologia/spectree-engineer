@@ -338,7 +338,6 @@ if (spawnSync('docker info', { shell: true, stdio: 'ignore' }).status === 0) {
     ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'built');
     const waiting = run('graph-built-waits', 'npm run goal -- graph probe-thing');
     if (!/built: +01/.test(waiting) || /frontier: 0/.test(waiting)) throw new Error(`goal graph freed the tickets after a ticket with no checkpoint:${waiting.slice(-400)}`);
-    if (!/trust: +03/.test(waiting)) throw new Error('goal graph did not give the security-engineer the ticket that touches the backend');
     ticket('01-list.md', '1 and 2', 'None (can start immediately)', '`modules/probe`', 'verified');
     const freed = run('graph-frontier', 'npm run goal -- graph probe-thing');
     if (!/frontier: 02, 03/.test(freed)) throw new Error('goal graph did not free the tickets that waited for 01');

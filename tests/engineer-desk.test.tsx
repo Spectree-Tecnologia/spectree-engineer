@@ -319,17 +319,17 @@ test('a subagent never touches the shared stash; the main loop may, and reading 
   expect(await denied('git stash')).toBe('')
 })
 
-test('a full-stack-developer is told once, at its sixtieth tool call, to hand the ticket off; nobody else is', async ($, on) => {
+test('a full-stack-developer is told once, at its ninetieth tool call, to hand the ticket off; nobody else is', async ($, on) => {
   engine(on, 'd1')
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'Build ticket 04')
   await spawn($, 'q1', 'spectree-engineer:quality-engineer', 'QE checkpoint ticket 04')
   const denied = async (agentId?: string) => String(((await $.tool.call({ tool: 'Bash', command: 'git status', ...(agentId ? { agentId } : {}) } as any)) as any).deny ?? '')
-  for (let call = 1; call < 60; call++) expect(await denied('d1')).toBe('')
+  for (let call = 1; call < 90; call++) expect(await denied('d1')).toBe('')
   const notice = await denied('d1')
-  expect(notice).toContain('Handoff point: this is tool call 60')
+  expect(notice).toContain('Handoff point: this is tool call 90')
   expect(notice).toContain('report `handoff`')
   // the same call passes when repeated, and the notice never comes back
-  for (let call = 61; call <= 130; call++) expect(await denied('d1')).toBe('')
+  for (let call = 91; call <= 160; call++) expect(await denied('d1')).toBe('')
   for (let call = 1; call <= 70; call++) expect(await denied('q1')).toBe('')
   for (let call = 1; call <= 70; call++) expect(await denied()).toBe('')
 })

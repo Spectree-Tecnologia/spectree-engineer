@@ -30,8 +30,9 @@ Look for prefactoring that makes the goal easier. "Make the change easy, then ma
 
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests): vertical, NOT a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
-- Each slice is sized to fit in a single fresh context window, with room to spare: about 40 tool calls of work. Past 60 calls every call costs more, so a ticket that needs more is two tickets
-- A screen ticket covers at most one artboard group (one component's family of states) and names the spec and the fixture it extends. When the component and its spec with fixtures are both new, they are two tickets, the spec blocked by the component: together they pass 60 calls
+- Each slice is sized to fit in a single fresh context window, with room to spare: about 60 tool calls of work. Past 90 calls every call costs more, so a ticket that needs more is two tickets
+- A ticket has a fixed cost: a new agent reads the contract, the plan and the code again, and the gate runs. Use the fewest tickets that each fit: one per success criterion is the usual size, and a criterion is cut in two only when it does not fit
+- A screen ticket covers at most one artboard group (one component's family of states) and names the spec and the fixture it extends. When the component and its spec with fixtures are both new, they are two tickets, the spec blocked by the component: together they pass 90 calls
 - Any prefactoring is done first, in a ticket that changes no behaviour
 - The first ticket is the tracer bullet: the smallest path from the test of one success criterion down to the database
 - Every success criterion of the contract is advanced by at least one ticket

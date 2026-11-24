@@ -11,12 +11,12 @@
 //   npm run goal -- graph <slug>                   the tickets as a graph: no cycle, every criterion has a ticket, the frontier,
 //                                                  and which tickets of the frontier may be built at the same time;
 //                                                  the tickets waiting for their checkpoint or held by an open one,
-//                                                  the ones whose checkpoint has the security-engineer, and every
-//                                                  criterion reproved, checkpoints and rounds counted together
+//                                                  and every criterion reproved
 //   npm run goal -- graph <slug> --plan            also, before any code: every ticket says what it touches and its proof
 //   npm run goal -- graph <slug> --prove <ticket>  runs the ticket's own proof, in UTC, and exits with it
 //   npm run goal -- gate <slug> --ticket <n> --since <sha>   a ticket's checkpoint gate, one command after the other,
-//                                                  one exit code (0 green, 1 red, 3 green with a report to read)
+//                                                  one exit code (0 green, 1 red, 3 green with a report to read);
+//                                                  green on this code already: answered from its receipt (--rerun runs it)
 //   npm run goal -- gate <slug> --final [--base <sha>]       the final verification's deterministic layer, the same way;
 //                                                  the raw logs go outside the repository and are never committed
 //   npm run goal -- next <slug> [--json]           where the goal is, read from the disk, and the next action
@@ -70,7 +70,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n       npm run goal -- gate <slug> --ticket <n> --since <sha> | --final [--base <sha>]\n       npm run goal -- next <slug> [--json]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n       npm run goal -- gate <slug> --ticket <n> --since <sha> [--rerun] | --final [--base <sha>]\n       npm run goal -- next <slug> [--json]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
     2,
   );
 
@@ -904,17 +904,6 @@ const stateOf = (status) => {
   if (word === 'done') return 'verified';
   return STATES.includes(word) ? word : 'ready';
 };
-// Paths whose change crosses a trust boundary of the monolith: the backend (routes, guards, persistence,
-// migrations, configuration, external clients), the shared package, a dependency, CI, an env file, and any auth,
-// middleware, api or upload folder. A ticket that touches one of them has the security-engineer at its checkpoint.
-const TRUST = [
-  /^apps\/backend(\/|$)/,
-  /^packages\/shared(\/|$)/,
-  /(^|\/)package(-lock)?\.json$/,
-  /^\.github(\/|$)/,
-  /(^|\/)\.env/,
-  /(^|\/)(auth|middleware|proxy|api|uploads?)(\/|$|\.)/,
-];
 const cleanPath = (one) => one.replace(/`/g, '').trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/\*{1,2}$/, '').replace(/\/+$/, '');
 const samePlace = (a, b) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
 
@@ -951,8 +940,6 @@ function readTickets(slug) {
         // the criteria the checkpoint found `not met` or `weak proof` before the fix
         // only the list that opens the field: "3 (weak proof, closed in 62db31b6)" is criterion 3, not the sha's digits
         reproved: numbers((field('Reproved') ?? '').match(/^\d+(?:\s*(?:,|;|and|e|&)\s*\d+)*(?!\w)/)?.[0]),
-        // a ticket that does not say what it touches proved nothing: it has the security-engineer too
-        trust: paths === null || paths.length === 0 || paths.some((one) => TRUST.some((pattern) => pattern.test(one))),
       };
     });
 }
@@ -1025,7 +1012,6 @@ function graphOf(slug, goal, plan = false) {
   const held = tickets
     .filter((ticket) => ticket.state === 'open' && !ticket.carried)
     .map((ticket) => ({ n: ticket.n, holds: tickets.filter((other) => other.state === 'ready' && other.blockedBy.includes(ticket.n)).map((other) => other.n) }));
-  const trust = tickets.filter((ticket) => !ticket.done && ticket.trust);
   // A reproval counts the same at a ticket's checkpoint and in a final round: twice is the second reproval of step 9
   // (the next fix closes the class), three times raises the next fix to fable.
   const reproved = goal.criteria
@@ -1040,7 +1026,7 @@ function graphOf(slug, goal, plan = false) {
   // proved nothing, so it is built alone.
   const together = frontier.filter((ticket) => ticket.touches && ticket.touches.length > 0);
   const parallel = errors.length === 0 && together.length > 1 ? together : [];
-  return { tickets, byNumber, errors, notes, frontier, parallel, built, held, trust, reproved };
+  return { tickets, byNumber, errors, notes, frontier, parallel, built, held, reproved };
 }
 
 function graph() {
@@ -1048,7 +1034,7 @@ function graph() {
   if (flags.positional.length !== 1) usage();
   const slug = flags.positional[0];
   const goal = parse(slugFile(slug));
-  const { tickets, byNumber, errors, notes, frontier, parallel, built, held, trust, reproved } = graphOf(slug, goal, flags['--plan']);
+  const { tickets, byNumber, errors, notes, frontier, parallel, built, held, reproved } = graphOf(slug, goal, flags['--plan']);
 
   if (flags['--prove'] !== undefined) {
     const ticket = byNumber.get(Number(flags['--prove']));
@@ -1075,7 +1061,6 @@ function graph() {
       parallel: parallel.map((ticket) => ticket.n),
       built: built.map((ticket) => ticket.n),
       held,
-      trust: trust.map((ticket) => ticket.n),
       reproved,
       errors,
       notes,
@@ -1102,7 +1087,6 @@ function graph() {
   if (parallel.length > 0) console.log(`  parallel: ${parallel.map((ticket) => pad(ticket.n)).join(' + ')}  (no order between them, no folder in common: each in its own checkout)`);
   for (const ticket of built) console.log(`  built:    ${pad(ticket.n)}  (its checkpoint is not written yet: the tickets after it wait)`);
   for (const one of held) console.log(`  held:     ${pad(one.n)}  open at its checkpoint with no "Carried:" line${one.holds.length > 0 ? `; it holds ${one.holds.map(pad).join(', ')}` : ''}`);
-  if (trust.length > 0) console.log(`  trust:    ${trust.map((ticket) => pad(ticket.n)).join(', ')}  (their checkpoint has the security-engineer too)`);
   for (const one of reproved) {
     const where = [one.checkpoints.length > 0 ? `checkpoint ${one.checkpoints.map(pad).join(', ')}` : null, one.rounds.length > 0 ? `round ${one.rounds.join(', ')}` : null].filter(Boolean).join('; ');
     const next = one.total >= 3 ? ': the next fix and its verification run on fable' : one.total === 2 ? ': the next fix closes the class (Class: and Closed by:)' : '';
@@ -1133,7 +1117,7 @@ const headOf = () => spawnSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd:
 const self = `"${process.execPath}" "${path.resolve(process.argv[1])}"`;
 
 function gate() {
-  const flags = parseArgs(args, ['--ticket', '--since', '--base'], ['--final']);
+  const flags = parseArgs(args, ['--ticket', '--since', '--base'], ['--final', '--rerun']);
   if (flags.positional.length !== 1 || Boolean(flags['--final']) === (flags['--ticket'] !== undefined)) usage();
   const slug = flags.positional[0];
   const goal = parse(slugFile(slug));
@@ -1142,6 +1126,7 @@ function gate() {
   const scratch = (name, line) => (scripts['db:scratch'] ? `npm run db:scratch -- ${name} -- ${line}` : line);
   let label;
   let steps;
+  let receipt = null;
   if (flags['--final']) {
     label = 'final';
     steps = [
@@ -1160,6 +1145,7 @@ function gate() {
     const since = commitOf(flags['--since'], '--since');
     if (!graphOf(slug, goal).byNumber.has(n)) fail(`.scratch/${slug}/issues has no ticket ${n}`);
     label = `ticket ${pad(n)}`;
+    receipt = { file: path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, 'receipts', `ticket-${pad(n)}.json`), since, proof: graphOf(slug, goal).byNumber.get(n).proof };
     steps = [
       fs.existsSync(path.join(root, 'scripts', 'check-boundaries.mjs')) ? { name: 'boundaries', command: 'node scripts/check-boundaries.mjs' } : null,
       { name: 'build', command: 'npm run build' },
@@ -1171,17 +1157,44 @@ function gate() {
     ];
   }
   steps = steps.filter(Boolean);
+  console.log(`goal gate: ${slug}, ${label}, at ${headOf()}${base ? `, baseline ${base.slice(0, 8)}` : ''}`);
+  // A ticket's gate that was green on this code is not run again: whoever built the ticket ran it, and the
+  // orchestrator's same command reads the receipt the script wrote (outside the repository, like the logs).
+  // Measured on the pilot project's data-import-2 (2026-11-24): 142 to 181 s per run, two to three runs per ticket.
+  // "This code" is everything outside .scratch/, where only the ticket's own notes change after the gate.
+  const product = ['--', '.', ':(exclude).scratch'];
+  const clean = () => spawnSync('git', ['status', '--porcelain', ...product], { cwd: root, encoding: 'utf8' }).stdout?.trim() === '';
+  if (receipt) {
+    receipt.key = JSON.stringify([receipt.since, receipt.proof, steps.map((step) => step.command.replace(self, 'goal'))]);
+    let kept = null;
+    try {
+      kept = JSON.parse(fs.readFileSync(receipt.file, 'utf8'));
+    } catch {
+      // no receipt yet
+    }
+    const same = kept && kept.key === receipt.key && clean() && spawnSync('git', ['diff', '--quiet', kept.sha, 'HEAD', ...product], { cwd: root }).status === 0;
+    if (same && !flags['--rerun']) {
+      for (const line of kept.lines) console.log(line);
+      console.log(`  receipt: green at ${kept.sha.slice(0, 8)} on ${kept.at}, and nothing outside .scratch/ changed since: not run again (--rerun runs it)`);
+      return kept.code;
+    }
+  }
+  const lines = [];
+  const say = (line) => {
+    lines.push(line);
+    console.log(line);
+  };
   const dir = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, `${label.replace(' ', '-')}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   fs.mkdirSync(dir, { recursive: true });
-  console.log(`goal gate: ${slug}, ${label}, at ${headOf()}${base ? `, baseline ${base.slice(0, 8)}` : ''}`);
   sayBlanked();
+  const wasClean = receipt ? clean() : false;
   let red = null;
   const reported = [];
   const stepMinutes = Number(process.env.GATE_STEP_MINUTES) || 60;
   for (const step of steps) {
     // what comes after a red would only repeat it, or run beside nothing to compare with
     if (red) {
-      console.log(`  R ${step.name.padEnd(10)} not run`);
+      say(`  R ${step.name.padEnd(10)} not run`);
       continue;
     }
     const log = path.join(dir, `${step.name}.log`);
@@ -1192,14 +1205,21 @@ function gate() {
     const status = res.status ?? 1;
     fs.closeSync(out);
     const timedOut = res.error?.code === 'ETIMEDOUT' ? ` (timed out after ${stepMinutes} min: GATE_STEP_MINUTES)` : '';
-    console.log(`  R ${step.name.padEnd(10)} exit ${status}${timedOut}  ${Math.round((Date.now() - started) / 1000)}s  ${step.command.replace(self, 'goal')}`);
+    say(`  R ${step.name.padEnd(10)} exit ${status}${timedOut}  ${Math.round((Date.now() - started) / 1000)}s  ${step.command.replace(self, 'goal')}`);
     if (status === 0) continue;
     if (step.reported) reported.push(`${step.name} exit ${status}: ${step.reported}`);
     else red = step.name;
   }
-  console.log(red ? `goal gate: RED at ${red}` : reported.length > 0 ? `goal gate: green, with a report to read: ${reported.join('; ')}` : 'goal gate: green');
+  say(red ? `goal gate: RED at ${red}` : reported.length > 0 ? `goal gate: green, with a report to read: ${reported.join('; ')}` : 'goal gate: green');
   console.log(`  logs: ${dir}  (outside the repository: a raw log can hold secrets and is never committed; the evidence is the R lines)`);
-  return red ? 1 : reported.length > 0 ? 3 : 0;
+  const code = red ? 1 : reported.length > 0 ? 3 : 0;
+  // only a green on committed code is worth keeping: a red is run again, and a dirty tree is nobody's sha
+  if (receipt && !red && wasClean && clean()) {
+    fs.mkdirSync(path.dirname(receipt.file), { recursive: true });
+    const sha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+    fs.writeFileSync(receipt.file, JSON.stringify({ key: receipt.key, sha, at: new Date().toISOString(), code, lines }, null, 2));
+  }
+  return code;
 }
 
 // Where the goal is, read from the disk, and the next action: the walk of steps 3 to 10 that the orchestrator
@@ -1223,14 +1243,14 @@ function next() {
     if (/^Verdict: RED/m.test(fs.readFileSync(path.join(root, '.scratch', slug, 'baseline.md'), 'utf8'))) say(5, 'the baseline is red: a block, report it; nothing is built on it');
     else say(6, 'dispatch one full-stack-developer for the plan, then the architecture gate');
   } else {
-    const { tickets, errors, frontier, parallel, built, held, trust, reproved } = graphOf(slug, goal);
+    const { tickets, errors, frontier, parallel, built, held, reproved } = graphOf(slug, goal);
     const evidence = goal.evidence.filter((row) => /^\d+$/.test(row.round));
     if (errors.length > 0) say(6, `the plan's graph fails (${errors.length} errors, npm run goal -- graph ${slug} --plan): back to the full-stack-developer that planned`);
     else if (evidence.length === 0) {
       for (const ticket of built) {
-        say(7, `checkpoint of ticket ${pad(ticket.n)}: npm run goal -- gate ${slug} --ticket ${ticket.n} --since <previous checkpoint sha>, then the quality-engineer${trust.some((one) => one.n === ticket.n) ? ' and the security-engineer (trust)' : ''}`);
+        say(7, `checkpoint of ticket ${pad(ticket.n)}: npm run goal -- gate ${slug} --ticket ${ticket.n} --since <previous checkpoint sha>, then write its Status: verified`);
       }
-      for (const one of held) say(7, `ticket ${pad(one.n)} is open: write "Carried:" with why the tickets after it can start, or a new full-stack-developer fixes its open findings`);
+      for (const one of held) say(7, `ticket ${pad(one.n)} is open: write "Carried:" with why the tickets after it can start, or a new full-stack-developer fixes what its gate left red`);
       if (frontier.length > 0) {
         say(7, `a new full-stack-developer for ticket ${pad(frontier[0].n)}${parallel.length > 1 ? `; two lanes allowed: ${parallel.map((ticket) => pad(ticket.n)).join(' + ')}` : ''}`);
       }
