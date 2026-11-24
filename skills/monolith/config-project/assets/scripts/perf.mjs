@@ -194,8 +194,8 @@ function signJwt(secret, claims = {}) {
 async function waitFor(url, ms = 60_000) {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
-    if (child?.exitCode !== null && child?.exitCode !== undefined) throw new Error(`backend exited with ${child.exitCode}`);
-    const res = await fetch(url).catch(() => null);
+    if (child && (child.exitCode !== null || child.signalCode !== null)) throw new Error(`backend exited with ${child.exitCode ?? child.signalCode}`);
+    const res = await fetch(url, { signal: AbortSignal.timeout(5_000) }).catch(() => null);
     if (res) return;
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -228,8 +228,9 @@ async function measure(route) {
       while (Date.now() < stop) {
         const [target, init] = request(connection);
         const t0 = performance.now();
-        const res = await fetch(target, init).catch(() => ({ status: 0, arrayBuffer: async () => null }));
-        await res.arrayBuffer();
+        // a stalled server is a status 0 after 30 s, never a measurement that waits forever
+        const res = await fetch(target, { ...init, signal: AbortSignal.timeout(30_000) }).catch(() => ({ status: 0, arrayBuffer: async () => null }));
+        await res.arrayBuffer().catch(() => null);
         latencies.push(performance.now() - t0);
         statuses[res.status] = (statuses[res.status] ?? 0) + 1;
       }
@@ -256,7 +257,8 @@ async function measure(route) {
 const regressionRatio = Number(config.regressionRatio ?? 1.25);
 const stopChild = () =>
   new Promise((resolve) => {
-    if (!child || child.exitCode !== null) return resolve();
+    // a child killed by a signal keeps exitCode null: signalCode says it is gone too (issue 130: a second call waited forever)
+    if (!child || child.exitCode !== null || child.signalCode !== null) return resolve();
     child.once('exit', resolve);
     child.kill();
   });

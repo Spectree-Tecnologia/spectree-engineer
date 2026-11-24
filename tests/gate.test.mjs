@@ -107,6 +107,17 @@ test('a red step stops the gate: what comes after it is not run', () => {
   assert.match(res.out, /^goal gate: RED at test$/m);
 });
 
+test('a step that hangs is a red at its timeout, never a gate that waits for hours (issue 130)', () => {
+  const { dir } = project({ scripts: { test: 'node -e "setInterval(() => {}, 1000)"' } });
+  const res = spawnSync(process.execPath, [goal, 'gate', 'things', '--final'], { cwd: dir, encoding: 'utf8', env: { ...process.env, GATE_STEP_MINUTES: '0.03' } });
+  const out = res.stdout + res.stderr;
+  assert.equal(res.status, 1, out);
+  assert.match(out, /R test +exit 1 \(timed out after 0\.03 min: GATE_STEP_MINUTES\)/);
+  assert.match(out, /^goal gate: RED at test$/m);
+  // the perf child killed by a signal counts as gone: a second stop no longer waits on an exit that already fired
+  assert.match(read('skills/monolith/config-project/assets/scripts/perf.mjs'), /child\.exitCode !== null \|\| child\.signalCode !== null\) return resolve\(\)/);
+});
+
 test('the p95 reports and never blocks: exit 3 is green with a report to read', () => {
   const { dir } = project({ scripts: { perf: 'node perf.cjs' } });
   fs.writeFileSync(path.join(dir, 'perf.cjs'), 'process.exit(1)\n');
