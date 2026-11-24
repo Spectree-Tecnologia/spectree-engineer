@@ -16,6 +16,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ### Added
 - **A receipt for a ticket's gate.** `goal gate <slug> --ticket <n> --since <sha>` that was green keeps a receipt outside the repository. The same command on the same code (nothing outside `.scratch/` changed, same `--since`, same proof) prints the `R` lines and `receipt:` and runs nothing; `--rerun` runs it. A red gate and a dirty tree keep none. The full-stack-developer closes a ticket with the gate, and the Engineer's gate reads that run. Measured: 142 to 181 seconds per run, two to three runs per ticket.
 
+### Fixed
+- **`log-redact.spec.ts` (config-shared-backend).** The spec builds its placeholder secret at run time. As a literal it looked like a key, and the generated project's own gitleaks step flagged the bootstrap commit.
+
 ### What is no longer guaranteed
 - A defect in an early ticket is found at the final verification, after later tickets were built on it. The final round reads more code and may cost more than it did.
 - A surviving mutant no longer blocks a merge.
@@ -26,7 +29,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - No goal ran with this text: every gain is an estimate from one goal's transcript (2.5 to 3 hours per goal for the ticket review, about 25 minutes for the receipt). How much longer the final verification gets was not measured.
 - The panel cannot see a mission's context size while it runs, so the handoff point is still a count of calls.
 - The evals were not run.
-- The smoke is red at its `gitleaks` step, before any `goal` step ran: gitleaks flags the placeholder secret of `log-redact.spec.ts`, a template from 0.48.0 that this release does not touch. So the smoke did not exercise the changed `goal.mjs` in a generated project; `tests/gate.test.mjs` and `tests/graph.test.mjs` did.
+- The smoke passes 149 steps, every `goal` and `graph` step among them, and is red at `release-probes`, near its end: the backend the release image starts writes Nest's plain start-up lines before the JSON logger takes over. The generated `app.module.ts` now comes from `nest new` with `@nestjs/observe`, which this release does not touch. Whether main is red at the same step was not run, and the smoke ran before 0.51.1 was merged into this branch.
+
+## [0.51.1] - 2026-11-24
+
+**A self-hosted runner no longer spends about 8 minutes restoring an npm cache it already holds.** No check or step is added, and `ubuntu-latest` is unchanged.
+
+### Fixed
+- **`ci.yml`: the npm cache on `ubuntu-latest` only.**
+  - `setup-node` now takes `cache: ${{ vars.CI_RUNNER == '' && 'npm' || '' }}` and `package-manager-cache: ${{ vars.CI_RUNNER == '' }}`.
+  - The second setting is needed because `setup-node` v7 turns the npm cache on from `package.json`'s `packageManager` field even when `cache` is empty.
+  - On a self-hosted runner the machine persists and `~/.npm` survives between jobs, so `npm ci` reads it directly.
+  - Measured on the pilot (synd-agent-system #39 to #41, 2026-11-24): the restore took 468 s of a 25-minute run. Without it, a smoke-only PR ran in 10.4 minutes.
+  - The pilot also skipped its Playwright browser cache the same way (#40). The template has no Playwright steps, so there is nothing to change there; a project that adds them follows the pilot.
 
 ## [0.51.0] - 2026-11-24
 
