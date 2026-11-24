@@ -47,6 +47,11 @@ test('the runner is a repository variable with the hosted runner as default, nev
   // node before the scope step, which runs scripts/e2e-scope.mjs
   assert.ok(ci.indexOf('actions/setup-node') < ci.indexOf('- name: What this run has to prove'));
   assert.equal(ci.match(/actions\/setup-node/g).length, 1);
+  // the npm cache on ubuntu-latest only: a self-hosted runner keeps ~/.npm, and restoring it took ~8 min on the
+  // pilot's (2026-11-24); package-manager-cache, or setup-node turns the cache on by itself from packageManager
+  assert.match(ci, /^ {10}cache: \$\{\{ vars\.CI_RUNNER == '' && 'npm' \|\| '' \}\}$/m);
+  assert.match(ci, /^ {10}package-manager-cache: \$\{\{ vars\.CI_RUNNER == '' \}\}$/m);
+  assert.doesNotMatch(ci, /^\s+cache: npm$/m);
 });
 
 // measured on the pilot's self-hosted runner (2026-11-20): WSL2 distros share one network, so CI asked for the

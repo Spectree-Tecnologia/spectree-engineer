@@ -92,11 +92,16 @@ jobs:
           # nothing after the checkout talks to GitHub
           persist-credentials: false
 
-      # before the scope step, which runs a node script; a self-hosted runner brings no node of its own
+      # before the scope step, which runs a node script; a self-hosted runner brings no node of its own.
+      # The npm cache through actions/cache on ubuntu-latest only. On a self-hosted runner (CI_RUNNER) the machine
+      # persists and ~/.npm survives between jobs, so npm ci reads it directly; restoring it took ~8 min on the pilot's.
+      # package-manager-cache too: without it, setup-node turns the npm cache on by itself from package.json's
+      # packageManager field even with an empty `cache`.
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: npm
+          cache: ${{ vars.CI_RUNNER == '' && 'npm' || '' }}
+          package-manager-cache: ${{ vars.CI_RUNNER == '' }}
 
       - name: What this run has to prove
         id: scope
