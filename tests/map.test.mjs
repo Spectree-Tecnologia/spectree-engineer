@@ -115,3 +115,15 @@ test('the squad reads the index and check:pr keeps it current', () => {
   assert.match(command, /npm run goal -- map/);
   assert.match(read('agents/solutions-architect.md'), /`docs\/index\.md`/);
 });
+
+test('the goal close regenerates the index after the merge and leaves no remote branch behind', () => {
+  // A pilot's goal (2026-11-23): `Status: met` went to main after the merge with the index still saying `approved`,
+  // and the goal's branch survived `gh pr merge --delete-branch`.
+  const close = read('commands/engineer.md').split('\n').find((line) => line.startsWith('11. **Retro.**'));
+  assert.ok(close, 'step 11 exists');
+  assert.ok(close.indexOf('npm run goal -- map') > close.indexOf('Status: met on <date>'), 'the map runs after met is written');
+  assert.match(close, /commit `docs\/index\.md` with the contract/);
+  const merge = read('agents/platform-engineer.md');
+  assert.match(merge, /gh pr merge --squash --delete-branch`, without asking, then `git ls-remote --exit-code --heads origin <branch>`/);
+  assert.match(merge, /exit 0 is a branch left behind: `git push origin --delete <branch>`/);
+});
