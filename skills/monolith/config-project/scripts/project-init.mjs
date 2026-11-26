@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawn, execSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { withCors } from '../../utils/nest-main.mjs';
 import { loadSkillConfig, resolveNamespace } from '../../utils/resolve-skill-config.mjs';
 import { createSkillRunLogger } from '../../utils/skill-run-log.mjs';
 import { createSkillRunOps } from '../../utils/skill-run-ops.mjs';
@@ -1317,12 +1318,7 @@ async function patchBackendMain({ rootDir, backendPath, backendPort, backendPort
   }
 
   // CORS only for the frontend; without FRONTEND_URL the API answers no cross-origin request at all
-  if (!content.includes('app.enableCors(')) {
-    content = content.replace(
-      /const app = await NestFactory\.create\(AppModule\);\s*/,
-      "const app = await NestFactory.create(AppModule);\n  app.enableCors({ origin: process.env.FRONTEND_URL?.split(',') ?? false });\n",
-    );
-  }
+  content = withCors(content);
 
   const portVariableName = `process.env.${backendPortEnvVar}`;
   const desiredPortLine = `const port = Number(${portVariableName} ?? ${backendPort});`;

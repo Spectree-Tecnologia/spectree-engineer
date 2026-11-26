@@ -241,7 +241,8 @@ function patchAppModule() {
 
 // ─── patch main.ts (idempotent) ──────────────────────────────────────────────
 
-function patchMainTs() {
+async function patchMainTs() {
+  const { withBufferedLogs } = await import('../../utils/nest-main.mjs')
   const filePath = path.join(ROOT, 'apps/backend/src/main.ts')
   if (!fs.existsSync(filePath)) {
     log('WARNING: apps/backend/src/main.ts not found, skipping patch.')
@@ -264,8 +265,10 @@ function patchMainTs() {
   }
 
   // Nest's own startup lines wait for the pino logger instead of going to the console as text
-  if (content.includes('NestFactory.create(AppModule)')) {
-    content = content.replace('NestFactory.create(AppModule)', 'NestFactory.create(AppModule, { bufferLogs: true })')
+  // whatever options `nest new` already wrote in that call; throws when it cannot land
+  const buffered = withBufferedLogs(content)
+  if (buffered !== content) {
+    content = buffered
     changed = true
   }
 
@@ -413,7 +416,7 @@ async function main() {
 
   // 5. Patch app.module.ts and main.ts
   patchAppModule()
-  patchMainTs()
+  await patchMainTs()
   patchAppE2eSpec()
   patchE2eVitestConfig()
 
