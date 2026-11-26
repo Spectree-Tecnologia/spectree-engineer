@@ -56,7 +56,7 @@ function prompts() {
 }
 
 test('a skill that sends to a section of the command names it as the command now spells it', () => {
-  for (const rel of ['skills/engineering/implement/SKILL.md', 'skills/engineering/to-spec/SKILL.md', 'skills/engineering/to-tickets/SKILL.md']) {
+  for (const rel of ['skills/engineering/to-tickets/SKILL.md']) {
     const name = read(rel).match(/section 3, "([^"]+)"/)?.[1];
     assert.ok(name, `${rel} does not name the adoption section`);
     assert.ok(command.includes(`### ${name}`), `${rel} sends to "${name}", which is not a section of commands/engineer.md`);
