@@ -16,7 +16,7 @@
 
 ## Release
 
-- [ ] `version` bumped in `.claude-plugin/plugin.json` (`PATCH` fix, `MINOR` new behaviour, `MAJOR` breaks generated projects),
+- [ ] `version` bumped in `.claude-plugin/plugin.json` (`PATCH` fix, `MINOR` any change in behaviour, `MAJOR` breaks the public API in `CONTRIBUTING.md`)
 - [ ] `CHANGELOG.md` section `## [x.y.z] - <date>` written
 
 ## What was not proved
