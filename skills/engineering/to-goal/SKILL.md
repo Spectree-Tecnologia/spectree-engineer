@@ -142,8 +142,9 @@ A contract changes after approval only by a row in `## Amendments`, written by t
 - `added`: a new criterion. The user decides when it makes a product rule nobody decided; the orchestrator when it follows from one already recorded.
 - `reworded`: the same demand in clearer words, or a proof corrected. The orchestrator decides.
 - `extended`: more verification rounds than the budget gave. The user decides. The `#` cell reads `budget`, and the `Change` cell says how many.
+- `resized`: a new `Size`, when the plan measures the goal past it (proof runners count as product). The `#` cell reads `budget`. The orchestrator decides before the first ticket lands; once a part has landed, the user does.
 
-Then edit the criteria table to match, and record `waived` in the evidence for a waived criterion.
+Then edit the criteria table (or the `Size` line) to match, and record `waived` in the evidence for a waived criterion.
 
 <criterion-examples>
 

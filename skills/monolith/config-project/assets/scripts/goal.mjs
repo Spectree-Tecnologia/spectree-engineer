@@ -45,7 +45,9 @@ const [command, ...args] = process.argv.slice(2);
 
 // The env a proof runs in is CI's: UTC, and no key of an app's local .env that CI's .env (its .env.example) does not
 // give a value. Issue 133: a developer's OIDC_* turned two e2e specs red that CI ran green. Blank wins over .env:
-// dotenv and Nest never override a variable that is set.
+// dotenv, Nest and Next never override a variable that is set, and each reads the file itself, so a key cannot be
+// unset for all of them. CI gives the same keys by absence: the env schema reads a blank variable as unset (issue 149;
+// the backend's validateEnv drops blank values before it parses).
 function ciEnv() {
   const keys = (file, empty) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split(/\r?\n/) : [])
     .map((line) => line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/))
@@ -123,8 +125,8 @@ function cells(line) {
 const isRow = (line) => /^\s*\|/.test(line) && !/^\s*\|[\s:|-]+\|\s*$/.test(line);
 
 const VERDICTS = ['met', 'not met', 'weak proof', 'waived', 'pending'];
-// `extended` is the one amendment that is not about a criterion: more verification rounds, decided by the user.
-const CHANGES = ['narrowed', 'reworded', 'waived', 'added', 'moved', 'extended'];
+// `extended` and `resized` are the amendments that are not about a criterion: more verification rounds, a new Size (issue 158).
+const CHANGES = ['narrowed', 'reworded', 'waived', 'added', 'moved', 'extended', 'resized'];
 const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2}|landed on \d{4}-\d{2}-\d{2}|met on \d{4}-\d{2}-\d{2}|stopped on \d{4}-\d{2}-\d{2}: .+)$/;
 const DEFERRED = /^\s*(after merge|in ci):/i;
 const DEFAULT_ROUNDS = 3;
@@ -263,7 +265,7 @@ function lint(goal, ready) {
     if (!CHANGES.includes(amendment.change)) errors.push(`amendment of ${amendment.date}: change "${amendment.change}" is not one of ${CHANGES.join(', ')}`);
     if (!amendment.by) errors.push(`amendment of ${amendment.date}: nobody is named as having decided it`);
     if (['waived', 'moved', 'narrowed'].includes(amendment.change) && !amendment.follow) errors.push(`amendment of ${amendment.date}: a ${amendment.change} criterion names where the rest continues`);
-    if (!['moved', 'added', 'extended'].includes(amendment.change) && !numbers.has(amendment.n)) errors.push(`amendment of ${amendment.date} names criterion ${amendment.n}, which the contract does not have`);
+    if (!['moved', 'added', 'extended', 'resized'].includes(amendment.change) && !numbers.has(amendment.n)) errors.push(`amendment of ${amendment.date} names criterion ${amendment.n}, which the contract does not have`);
   }
   // a moved criterion left this goal whole: a row that changes it afterwards is a part kept by the wrong form (issue 134)
   goal.amendments.forEach((amendment, i) => {
@@ -706,9 +708,14 @@ function spent() {
   const goal = parse(slugFile(flags.positional[0]));
   const projects = flags['--transcripts'] ?? path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude'), 'projects');
   // Claude Code names a project's folder after its path, every character that is not a letter or a digit as a dash;
-  // a worktree of the project is a folder that starts with the same name.
-  const mine = root.replace(/[^A-Za-z0-9]/g, '-').toLowerCase();
-  const dirs = fs.existsSync(projects) ? fs.readdirSync(projects).filter((name) => name.toLowerCase() === mine || name.toLowerCase().startsWith(`${mine}-`)) : [];
+  // a worktree of the project is a folder that starts with the same name. Run from a worktree (a goal closed from a
+  // checkout of main beside the item session's), the name is the main checkout's (issue 151); a session named by
+  // --session is looked for under every project.
+  const common = spawnSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).stdout?.trim();
+  const mainRoot = common && path.basename(common) === '.git' ? path.dirname(common) : root;
+  const prefixes = [...new Set([root, mainRoot].map((one) => path.resolve(one).replace(/[^A-Za-z0-9]/g, '-').toLowerCase()))];
+  const ours = (name) => flags['--session'] !== undefined || prefixes.some((mine) => name.toLowerCase() === mine || name.toLowerCase().startsWith(`${mine}-`));
+  const dirs = fs.existsSync(projects) ? fs.readdirSync(projects).filter(ours) : [];
   const head = (file) => {
     const buffer = Buffer.alloc(400_000);
     const fd = fs.openSync(file, 'r');

@@ -6,10 +6,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8').split('\r\n').join('\n');
@@ -59,7 +59,7 @@ test('the runner is a repository variable with the hosted runner as default, nev
 test('CI Postgres has its own host port and an empty volume, development keeps its port', { skip: !bash && 'no bash' }, () => {
   const prisma = read('skills/monolith/config-prisma/scripts/init-prisma-backend.js');
   assert.match(prisma, /- '\\\$\{POSTGRES_HOST_PORT:-\$\{dbConfig\.port\}\}:5432'/, 'the compose port defaults to the project port');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-pg-'));
+  const dir = tmpDir('ci-pg-');
   fs.mkdirSync(path.join(dir, 'bin'));
   fs.writeFileSync(path.join(dir, 'bin', 'docker'), '#!/bin/sh\necho "$@" >> "$CALLS"\n', { mode: 0o755 });
   const example = [
@@ -93,7 +93,7 @@ test('the latency budget never runs on a pull request and gates only pre-release
 });
 
 test('a red latency budget reports, and fails only the pre-release run', { skip: !bash && 'no bash' }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-moments-'));
+  const dir = tmpDir('ci-moments-');
   const script = path.join(dir, 'perf-step.sh');
   fs.writeFileSync(script, stepRun('Latency budget'));
   const run = (stage, exit) => {
@@ -120,7 +120,7 @@ test('a red latency budget reports, and fails only the pre-release run', { skip:
 });
 
 test('the scope step chooses the Playwright smoke from the diff', { skip: !bash && 'no bash' }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-scope-'));
+  const dir = tmpDir('ci-scope-');
   const script = path.join(dir, 'scope.sh').replace(/\\/g, '/');
   fs.writeFileSync(script, stepRun('What this run has to prove'));
   const repo = path.join(dir, 'repo');

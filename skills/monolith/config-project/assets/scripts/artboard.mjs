@@ -18,6 +18,9 @@
 //   expect(uncovered).toEqual([]);
 //   expect(differences).toEqual([]);
 //
+// A red run prints the whole list: fix every difference it names, then run again. One difference per run, read from a
+// partial diff, is how a screen ticket spends a context.
+//
 // A probe pairs the design's n-th match with the screen's n-th, and inside each the elements that draw (a text, a
 // painted box, an icon or image, a ::before or ::after), in document order; a wrapper that draws nothing is not
 // compared, because where it puts things is in the geometry of what it holds. Geometry is the box relative to the root,
@@ -142,15 +145,21 @@ const settle = (page) =>
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
 
-// A number in a value is the same when it is within half a pixel; everything else is compared as written.
-const NUMBER = /-?\d*\.?\d+(?:e-?\d+)?/gi;
-function sameValue(a, b) {
+// A number in a value is the same within what its unit allows: half a pixel for a length in px (sub-pixel layout), 0.01
+// for any other number, where half a unit is another drawing (an opacity, an alpha channel, a font-weight: with one
+// tolerance for all, `opacity: 1` and `0.6` compared equal, issue 146). A computed `matrix()` carries its translation
+// in px without the unit. Everything else is compared as written.
+const NUMBER = /(-?\d*\.?\d+(?:e-?\d+)?)([a-z%]*)/gi;
+const MATRIX_PX = { 'matrix(': [4, 5], 'matrix3d(': [12, 13, 14] };
+export function sameValue(a, b) {
   if (a === b) return true;
   if (a === undefined || b === undefined) return false;
-  if (a.replace(NUMBER, '#') !== b.replace(NUMBER, '#')) return false;
-  const x = a.match(NUMBER) ?? [];
-  const y = b.match(NUMBER) ?? [];
-  return x.length === y.length && x.every((n, i) => Math.abs(Number(n) - Number(y[i])) <= 0.5);
+  if (a.replace(NUMBER, '#$2') !== b.replace(NUMBER, '#$2')) return false;
+  const x = [...a.matchAll(NUMBER)];
+  const y = [...b.matchAll(NUMBER)];
+  const inPx = Object.entries(MATRIX_PX).find(([fn]) => a.startsWith(fn))?.[1] ?? [];
+  const tolerance = (i) => (x[i][2].toLowerCase() === 'px' || inPx.includes(i) ? 0.5 : 0.01);
+  return x.length === y.length && x.every((m, i) => Math.abs(Number(m[1]) - Number(y[i][1])) <= tolerance(i) + 1e-9);
 }
 
 // Next's font loader names a family `__Inter_3a7f2c`: it is Inter, and only the first family of the stack is drawn
@@ -195,14 +204,18 @@ export async function compareArtboard(page, { artboard, designRoot, appRoot, pro
   const screen = await app.evaluate(measureIn, { probes: probes.map((p) => ({ name: p.name, selector: p.app })), inProbes: false });
 
   const differences = [];
-  const skipped = (name, key) =>
-    NOT_STYLE.some((n) => n.match.test(key)) ||
+  // NOT_STYLE names style properties: its placement pattern also matches the geometry keys `left`, `top`, `width` and
+  // `height`, which are compared (issue 149); only a probe's `without` or an `exclude` leaves a geometry key out.
+  const excluded = (name, key) =>
     exclude.some((e) => (!e.probe || e.probe === name) && e.properties.includes(key)) ||
     (probes.find((p) => p.name === name)?.without ?? []).includes(key);
+  const skipped = (name, key) => NOT_STYLE.some((n) => n.match.test(key)) || excluded(name, key);
+  // geometry is measured in px, rounded to the half pixel
+  const sameAt = (a, b) => (typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) <= 0.5 : sameValue(String(a ?? ''), String(b ?? '')));
   const compare = (name, at, want, got) => {
     for (const key of [...GEOMETRY, 'text']) {
-      if (skipped(name, key) || (want[key] === undefined && got[key] === undefined)) continue;
-      if (!sameValue(String(want[key] ?? ''), String(got[key] ?? ''))) differences.push(`${at}: ${key} is ${got[key] ?? 'not drawn'} on the screen, ${want[key] ?? 'not drawn'} on the artboard`);
+      if (excluded(name, key) || (want[key] === undefined && got[key] === undefined)) continue;
+      if (!sameAt(want[key], got[key])) differences.push(`${at}: ${key} is ${got[key] ?? 'not drawn'} on the screen, ${want[key] ?? 'not drawn'} on the artboard`);
     }
     for (const key of Object.keys(want.style)) {
       if (skipped(name, key)) continue;

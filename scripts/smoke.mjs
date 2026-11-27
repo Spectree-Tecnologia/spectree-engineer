@@ -38,6 +38,40 @@ process.env.PERF_MAX_CPU = '100';
 
 console.log(`project: ${root}`);
 
+// Every exit, red or green, removes what the run made: the database compose, the release stack with its images, the
+// project folder. SMOKE_KEEP=1 keeps them; a red run keeps its log beside the temp folder. A killed run leaves its
+// folder behind, so each run first tears down the runs older than a day (a younger one may be another smoke running now).
+function tearDown(dir) {
+  const project = path.basename(dir).toLowerCase();
+  const backend = path.join(dir, 'apps', 'backend');
+  if (fs.existsSync(backend)) spawnSync(`docker compose -p ${project}-db down -v`, { cwd: backend, shell: true, stdio: 'ignore' });
+  if (fs.existsSync(path.join(dir, '.env'))) spawnSync(`docker compose -p ${project} -f docker-compose.prod.yml down -v --rmi all`, { cwd: dir, shell: true, stdio: 'ignore' });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
+}
+for (const name of fs.readdirSync(os.tmpdir())) {
+  const stale = path.join(os.tmpdir(), name);
+  if (!name.startsWith('spectree-smoke-') || stale === root) continue;
+  try {
+    const stat = fs.statSync(stale);
+    if (Date.now() - stat.mtimeMs < 24 * 60 * 60 * 1000) continue;
+    if (stat.isDirectory()) tearDown(stale);
+    else fs.rmSync(stale, { force: true });
+  } catch {
+    // a folder another process still holds: the next run tries again
+  }
+}
+let passed = false;
+process.on('exit', () => {
+  if (process.env.SMOKE_KEEP) return;
+  if (!passed && fs.existsSync(logFile)) {
+    fs.copyFileSync(logFile, `${root}.log`);
+    console.log(`log kept at ${root}.log`);
+  }
+  tearDown(root);
+});
+process.on('SIGINT', () => process.exit(130));
+process.on('SIGTERM', () => process.exit(143));
+
 // A step that must fail: exit code not 0 and the output naming why; the smoke goes on.
 function refuse(name, command, pattern, { cwd = root } = {}) {
   const t0 = Date.now();
@@ -679,9 +713,5 @@ export class ProbeController {
   console.log('[STEP] test-e2e, query-budget-catches-n-plus-1, api-401-without-token, perf, release → skipped (docker not available)');
 }
 
-if (process.env.SMOKE_KEEP) {
-  console.log(`smoke OK (project kept at ${root})`);
-} else {
-  fs.rmSync(root, { recursive: true, force: true });
-  console.log('smoke OK');
-}
+passed = true;
+console.log(process.env.SMOKE_KEEP ? `smoke OK (project kept at ${root})` : 'smoke OK');

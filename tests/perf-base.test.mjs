@@ -6,10 +6,10 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const perf = path.join(plugin, 'skills', 'monolith', 'config-project', 'assets', 'scripts', 'perf.mjs');
@@ -28,7 +28,7 @@ async function server(t, delay) {
 
 // a project whose base commit holds `baseRoutes`, with `routes` in the working tree
 function project(baseRoutes, routes, extra = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'spectree-perf-base-'));
+  const dir = tmpDir('spectree-perf-base-');
   const git = (...args) => assert.equal(spawnSync('git', args, { cwd: dir, encoding: 'utf8' }).status, 0, `git ${args.join(' ')}`);
   const write = (list) => fs.writeFileSync(path.join(dir, 'perf.config.json'), JSON.stringify({ connections: 4, durationSeconds: 1, ...extra, routes: list }));
   git('init', '-q');

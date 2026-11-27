@@ -6,10 +6,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scripts = path.join(plugin, 'skills', 'monolith', 'config-project', 'assets', 'scripts');
@@ -17,7 +17,7 @@ const goal = path.join(scripts, 'goal.mjs');
 const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
 
 function project(files) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'spectree-map-'));
+  const dir = tmpDir('spectree-map-');
   for (const [rel, body] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), body);

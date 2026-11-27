@@ -5,16 +5,16 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const script = path.join(plugin, 'skills', 'monolith', 'config-project', 'assets', 'scripts', 'pw.mjs');
 
 function project({ backendPort, frontendPort, config = true }) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pw-'));
+  const dir = tmpDir('pw-');
   fs.mkdirSync(path.join(dir, 'apps', 'backend'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'apps', 'frontend'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'apps', 'backend', '.env'), `PORT=${backendPort}\n`);

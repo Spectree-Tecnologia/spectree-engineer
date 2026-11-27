@@ -26,6 +26,21 @@ test('a screen criterion is proved by compareArtboard, and a project gets the sc
   assert.match(read('skills/monolith/config-project/scripts/tooling-sync.mjs'), /\/\\\.\(mjs\|d\\\.mts\)\$\/\.test\(name\)/);
 });
 
+test('a number is compared within what its unit allows: half a pixel in px, 0.01 otherwise (issue 146)', async () => {
+  const { sameValue } = await import(`../${assets}/artboard.mjs`);
+  assert.ok(sameValue('12px', '12.5px'));
+  assert.ok(!sameValue('12px', '13px'));
+  assert.ok(!sameValue('1', '0.6'), 'opacity');
+  assert.ok(!sameValue('rgba(150, 163, 187, 0.55)', 'rgba(150, 163, 187, 0.06)'), 'alpha');
+  assert.ok(sameValue('rgba(0, 0, 0, 0.1) 0px 2px 4px 0px', 'rgba(0, 0, 0, 0.1) 0.4px 2px 4px 0px'));
+  assert.ok(!sameValue('400', '700'), 'font-weight');
+  assert.ok(!sameValue('12px', '12em'), 'unit');
+  assert.ok(sameValue('matrix(1, 0, 0, 1, 10, 20)', 'matrix(1, 0, 0, 1, 10.5, 20)'), 'a matrix translation is px');
+  assert.ok(!sameValue('matrix(1, 0, 0, 1, 10, 20)', 'matrix(0.9, 0, 0, 1, 10, 20)'), 'a matrix scale is not');
+  // the geometry keys of the same names as NOT_STYLE's placement properties are compared (issue 149)
+  assert.match(read(`${assets}/artboard.mjs`), /if \(excluded\(name, key\) \|\| \(want\[key\] === undefined/);
+});
+
 test('a gate decides the refusal for every input, its message for a closed list', () => {
   assert.match(read('skills/engineering/to-goal/SKILL.md'), /The refusal itself \(the exit code\) is decided for every input; what the refusal's message names is demanded only for a closed list of cases/);
 });

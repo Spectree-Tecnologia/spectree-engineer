@@ -252,6 +252,17 @@ test('a heredoc or pipe into an interpreter is refused, a script run from a file
   }
 })
 
+test('an unquoted heredoc whose body has backticks is refused, a quoted one is not (issue 152)', async ($, on) => {
+  engine(on, 'd1')
+  const denied = async (command: string) => String(((await $.tool.call({ tool: 'Bash', command } as any)) as any).deny ?? '')
+  for (const command of ['git commit -F - <<EOF\nfix: the `goal` gate\nEOF', 'cat > notes.md <<-EOF\n\trun `npm test`\n\tEOF', 'cat > a.md <<EOF\nx `y`']) {
+    expect(await denied(command)).toContain("<<'EOF'")
+  }
+  for (const command of ["git commit -F - <<'EOF'\nfix: the `goal` gate\nEOF", 'cat > a.md <<"EOF"\n`x`\nEOF', 'cat > a.txt <<EOF\nplain $HOME\nEOF', 'cat <<EOF > a\nx\nEOF\necho `date`', 'grep -c x <<< "`a`"']) {
+    expect(await denied(command)).toBe('')
+  }
+})
+
 test("the goal contract is the Engineer's: a subagent neither calls to-goal nor writes docs/goals, the main loop does both", async ($, on) => {
   engine(on, 'd1')
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'goal')
