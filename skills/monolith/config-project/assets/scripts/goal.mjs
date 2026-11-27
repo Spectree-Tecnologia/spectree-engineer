@@ -918,7 +918,7 @@ function spent() {
     console.log('  by agent      role                   turns   context         tokens in  what filled it');
     for (const one of missions.sort((a, b) => a.at.localeCompare(b.at))) {
       const top = Object.entries(one.filled).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([tool, bytes]) => `${tool} ${Math.round(bytes / 1000)}kB`).join(', ');
-      console.log(`    ${one.at.slice(5, 16).replace('T', ' ')}  ${one.role.padEnd(21)} ${String(one.turns).padStart(5)}   ${`${k(one.first)} -> ${k(one.peak)}`.padEnd(14)} ${M(one.tokens).padStart(8)}  ${top}  ${one.what.slice(0, 40)}`);
+      console.log(`    ${one.at.slice(5, 16).replace('T', ' ')}  ${one.role.padEnd(21)} ${String(one.turns).padStart(5)}   ${`${k(one.first)} -> ${k(one.last)}`.padEnd(14)} ${M(one.tokens).padStart(8)}  ${top}  ${one.what.slice(0, 40)}`);
     }
   }
   // The context ceiling (scripts/context-ceiling.mjs), mission by mission: each one's largest context, measured from
