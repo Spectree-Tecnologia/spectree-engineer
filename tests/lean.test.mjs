@@ -105,8 +105,11 @@ test('the prompts stay inside their word budget', () => {
   // 1.2.0 lowered both to what they left: one whole-suite pass per goal (step 8 beside the gate, step 9's re-check by
   // `--since`) and the quality-engineer reading beside the gate, paid with the security-engineer's ticket review that
   // 0.52.0 had already removed from step 7 and a reason Prisma itself gives.
-  const COMMAND = 8644;
-  const SQUAD = 20319;
+  // 1.3.0 lowered both to what they left: the context ceiling (the estimate in step 6, the `handoff` of any role in
+  // step 7, `## Spent by mission` in step 11, the full-stack-developer's handoff by context, not by call 75), paid
+  // with the gate's own list of steps and the Spent line's fields, which the scripts print.
+  const COMMAND = 8641;
+  const SQUAD = 20315;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

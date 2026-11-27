@@ -11,6 +11,8 @@ const REPO = fileURLToPath(new URL('..', import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), 'engineer-desk-'));
 try {
   for (const part of ['.claude-plugin', 'hooks', 'tests']) cpSync(join(REPO, part), join(dir, part), { recursive: true });
+  // The panel reads the context ceiling from the one file that holds it.
+  for (const name of ['context-ceiling.mjs', 'context-ceiling.d.mts']) cpSync(join(REPO, 'skills/monolith/config-project/assets/scripts', name), join(dir, 'skills/monolith/config-project/assets/scripts', name));
   // One command string: on Windows `claude` is a .cmd shim, which needs the shell.
   const run = spawnSync(`claude plugin test "${dir}"`, { stdio: 'inherit', shell: true });
   process.exitCode = run.status ?? 1;

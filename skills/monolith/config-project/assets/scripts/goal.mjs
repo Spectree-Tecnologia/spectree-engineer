@@ -41,6 +41,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { CONTEXT_CEILING, HANDOFF_ROOM } from './context-ceiling.mjs';
 
 const root = process.cwd();
 const goalsDir = path.join(root, 'docs', 'goals');
@@ -778,7 +779,7 @@ function spent() {
     const one = (roles[role] ??= { turns: 0, cached: 0, fresh: 0, out: 0 });
     const seen = new Set();
     // one subagent: its turns, the context of its first and last turn, and the bytes of tool results by tool
-    const mine = { role, what, at: rows.find((row) => row.timestamp)?.timestamp ?? '', turns: 0, first: 0, last: 0, tokens: 0, filled: {} };
+    const mine = { role, what, at: rows.find((row) => row.timestamp)?.timestamp ?? '', turns: 0, first: 0, last: 0, peak: 0, tokens: 0, filled: {} };
     const tools = new Map();
     for (const row of rows) {
       const used = row.message?.usage;
@@ -794,6 +795,8 @@ function spent() {
       mine.turns += 1;
       mine.first ||= context;
       mine.last = context;
+      // what the next request carries, as the panel measures it against the ceiling: this input and its output
+      mine.peak = Math.max(mine.peak, context + (used.output_tokens ?? 0));
       mine.tokens += context;
       one.cached += used.cache_read_input_tokens ?? 0;
       one.fresh += (used.input_tokens ?? 0) + (used.cache_creation_input_tokens ?? 0);
@@ -915,17 +918,76 @@ function spent() {
     console.log('  by agent      role                   turns   context         tokens in  what filled it');
     for (const one of missions.sort((a, b) => a.at.localeCompare(b.at))) {
       const top = Object.entries(one.filled).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([tool, bytes]) => `${tool} ${Math.round(bytes / 1000)}kB`).join(', ');
-      console.log(`    ${one.at.slice(5, 16).replace('T', ' ')}  ${one.role.padEnd(21)} ${String(one.turns).padStart(5)}   ${`${k(one.first)} -> ${k(one.last)}`.padEnd(14)} ${M(one.tokens).padStart(8)}  ${top}  ${one.what.slice(0, 40)}`);
+      console.log(`    ${one.at.slice(5, 16).replace('T', ' ')}  ${one.role.padEnd(21)} ${String(one.turns).padStart(5)}   ${`${k(one.first)} -> ${k(one.peak)}`.padEnd(14)} ${M(one.tokens).padStart(8)}  ${top}  ${one.what.slice(0, 40)}`);
     }
   }
-  const line = `Spent: ${h(total.wall)} h wall, ${h(total.limit)} h at the usage limit, ${h(total.waiting)} h waiting for the founder, ${h(total.stopped)} h stopped by an error, ${M(tokensIn)} tokens in, ${M(all.out)} out, ${all.turns} turns`;
+  // The context ceiling (scripts/context-ceiling.mjs), mission by mission: each one's largest context, measured from
+  // the API's usage of each request, and the tickets as one context (a ticket handed off counts each mission's growth
+  // over the first, as if it had run in one), beside the estimate it was dispatched with.
+  const kk = (n) => `${Math.round(n / 1000)}k`;
+  const byStart = missions.slice().sort((a, b) => a.at.localeCompare(b.at));
+  const over = byStart.filter((one) => one.peak > CONTEXT_CEILING);
+  const largest = byStart.reduce((top, one) => (one.peak > (top?.peak ?? 0) ? one : top), null);
+  const handoffs = byStart.filter((one) => /\b(?:continue|continues|finish|handoff)\b/i.test(one.what) && !/\bfix/i.test(one.what));
+  const ceilingLine = `context ceiling ${kk(CONTEXT_CEILING)}: ${byStart.length} missions, the largest ${largest ? `${kk(largest.peak)} (${largest.role}, ${largest.what.slice(0, 40)})` : 'none'}, ${over.length} over the ceiling, ${handoffs.length} handed off`;
+  console.log(`  ${ceilingLine}`);
+  for (const one of over) console.log(`    over the ceiling: ${kk(one.peak)}  ${one.role}  ${one.what}`);
+  const ticketsSeen = new Map();
+  for (const one of byStart.filter((mission) => mission.role === 'full-stack-developer' && !REWORK.test(mission.what))) {
+    const n = Number(one.what.match(/\bticket\s+(\d+)/i)?.[1]);
+    if (!Number.isFinite(n)) continue;
+    const seen = ticketsSeen.get(n) ?? { n, missions: 0, context: 0 };
+    seen.context += seen.missions === 0 ? one.peak : one.peak - one.first;
+    seen.missions += 1;
+    ticketsSeen.set(n, seen);
+  }
+  const plannedWords = (n) => {
+    const dir = path.join(root, '.scratch', goal.slug, 'issues');
+    const name = fs.existsSync(dir) ? fs.readdirSync(dir).find((one) => new RegExp(`^0*${n}-.+\\.md$`).test(one)) : null;
+    if (!name) return null;
+    const rel = `.scratch/${goal.slug}/issues/${name}`;
+    // the ticket as its plan wrote it: the commit that added it, else the file as it is
+    const added = spawnSync('git', ['log', '--diff-filter=A', '--format=%H', '--', rel], { cwd: root, encoding: 'utf8' }).stdout?.trim().split('\n').filter(Boolean).at(-1);
+    const shown = added ? spawnSync('git', ['show', `${added}:${rel}`], { cwd: root, encoding: 'utf8' }) : null;
+    return wordsOf(shown?.status === 0 ? shown.stdout : fs.readFileSync(path.join(dir, name), 'utf8'));
+  };
+  const ticketRows = [...ticketsSeen.values()].sort((a, b) => a.n - b.n).map((one) => ({ ...one, words: plannedWords(one.n) }));
+  const line = `Spent: ${h(total.wall)} h wall, ${h(total.limit)} h at the usage limit, ${h(total.waiting)} h waiting for the founder, ${h(total.stopped)} h stopped by an error, ${M(tokensIn)} tokens in, ${M(all.out)} out, ${all.turns} turns, ${largest ? kk(largest.peak) : '0k'} largest context of ${kk(CONTEXT_CEILING)}, ${over.length} over`;
   console.log(`\n${line}`);
   if (flags['--write']) {
     const lines = fs.readFileSync(goal.file, 'utf8').split(/\r?\n/);
     const at = lines.findIndex((one) => /^Spent:/.test(one));
     if (at >= 0) lines[at] = line;
     else lines.splice(Math.max(lines.findIndex((one) => /^Landed:/.test(one)), lines.findIndex((one) => /^Status:/.test(one))) + 1, 0, line);
-    fs.writeFileSync(goal.file, lines.join('\n'));
+    // the section is the script's: written again whole on every run, and the last of the contract
+    const from = lines.findIndex((one) => /^##\s+Spent by mission\s*$/i.test(one));
+    if (from >= 0) {
+      const to = lines.findIndex((one, i) => i > from && /^##\s/.test(one));
+      lines.splice(from, (to < 0 ? lines.length : to) - from);
+    }
+    while (lines.length > 0 && lines.at(-1).trim() === '') lines.pop();
+    const cell = (text) => text.replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
+    lines.push(
+      '',
+      '## Spent by mission',
+      '',
+      `Written by \`goal spent --write\`: each mission's largest context, read from the API's usage in this machine's transcripts, against the ${kk(CONTEXT_CEILING)} ceiling of \`scripts/context-ceiling.mjs\`. ${ceilingLine[0].toUpperCase()}${ceilingLine.slice(1)}.`,
+      '',
+      '| Started (UTC) | Role | Mission | Turns | Largest context | Tokens in |',
+      '|---|---|---|---|---|---|',
+      ...byStart.map((one) => `| ${one.at.slice(0, 16).replace('T', ' ')} | ${one.role} | ${cell(one.what) || '-'} | ${one.turns} | ${kk(one.peak)}${one.peak > CONTEXT_CEILING ? ' **over**' : ''} | ${M(one.tokens)} |`),
+    );
+    if (ticketRows.length > 0) {
+      lines.push(
+        '',
+        'A ticket as one context, beside the estimate `goal graph` gives it; the rows `goal graph` fits its estimate on.',
+        '',
+        '| Ticket | Words as planned | Estimate | Context | Missions |',
+        '|---|---|---|---|---|',
+        ...ticketRows.map((one) => `| Ticket ${pad(one.n)} | ${one.words === null ? '-' : `${one.words} words`} | ${one.words === null ? '-' : kk(estimateOf(one.words))} | ${kk(one.context)} | ${one.missions} |`),
+      );
+    }
+    fs.writeFileSync(goal.file, `${lines.join('\n')}\n`);
     console.log(`  written to docs/goals/${goal.slug}.md`);
   }
   return 0;
@@ -966,6 +1028,7 @@ function readTickets(slug) {
         n: Number(name.match(/^\d+/)[0]),
         file: `.scratch/${slug}/issues/${name}`,
         name: name.replace(/^\d+-/, '').replace(/\.md$/, ''),
+        words: wordsOf(text),
         // the numbers that open the field: "1 and 3, proved by 2 e2e tests" advances 1 and 3
         legacy: field('Criteria') === null,
         criteria: numbers((field('Criteria') ?? '').match(/^\d+(?:\s*\([^)]*\))?(?:\s*(?:,|;|and|e|&)\s*\d+(?:\s*\([^)]*\))?)*/)?.[0].replace(/\([^)]*\)/g, '')),
@@ -984,9 +1047,49 @@ function readTickets(slug) {
     });
 }
 
+// A ticket's context, estimated before it is dispatched: the tokens the one mission that builds it will hold at its
+// largest, against the ceiling of scripts/context-ceiling.mjs. The estimate is a line on the words of the ticket's
+// file as planned, the one signal a plan has that follows the work: measured on the pilot project (37 tickets of
+// five goals, 2026-11-15 to 11-27) it explains half the spread (r = 0.71, 100k either way), where the product lines,
+// the paths touched and being a screen ticket each explain under a sixth. The line starts as the pilot's and is
+// refitted on this project's own tickets once ten have been measured (`goal spent --write` records them in each
+// contract's "## Spent by mission"). It decides only what is clearly too big: a ticket estimated past the ceiling is
+// split before it starts; a miss is caught by the panel, which hands a mission off at the ceiling itself.
+const ESTIMATE_LINE = { base: 42_000, perWord: 168, tickets: 0 };
+const k = (n) => `${Math.round(n / 1000)}k`;
+const wordsOf = (text) => text.split(/\s+/).filter(Boolean).length;
+let estimateLine = null;
+function estimateFit() {
+  if (estimateLine) return estimateLine;
+  const points = [];
+  for (const name of fs.existsSync(goalsDir) ? fs.readdirSync(goalsDir).filter((one) => one.endsWith('.md')) : []) {
+    const section = parse(path.join(goalsDir, name)).sections['spent by mission'] ?? [];
+    // | Ticket 03 | 1290 words | 259k | 241k | 1 |
+    for (const row of section.filter(isRow).map(cells)) {
+      const words = Number(row[1]?.match(/^(\d+) words$/)?.[1]);
+      const measured = Number(row[3]?.match(/^(\d+)k$/)?.[1]) * 1000;
+      if (/^Ticket \d+$/.test(row[0] ?? '') && words > 0 && measured > 0) points.push([words, measured]);
+    }
+  }
+  estimateLine = ESTIMATE_LINE;
+  if (points.length >= 10) {
+    const mx = points.reduce((sum, [x]) => sum + x, 0) / points.length;
+    const my = points.reduce((sum, [, y]) => sum + y, 0) / points.length;
+    const sxx = points.reduce((sum, [x]) => sum + (x - mx) ** 2, 0);
+    const perWord = sxx > 0 ? points.reduce((sum, [x, y]) => sum + (x - mx) * (y - my), 0) / sxx : 0;
+    if (perWord > 0) estimateLine = { base: Math.max(0, my - perWord * mx), perWord, tickets: points.length };
+  }
+  return estimateLine;
+}
+const estimateOf = (words) => {
+  const line = estimateFit();
+  return Math.round(line.base + line.perWord * words);
+};
+
 // The graph of a goal, read once: what `graph` prints and what `next` walks.
 function graphOf(slug, goal, plan = false) {
   const every = readTickets(slug);
+  for (const ticket of every) ticket.estimate = estimateOf(ticket.words);
   const tickets = every.filter((ticket) => !ticket.legacy);
   const byNumber = new Map(tickets.map((ticket) => [ticket.n, ticket]));
   const errors = [];
@@ -1007,6 +1110,19 @@ function graphOf(slug, goal, plan = false) {
     // what a plan must say before any code; a goal planned before the graph only gets a note
     const missing = [ticket.touches === null || ticket.touches.length === 0 ? '"Touches"' : null, ticket.proof.length === 0 ? '"Proof" with a run: command' : null].filter(Boolean);
     if (missing.length > 0) (plan ? errors : notes).push(`ticket ${pad(ticket.n)} has no ${missing.join(' and no ')}`);
+    // too big for one context: split before it starts, never mid-way
+    if (ticket.state === 'ready' && ticket.estimate > CONTEXT_CEILING) {
+      errors.push(`ticket ${pad(ticket.n)} is estimated at ${k(ticket.estimate)} of context (${ticket.words} words), over the ${k(CONTEXT_CEILING)} ceiling: split it by seam`);
+    }
+  }
+  // the other way round: a criterion cut in two whose halves fit one context together costs an agent and a gate
+  if (plan) {
+    for (const b of tickets.filter((one) => one.state === 'ready' && one.blockedBy.length === 1)) {
+      const a = byNumber.get(b.blockedBy[0]);
+      if (!a || a.state !== 'ready' || a.criteria.join() !== b.criteria.join()) continue;
+      const together = a.estimate + b.estimate - estimateFit().base;
+      if (together <= CONTEXT_CEILING - HANDOFF_ROOM) notes.push(`tickets ${pad(a.n)} and ${pad(b.n)} cut criterion ${a.criteria.join(', ')} in two and together are estimated at ${k(together)}, under the ${k(CONTEXT_CEILING)} ceiling: one ticket fits`);
+    }
   }
   const gone = new Set(goal.amendments.filter((a) => ['moved', 'waived'].includes(a.change)).map((a) => a.n));
   for (const criterion of goal.criteria) {
@@ -1117,7 +1233,12 @@ function graph() {
   for (const ticket of tickets.slice().sort((a, b) => a.wave - b.wave || a.n - b.n)) {
     const after = ticket.blockedBy.length > 0 ? `  after ${ticket.blockedBy.map(pad).join(', ')}` : '';
     const state = ticket.carried ? 'open, carried' : ticket.state;
-    console.log(`  wave ${ticket.wave}  ${pad(ticket.n)} ${state}  ${ticket.name}  (criteria ${ticket.criteria.join(', ') || '-'})${after}`);
+    const estimate = ticket.state === 'ready' ? `  ~${k(ticket.estimate)}` : '';
+    console.log(`  wave ${ticket.wave}  ${pad(ticket.n)} ${state}  ${ticket.name}  (criteria ${ticket.criteria.join(', ') || '-'})${after}${estimate}`);
+  }
+  const line = estimateFit();
+  if (tickets.some((ticket) => ticket.state === 'ready')) {
+    console.log(`  context: ~ is each ticket's estimate against the ${k(CONTEXT_CEILING)} ceiling, ${line.tickets > 0 ? `fitted on this project's ${line.tickets} measured tickets` : "the pilot project's line until ten of this project's tickets are measured"} (${k(line.base)} + ${Math.round(line.perWord)} per word of the ticket)`);
   }
   for (const error of errors) console.log(`      error: ${error}`);
   for (const note of notes) console.log(`      note:  ${note}`);

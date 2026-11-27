@@ -330,19 +330,99 @@ test('a subagent never touches the shared stash; the main loop may, and reading 
   expect(await denied('git stash')).toBe('')
 })
 
-test('a full-stack-developer is told once, at its ninetieth tool call, to hand the ticket off; nobody else is', async ($, on) => {
+// One model request of a subagent, answered by the test's engine with the usage the API would report.
+async function request($: any, agentId?: string) {
+  const stream = $.turn.step({ turnId: 't', index: 0, model: 'm', messageCount: 3, ...(agentId ? { agentId } : {}) })
+  for await (const _ of stream) {
+    // the response's chunks: none here
+  }
+  return stream.result
+}
+
+// The test's engine answers each request with the usage of a context of the size given last (all four parts summed).
+function answers(on: any) {
+  let usage: any = null
+  on('turn.step', async function* (_: unknown, e: any) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'tool_use', usage }
+  })
+  return (context: number) => {
+    usage = { input_tokens: 2_000, cache_creation_input_tokens: 8_000, cache_read_input_tokens: context - 12_000, output_tokens: 2_000, model: 'm' }
+  }
+}
+
+test('no mission is stopped by its count of calls: a long one under the ceiling runs to its end', async ($, on) => {
   engine(on, 'd1')
+  const reply = answers(on)
+  await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'Build ticket 11')
+  const denied = async () => String(((await $.tool.call({ tool: 'Bash', command: 'npm test', agentId: 'd1' } as any)) as any).deny ?? '')
+  // 200 calls whose context climbs to 330k, the largest ticket the pilot project measured as one context
+  for (let call = 1; call <= 200; call++) {
+    reply(30_000 + call * 1_500)
+    await request($, 'd1')
+    expect(await denied()).toBe('')
+  }
+})
+
+test('every subagent near the ceiling is told once how to close, and at the ceiling only the calls that close run', async ($, on) => {
+  engine(on, 'd1')
+  const reply = answers(on)
+  for (const [id, type] of [
+    ['d1', 'spectree-engineer:full-stack-developer'],
+    ['q1', 'spectree-engineer:quality-engineer'],
+  ] as const) {
+    await spawn($, id, type, `mission ${id}`)
+    const call = async (input: Record<string, unknown>) => String(((await $.tool.call({ ...input, agentId: id } as any)) as any).deny ?? '')
+    reply(339_000)
+    await request($, id)
+    expect(await call({ tool: 'Bash', command: 'npm test' })).toBe('')
+    // within the handoff room: one call refused with the way out, then it passes when repeated
+    reply(341_000)
+    await request($, id)
+    const notice = await call({ tool: 'Bash', command: 'npm test' })
+    expect(notice).toContain('Context ceiling: your context is 341k tokens')
+    expect(notice).toContain('report `handoff`')
+    expect(notice).toContain('`Next needs:`')
+    expect(await call({ tool: 'Bash', command: 'npm test' })).toBe('')
+    expect(await call({ tool: 'Read', file_path: '/repo/src/a.ts' })).toBe('')
+    // within the close room: only what closes the mission runs
+    reply(376_000)
+    await request($, id)
+    for (const input of [
+      { tool: 'Bash', command: 'npm test' },
+      { tool: 'Read', file_path: '/repo/src/a.ts' },
+      { tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'a', new_string: 'b' },
+      { tool: 'Bash', command: 'git add -A && npm test' },
+      { tool: 'Bash', command: 'git diff' },
+    ]) {
+      expect(await call(input)).toContain('Context ceiling reached: 376k of 400k')
+    }
+    for (const input of [
+      { tool: 'Bash', command: 'git add -A && git commit -m "wip(things): ticket 04"' },
+      { tool: 'Bash', command: 'git -C ../wt status' },
+      { tool: 'Bash', command: 'taskkill /PID 4242 /T /F' },
+      { tool: 'Edit', file_path: '/repo/.scratch/things/issues/04-archive.md', old_string: 'a', new_string: 'b' },
+      { tool: 'Write', file_path: 'C:\\repo\\.scratch\\things\\notes\\handoff.md', content: 'x' },
+    ]) {
+      expect(await call(input)).toBe('')
+    }
+  }
+  // the main loop is never measured against it
+  reply(390_000)
+  await request($, undefined)
+  expect(String(((await $.tool.call({ tool: 'Bash', command: 'npm test' } as any)) as any).deny ?? '')).toBe('')
+})
+
+test("a card shows the largest context its mission held against the ceiling", async ($, on) => {
+  engine(on, 'd1')
+  const reply = answers(on)
   await spawn($, 'd1', 'spectree-engineer:full-stack-developer', 'Build ticket 04')
-  await spawn($, 'q1', 'spectree-engineer:quality-engineer', 'QE checkpoint ticket 04')
-  const denied = async (agentId?: string) => String(((await $.tool.call({ tool: 'Bash', command: 'git status', ...(agentId ? { agentId } : {}) } as any)) as any).deny ?? '')
-  for (let call = 1; call < 90; call++) expect(await denied('d1')).toBe('')
-  const notice = await denied('d1')
-  expect(notice).toContain('Handoff point: this is tool call 90')
-  expect(notice).toContain('report `handoff`')
-  // the same call passes when repeated, and the notice never comes back
-  for (let call = 91; call <= 160; call++) expect(await denied('d1')).toBe('')
-  for (let call = 1; call <= 70; call++) expect(await denied('q1')).toBe('')
-  for (let call = 1; call <= 70; call++) expect(await denied()).toBe('')
+  reply(212_000)
+  await request($, 'd1')
+  reply(150_000)
+  await request($, 'd1')
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /212k\/400k context/ })).toBeDefined()
+  await ui.unmount()
 })
 
 test('the clock runs only while a subagent runs', async ($, on) => {

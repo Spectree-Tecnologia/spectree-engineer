@@ -17,6 +17,10 @@ export type AgentRow = {
 // the last few labels, and how many it has taken.
 export type AgentSteps = { count: number; labels: string[] }
 
+// A mission's context, measured on each of its model requests (hooks/engineer-desk/ceiling.ts): the last one and
+// the largest, and whether the panel has already given it the handoff notice.
+export type AgentContext = { last: number; peak: number; isWarned: boolean }
+
 export type PlanTask = {
   id: string
   subject: string
@@ -47,6 +51,7 @@ declare module 'claude-code' {
     'spectree-engineer': {
       agents: Shaped<Record<string, AgentRow>>
       steps: StateFamily<AgentSteps>
+      context: StateFamily<AgentContext>
       ui: Shaped<DeskUi>
       plan: Shaped<Plan>
       now: number

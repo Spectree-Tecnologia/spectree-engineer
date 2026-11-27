@@ -297,7 +297,7 @@ test('a ticket closes on its gate: nobody reviews it, and a red gate goes back t
   assert.match(read('agents/security-engineer.md'), /`closed` or `open` per finding of yours, no new hunt/);
   assert.match(read('agents/full-stack-developer.md'), /You may be called back once, through the same conversation, when the Engineer's gate is red on your ticket/);
   // the handoff notice no longer assumes a ticket: a fix or a bug mission has none
-  assert.match(read('hooks/engineer-desk/register.tsx'), /in your ticket, or in your report when the mission has no ticket/);
+  assert.match(read('hooks/engineer-desk/ceiling.ts'), /in your ticket, or in your report when the mission has no ticket/);
 });
 
 test('a proof written `in ci:` is run by the pull request\'s run, and by nothing before it', () => {
@@ -409,6 +409,7 @@ test('the squad plans, gates and walks by the graph', () => {
   const command = read('commands/engineer.md');
   assert.match(command, /`npm run goal -- graph <slug> --plan`/);
   assert.match(command, /the first of the frontier that `npm run goal -- graph <slug>` prints/);
-  assert.match(command, /`npm run goal -- graph <slug> --prove <NN>`/);
+  // the gate runs the ticket's proof; whoever builds the ticket runs it alone from the to-tickets skill (1.3.0)
+  assert.match(read('skills/engineering/to-tickets/SKILL.md'), /npm run goal -- graph <slug> --prove/);
   assert.match(read('agents/full-stack-developer.md'), /npm run goal -- graph <slug> --plan/);
 });
