@@ -102,8 +102,11 @@ test('the prompts stay inside their word budget', () => {
   // 0.52.0 lowered both to what they left: the review of each ticket (step 7's b to e, the `trust:` list, the
   // quality-engineer's checkpoint mission) left, and paid for the prototype that holds only its own criteria (step 2),
   // the gate's receipt and the mutants read once.
-  const COMMAND = 8646;
-  const SQUAD = 20356;
+  // 1.2.0 lowered both to what they left: one whole-suite pass per goal (step 8 beside the gate, step 9's re-check by
+  // `--since`) and the quality-engineer reading beside the gate, paid with the security-engineer's ticket review that
+  // 0.52.0 had already removed from step 7 and a reason Prisma itself gives.
+  const COMMAND = 8644;
+  const SQUAD = 20319;
   assert.ok(words('commands/engineer.md') <= COMMAND, `commands/engineer.md has ${words('commands/engineer.md')} words, over ${COMMAND}`);
   const total = words('commands/engineer.md') + cards.reduce((sum, rel) => sum + words(rel), 0);
   assert.ok(total <= SQUAD, `the command and the cards have ${total} words, over ${SQUAD}`);

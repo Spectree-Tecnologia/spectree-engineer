@@ -19,6 +19,8 @@
 //                                                  green on this code already: answered from its receipt (--rerun runs it)
 //   npm run goal -- gate <slug> --final [--base <sha>]       the final verification's deterministic layer, the same way;
 //                                                  the raw logs go outside the repository and are never committed
+//   npm run goal -- gate <slug> --final --since <sha>        a round's re-check: only what the fix reaches, carrying the
+//                                                  whole suites from the whole gate that was green at <sha>
 //   npm run goal -- next <slug> [--json]           where the goal is, read from the disk, and the next action
 //   npm run goal -- stats                          every contract in one table: rounds, reproofs, user decisions, size, CI, tokens
 //   npm run goal -- spent <slug> [--write]         what the goal cost, read from this machine's Claude Code transcripts
@@ -34,6 +36,7 @@
 // It is not run before the pull request (`in ci:` runs in the pull request's run, `after merge:` on the merged
 // main); its verdict is `pending` until then, and the contract is `landed`, not
 // `met`, while one is pending.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -72,7 +75,7 @@ const fail = (message, code = 1) => {
 };
 const usage = () =>
   fail(
-    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n       npm run goal -- gate <slug> --ticket <n> --since <sha> [--rerun] | --final [--base <sha>]\n       npm run goal -- next <slug> [--json]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
+    'usage: npm run goal -- check [<slug>] [--ready] [--changed <ref>]\n       npm run goal -- graph <slug> [--plan] [--json] [--prove <ticket>]\n       npm run goal -- gate <slug> --ticket <n> --since <sha> [--rerun] | --final [--base <sha>] [--since <sha>]\n       npm run goal -- next <slug> [--json]\n      npm run goal -- prove <slug> [--criterion <n>] [--after-merge | --in-ci]\n       npm run goal -- prove --in-ci --changed <ref>\n       npm run goal -- size <slug> --base <ref>\n       npm run goal -- stats\n       npm run goal -- spent <slug> [--write] [--agents] [--session <id,id>] [--transcripts <dir>]\n       npm run goal -- map [--check]',
     2,
   );
 
@@ -129,6 +132,10 @@ const VERDICTS = ['met', 'not met', 'weak proof', 'waived', 'pending'];
 const CHANGES = ['narrowed', 'reworded', 'waived', 'added', 'moved', 'extended', 'resized'];
 const STATUS = /^(proposed|approved by .+ on \d{4}-\d{2}-\d{2}|landed on \d{4}-\d{2}-\d{2}|met on \d{4}-\d{2}-\d{2}|stopped on \d{4}-\d{2}-\d{2}: .+)$/;
 const DEFERRED = /^\s*(after merge|in ci):/i;
+// A criterion that only says nothing regresses (the whole suites, the audit) is the final gate's: written
+// `final gate: run: ...`, no ticket builds it and no ticket's gate runs it. Measured on the pilot project's
+// data-import-5 (2026-11-26): its own ticket ran the whole suites for 61 minutes, then the final gate ran them again.
+const AT_FINAL = /^\s*final gate:/i;
 const DEFAULT_ROUNDS = 3;
 const DEFAULT_SIZE = 4000;
 // The size budget is about what a reader has to hold to review the change: the product code. Tests, documents and
@@ -169,6 +176,7 @@ function parse(file) {
     proof,
     // 'after merge' or 'in ci' when the proof cannot run before the pull request, else null
     deferred: proof.match(DEFERRED)?.[1].toLowerCase() ?? null,
+    final: AT_FINAL.test(proof),
     commands: [...proof.matchAll(/run:\s*`([^`]+)`/g)].map((m) => m[1].trim()),
   }));
   const evidence = rows('evidence').map(([n, round = '', verdict = '', run = '']) => ({ n: Number(n), round, verdict: verdict.toLowerCase().replace(/[*_`]/g, '').trim(), run }));
@@ -329,7 +337,7 @@ function check() {
     // one contract: every command its proofs will run, as the script reads the cell and not as its author meant it
     if (files.length === 1) {
       for (const criterion of goal.criteria) {
-        for (const line of criterion.commands) console.log(`      runs:  criterion ${criterion.n}${criterion.deferred ? ` (${criterion.deferred})` : ''}  ${line}`);
+        for (const line of criterion.commands) console.log(`      runs:  criterion ${criterion.n}${criterion.deferred ? ` (${criterion.deferred})` : criterion.final ? ' (final gate)' : ''}  ${line}`);
       }
     }
     for (const error of errors) console.log(`      error: ${error}`);
@@ -365,6 +373,11 @@ function proveOne(goal, only, now) {
   const env = proofEnv.env;
   sayBlanked();
   const results = [];
+  // Inside the final gate, a "final gate:" proof does not run again what the gate runs as its own steps (npm test, the
+  // backend e2e: GOAL_GATE_CARRIES), and in a re-check (`gate --final --since`) it is carried whole from the green
+  // gate at GOAL_GATE_SINCE: the pull request's CI runs its suites again.
+  const carries = JSON.parse(process.env.GOAL_GATE_CARRIES || '[]');
+  const carriedFrom = process.env.GOAL_GATE_SINCE || null;
   for (const criterion of criteria) {
     // moved to a continuation goal or waived: its proof is not this goal's to run (issue 126), as in check and next
     const gone = goal.amendments.find((a) => a.n === criterion.n && ['moved', 'waived'].includes(a.change));
@@ -377,8 +390,18 @@ function proveOne(goal, only, now) {
       results.push({ n: criterion.n, command: `(${criterion.deferred}: not run now)`, status: null, waits: true });
       continue;
     }
+    if (criterion.final && carriedFrom) {
+      results.push({ n: criterion.n, command: `(final gate: green at ${carriedFrom.slice(0, 8)}; the pull request's CI runs it again)`, status: null, carried: true });
+      continue;
+    }
     if (criterion.commands.length === 0) results.push({ n: criterion.n, command: '(no run: proof, decided by hand)', status: null });
-    for (const line of criterion.commands) {
+    for (const written of criterion.commands) {
+      const line = criterion.final ? withoutCarried(written, carries) : written;
+      if (line !== written) console.log(`\n=== criterion ${criterion.n}: the parts of \`${written}\` that are the gate's own steps (${carries.join(', ')}) run there, once`);
+      if (!line) {
+        results.push({ n: criterion.n, command: `(${written}: every part is one of the gate's own steps)`, status: null, carried: true });
+        continue;
+      }
       console.log(`\n=== criterion ${criterion.n}\n$ ${line}`);
       // One string through the shell, as written in the contract: npm and npx are .cmd shims on Windows.
       const status = spawnSync(line, { cwd: root, shell: true, stdio: 'inherit', env }).status ?? 1;
@@ -386,15 +409,25 @@ function proveOne(goal, only, now) {
     }
   }
   console.log(`\ngoal prove: docs/goals/${goal.slug}.md`);
-  for (const row of results) console.log(`  ${row.skip ? 'skip  ' : row.waits ? 'waits ' : row.status === null ? 'manual' : row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
+  for (const row of results) console.log(`  ${row.skip ? 'skip  ' : row.waits ? 'waits ' : row.carried ? 'carry ' : row.status === null ? 'manual' :row.status === 0 ? 'exit 0' : `EXIT ${row.status}`.padEnd(6)}  criterion ${row.n}  ${row.command}`);
   const failed = results.filter((row) => row.status !== null && row.status !== 0);
   // every criterion moved or waived: nothing of this goal is proved here, which is a contract to read, not a green (issue 134)
   if (only === null && !now && results.every((row) => row.skip)) {
     console.log('  RED: every criterion is moved or waived; nothing of this goal is proved here');
     return 1;
   }
-  if (results.every((row) => row.status === null)) console.log('  nothing to run: no criterion has a run: proof');
+  if (results.every((row) => row.status === null && !row.carried)) console.log('  nothing to run: no criterion has a run: proof');
   return failed.length === 0 ? 0 : 1;
+}
+
+// A proof line without the parts the gate runs as its own steps. Only a plain chain of `&&` is split: a line with
+// quotes, pipes, `;`, `||`, parentheses or a redirection runs as written. A part wrapped in `npm run db:scratch -- <name> --`
+// is the same command; `--workspace` is `-w`.
+function withoutCarried(line, carries) {
+  if (carries.length === 0 || /["'`|;()<>$]/.test(line.replace(/&&/g, ''))) return line;
+  const plain = (part) => part.trim().replace(/^npm run db:scratch -- \S+ -- /, '').replace(/--workspace(?:=|\s+)/g, '-w ').replace(/\s+/g, ' ');
+  const kept = line.split('&&').map((part) => part.trim()).filter((part) => !carries.includes(plain(part)));
+  return kept.length === line.split('&&').length ? line : kept.join(' && ');
 }
 
 function size() {
@@ -968,6 +1001,8 @@ function graphOf(slug, goal, plan = false) {
     }
     if (ticket.criteria.length === 0) errors.push(`ticket ${pad(ticket.n)} names no criterion in "Criteria"`);
     for (const n of ticket.criteria) if (!goal.criteria.some((criterion) => criterion.n === n)) errors.push(`ticket ${pad(ticket.n)} names criterion ${n}, which the contract does not have`);
+    // the whole suites run once, in the final gate: a ticket that names its criterion would run them at its checkpoint
+    for (const n of ticket.criteria) if (plan && !ticket.done && goal.criteria.some((criterion) => criterion.n === n && criterion.final)) errors.push(`ticket ${pad(ticket.n)} names criterion ${n}, which the final gate proves ("final gate:"): no ticket builds or runs it`);
     if (ticket.done) continue;
     // what a plan must say before any code; a goal planned before the graph only gets a note
     const missing = [ticket.touches === null || ticket.touches.length === 0 ? '"Touches"' : null, ticket.proof.length === 0 ? '"Proof" with a run: command' : null].filter(Boolean);
@@ -975,7 +1010,7 @@ function graphOf(slug, goal, plan = false) {
   }
   const gone = new Set(goal.amendments.filter((a) => ['moved', 'waived'].includes(a.change)).map((a) => a.n));
   for (const criterion of goal.criteria) {
-    if (!gone.has(criterion.n) && !tickets.some((ticket) => ticket.criteria.includes(criterion.n))) errors.push(`criterion ${criterion.n} has no ticket`);
+    if (!gone.has(criterion.n) && !criterion.final && !tickets.some((ticket) => ticket.criteria.includes(criterion.n))) errors.push(`criterion ${criterion.n} has no ticket`);
   }
 
   // every ticket a ticket waits for, direct or not; a ticket found on its own path is a cycle
@@ -1131,20 +1166,50 @@ function gate() {
   const base = flags['--base'] ? commitOf(flags['--base'], '--base') : baselineOf(slug);
   const scripts = scriptsOf('package.json');
   const scratch = (name, line) => (scripts['db:scratch'] ? `npm run db:scratch -- ${name} -- ${line}` : line);
+  const receipts = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, 'receipts');
   let label;
   let steps;
   let receipt = null;
+  let finalReceipt = null;
+  let carriedNote = null;
   if (flags['--final']) {
     label = 'final';
-    steps = [
-      { name: 'build', command: 'npm run build' },
-      { name: 'test', command: 'npm test' },
-      { name: 'check', command: `${self} check ${slug}` },
-      { name: 'proofs', command: scratch('gate', `${self} prove ${slug}`) },
-      scriptsOf(path.join('apps', 'backend', 'package.json'))['test:e2e'] ? { name: 'e2e', command: scratch('e2e', 'npm -w apps/backend run test:e2e') } : null,
-      // the p95 reports and never blocks (step 8): its lines are read for a non-2xx, which does
-      scripts.perf && base ? { name: 'perf', command: scratch('perf', `npm run perf -- --changed ${base}`), reported: 'the p95 reports; read its lines: a non-2xx blocks' } : null,
-    ];
+    finalReceipt = path.join(receipts, 'final.json');
+    const e2e = scriptsOf(path.join('apps', 'backend', 'package.json'))['test:e2e'] ? 'npm -w apps/backend run test:e2e' : null;
+    if (flags['--since']) {
+      // The re-check of a round (step 9): the whole gate was green at <since>, and only what the fix's diff reaches
+      // runs again: the build, the affected tests, the contract and every proof but the "final gate:" ones. The whole
+      // suites, the backend e2e and the p95 were green there, and the pull request's CI runs them again. Measured on
+      // the pilot project's data-import-5 (2026-11-26): the re-check gate ran everything again for 42 minutes after
+      // a 15-minute fix of one date rule.
+      const since = commitOf(flags['--since'], '--since');
+      let green = null;
+      try {
+        green = JSON.parse(fs.readFileSync(finalReceipt, 'utf8'));
+      } catch {
+        // no whole gate was green yet
+      }
+      if (!green || green.sha !== since) fail(`no whole final gate was green at ${since.slice(0, 8)} on this machine: run "gate ${slug} --final" without --since`);
+      label = `final since ${since.slice(0, 8)}`;
+      steps = [
+        { name: 'build', command: 'npm run build' },
+        { name: 'test', command: `npx turbo run test --filter=...[${since}]` },
+        { name: 'check', command: `${self} check ${slug}` },
+        { name: 'proofs', command: scratch('gate', `${self} prove ${slug}`), env: { GOAL_GATE_SINCE: since } },
+      ];
+      carriedNote = (`  carried from the whole gate green at ${since.slice(0, 8)}: ${['the "final gate:" proofs', e2e ? 'the backend e2e' : null, scripts.perf ? 'the p95' : null].filter(Boolean).join(', ')}; the pull request's CI runs them again`);
+    } else {
+      steps = [
+        { name: 'build', command: 'npm run build' },
+        { name: 'test', command: 'npm test' },
+        { name: 'check', command: `${self} check ${slug}` },
+        // a "final gate:" proof does not run again what the steps beside it run (npm test, the backend e2e)
+        { name: 'proofs', command: scratch('gate', `${self} prove ${slug}`), env: { GOAL_GATE_CARRIES: JSON.stringify(['npm test', e2e].filter(Boolean)) } },
+        e2e ? { name: 'e2e', command: scratch('e2e', e2e) } : null,
+        // the p95 reports and never blocks (step 8): its lines are read for a non-2xx, which does
+        scripts.perf && base ? { name: 'perf', command: scratch('perf', `npm run perf -- --changed ${base}`), reported: 'the p95 reports; read its lines: a non-2xx blocks' } : null,
+      ];
+    }
   } else {
     const n = Number(flags['--ticket']);
     if (!Number.isInteger(n) || n < 1) fail('--ticket needs a ticket number', 2);
@@ -1152,7 +1217,7 @@ function gate() {
     const since = commitOf(flags['--since'], '--since');
     if (!graphOf(slug, goal).byNumber.has(n)) fail(`.scratch/${slug}/issues has no ticket ${n}`);
     label = `ticket ${pad(n)}`;
-    receipt = { file: path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, 'receipts', `ticket-${pad(n)}.json`), since, proof: graphOf(slug, goal).byNumber.get(n).proof };
+    receipt = { file: path.join(receipts, `ticket-${pad(n)}.json`), since, proof: graphOf(slug, goal).byNumber.get(n).proof };
     steps = [
       fs.existsSync(path.join(root, 'scripts', 'check-boundaries.mjs')) ? { name: 'boundaries', command: 'node scripts/check-boundaries.mjs' } : null,
       { name: 'build', command: 'npm run build' },
@@ -1165,12 +1230,24 @@ function gate() {
   }
   steps = steps.filter(Boolean);
   console.log(`goal gate: ${slug}, ${label}, at ${headOf()}${base ? `, baseline ${base.slice(0, 8)}` : ''}`);
+  if (carriedNote) console.log(carriedNote);
   // A ticket's gate that was green on this code is not run again: whoever built the ticket ran it, and the
   // orchestrator's same command reads the receipt the script wrote (outside the repository, like the logs).
   // Measured on the pilot project's data-import-2 (2026-11-24): 142 to 181 s per run, two to three runs per ticket.
-  // "This code" is everything outside .scratch/, where only the ticket's own notes change after the gate.
+  // "This code" is everything outside .scratch/, where only the ticket's own notes change after the gate: the
+  // commits, and what the working tree changes on top of them. A change that was already there when the gate ran and
+  // is still there, the same, is the same code (issue 153: a .gitignore the contract forbade touching stayed modified
+  // for a whole goal, no receipt was ever kept, and the Engineer ran every ticket's gate a second time).
   const product = ['--', '.', ':(exclude).scratch'];
-  const clean = () => spawnSync('git', ['status', '--porcelain', ...product], { cwd: root, encoding: 'utf8' }).stdout?.trim() === '';
+  const dirt = () => {
+    const status = spawnSync('git', ['status', '--porcelain', '--untracked-files=all', ...product], { cwd: root, encoding: 'utf8' }).stdout ?? '';
+    if (status.trim() === '') return '';
+    const hash = crypto.createHash('sha256').update(status);
+    hash.update(spawnSync('git', ['diff', 'HEAD', '--binary', ...product], { cwd: root, encoding: 'buffer', maxBuffer: 1 << 30 }).stdout ?? '');
+    const untracked = (spawnSync('git', ['ls-files', '--others', '--exclude-standard', '-z', ...product], { cwd: root, encoding: 'utf8' }).stdout ?? '').split('\0').filter(Boolean).sort();
+    for (const file of untracked) hash.update(`\0${file}\0`).update(fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file)) : '');
+    return `${status.trim().split('\n').length} paths ${hash.digest('hex').slice(0, 16)}`;
+  };
   if (receipt) {
     receipt.key = JSON.stringify([receipt.since, receipt.proof, steps.map((step) => step.command.replace(self, 'goal'))]);
     let kept = null;
@@ -1179,10 +1256,12 @@ function gate() {
     } catch {
       // no receipt yet
     }
-    const same = kept && kept.key === receipt.key && clean() && spawnSync('git', ['diff', '--quiet', kept.sha, 'HEAD', ...product], { cwd: root }).status === 0;
+    const now = dirt();
+    const same = kept && kept.key === receipt.key && (kept.dirt ?? '') === now && spawnSync('git', ['diff', '--quiet', kept.sha, 'HEAD', ...product], { cwd: root }).status === 0;
     if (same && !flags['--rerun']) {
       for (const line of kept.lines) console.log(line);
-      console.log(`  receipt: green at ${kept.sha.slice(0, 8)} on ${kept.at}, and nothing outside .scratch/ changed since: not run again (--rerun runs it)`);
+      const also = now ? `; the ${now.split(' ')[0]} changes outside .scratch/ that the working tree had then are the same now` : '';
+      console.log(`  receipt: green at ${kept.sha.slice(0, 8)} on ${kept.at}, and nothing outside .scratch/ changed since${also}: not run again (--rerun runs it)`);
       return kept.code;
     }
   }
@@ -1191,10 +1270,10 @@ function gate() {
     lines.push(line);
     console.log(line);
   };
-  const dir = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, `${label.replace(' ', '-')}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+  const dir = path.join(os.tmpdir(), 'spectree-gate', path.basename(root), slug, `${label.replace(/ /g, '-')}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   fs.mkdirSync(dir, { recursive: true });
   sayBlanked();
-  const wasClean = receipt ? clean() : false;
+  const before = dirt();
   let red = null;
   const reported = [];
   const stepMinutes = Number(process.env.GATE_STEP_MINUTES) || 60;
@@ -1208,7 +1287,7 @@ function gate() {
     const out = fs.openSync(log, 'w');
     const started = Date.now();
     // a step that hangs is a red with its log, never a gate that waits for hours (issue 130: 16 h in perf)
-    const res = spawnSync(step.command, { cwd: root, shell: true, stdio: ['ignore', out, out], env: proofEnv.env, timeout: stepMinutes * 60_000 });
+    const res = spawnSync(step.command, { cwd: root, shell: true, stdio: ['ignore', out, out], env: { ...proofEnv.env, ...step.env }, timeout: stepMinutes * 60_000 });
     const status = res.status ?? 1;
     fs.closeSync(out);
     const timedOut = res.error?.code === 'ETIMEDOUT' ? ` (timed out after ${stepMinutes} min: GATE_STEP_MINUTES)` : '';
@@ -1220,11 +1299,19 @@ function gate() {
   say(red ? `goal gate: RED at ${red}` : reported.length > 0 ? `goal gate: green, with a report to read: ${reported.join('; ')}` : 'goal gate: green');
   console.log(`  logs: ${dir}  (outside the repository: a raw log can hold secrets and is never committed; the evidence is the R lines)`);
   const code = red ? 1 : reported.length > 0 ? 3 : 0;
-  // only a green on committed code is worth keeping: a red is run again, and a dirty tree is nobody's sha
-  if (receipt && !red && wasClean && clean()) {
+  // only a green is worth keeping, on code that stayed as it was while the gate ran: a red is run again, and a tree
+  // that changed under the gate is nobody's code
+  const kept = !red && before === dirt();
+  const sha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  if (receipt && kept) {
     fs.mkdirSync(path.dirname(receipt.file), { recursive: true });
-    const sha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
-    fs.writeFileSync(receipt.file, JSON.stringify({ key: receipt.key, sha, at: new Date().toISOString(), code, lines }, null, 2));
+    fs.writeFileSync(receipt.file, JSON.stringify({ key: receipt.key, sha, dirt: before, at: new Date().toISOString(), code, lines }, null, 2));
+  }
+  // the whole final gate green at this sha: what a round's re-check (`--final --since <sha>`) carries from
+  if (finalReceipt && !flags['--since'] && kept) {
+    fs.mkdirSync(path.dirname(finalReceipt), { recursive: true });
+    fs.writeFileSync(finalReceipt, JSON.stringify({ sha, dirt: before, at: new Date().toISOString(), code }, null, 2));
+    console.log(`  a round's re-check carries from here: npm run goal -- gate ${slug} --final --since ${sha.slice(0, 8)}`);
   }
   return code;
 }
@@ -1261,7 +1348,7 @@ function next() {
       if (frontier.length > 0) {
         say(7, `a new full-stack-developer for ticket ${pad(frontier[0].n)}${parallel.length > 1 ? `; two lanes allowed: ${parallel.map((ticket) => pad(ticket.n)).join(' + ')}` : ''}`);
       }
-      if (tickets.every((ticket) => ticket.done)) say(8, `final verification: npm run goal -- gate ${slug} --final, then the quality-engineer and the security-engineer, in parallel, with the gate's R lines`);
+      if (tickets.every((ticket) => ticket.done)) say(8, `final verification: npm run goal -- gate ${slug} --final, and beside it the quality-engineer and the security-engineer, who only read until its R lines reach them`);
     } else {
       const round = Math.max(...evidence.map((row) => Number(row.round)));
       const open = goal.criteria.filter((criterion) => {
@@ -1275,7 +1362,7 @@ function next() {
         const counted = (n) => reproved.find((one) => one.n === n)?.total ?? 0;
         const fable = round + 1 >= 3 || open.some((c) => counted(c.n) >= 3);
         const twice = open.filter((c) => counted(c.n) === 2).map((c) => c.n);
-        say(9, `round ${round + 1} for criteria ${open.map((c) => c.n).join(', ')}: a new full-stack-developer with the findings, literal${twice.length > 0 ? `; criteria ${twice.join(', ')} are on their second failure: Class: and Closed by:` : ''}${fable ? '; on fable, if the round failed with a criterion not met or weak proof, a blocking, or a confirmed of medium and up' : ''}`);
+        say(9, `round ${round + 1} for criteria ${open.map((c) => c.n).join(', ')}: a new full-stack-developer with the findings, literal; its re-check gate is npm run goal -- gate ${slug} --final --since <the sha of the last whole gate that was green>${twice.length > 0 ? `; criteria ${twice.join(', ')} are on their second failure: Class: and Closed by:` : ''}${fable ? '; on fable, if the round failed with a criterion not met or weak proof, a blocking, or a confirmed of medium and up' : ''}`);
       }
     }
   }

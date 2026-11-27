@@ -154,9 +154,11 @@ test("a ticket's gate that was green on this code answers from its receipt, and 
   fs.writeFileSync(path.join(dir, 'node_modules', '.bin', 'turbo'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   fs.writeFileSync(path.join(dir, 'node_modules', '.bin', 'turbo.cmd'), '@exit /b 0\r\n');
   fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules\n');
-  // a dirty tree is nobody's sha: the gate runs and keeps no receipt
+  // changes the working tree already had, the same before and after the gate, are the same code (issue 153)
   assert.doesNotMatch(gate().out, /receipt:/);
-  assert.doesNotMatch(gate().out, /receipt:/);
+  assert.match(gate().out, /receipt: green at [0-9a-f]{8} on \S+, and nothing outside \.scratch\/ changed since; the \d+ changes outside \.scratch\/ that the working tree had then are the same now/);
+  fs.appendFileSync(path.join(dir, 'package.json'), '\n');
+  assert.doesNotMatch(gate().out, /receipt:/, 'a change to what was already changed');
   git('add', '-A');
   git('commit', '-q', '-m', 'ticket 01');
   const first = gate();
@@ -249,9 +251,97 @@ test('the command walks by goal next and gates by goal gate, and the quality-eng
   assert.match(command, /`npm run goal -- gate <slug> --ticket <NN> --since <previous checkpoint sha>`/);
   assert.match(command, /`npm run goal -- gate <slug> --final`/);
   assert.match(command, /\*\*Deterministic, yours, one command, first and alone:\*\* `npm run goal -- gate <slug> --final`/);
-  assert.match(command, /The other two layers start after it, never beside it/);
+  assert.match(command, /The other two layers start with it and only read beside it: what they run waits for its `R` lines/);
+  assert.match(command, /A `blocking` or `not met` arriving mid-gate stops it: fix first, then the whole gate once/);
+  assert.match(command, /`goal gate --final --since <sha of the last green whole gate>` \(only what the fix reaches\), first and alone/);
   assert.match(command, /a raw log is never committed/);
   const qe = read('agents/quality-engineer.md');
   assert.match(qe, /the gate's `R` lines/);
   assert.match(qe, /run again only the proof you judge weak, or the one your refutation needs/);
+  assert.match(qe, /The final round starts beside the gate: read, and run nothing until the gate's `R` lines reach you/);
+});
+
+// 1.2.0: measured on the pilot project's data-import-5 (2026-11-26): the whole suites ran four times one after the
+// other (the "nothing regresses" ticket by hand and by its gate, then the final gate twice, 42 minutes each), the
+// final gate ran `npm test` and the backend e2e twice in one run, and a 15-minute fix of one date rule was followed by
+// the whole gate again.
+const finalGateContract = (proof) =>
+  contract().replace(`| 3 | a thing is archived | run: \`${exit(0)}\` |`, `| 3 | nothing that passed before regresses | ${proof} |`);
+function counting(more = {}) {
+  // `npm test` and the backend e2e each append a line to runs.txt: how many times the gate ran them
+  const scripts = { test: 'node count.cjs test', ...more };
+  const made = project({ scripts, goalText: finalGateContract('final gate: run: `npm test && npm -w apps/backend run test:e2e && node count.cjs audit`') });
+  const { dir } = made;
+  fs.writeFileSync(path.join(dir, '.gitignore'), ['node_modules', 'runs.txt', ''].join(String.fromCharCode(10)));
+  fs.writeFileSync(path.join(dir, 'count.cjs'), "require('fs').appendFileSync(require('path').join(__dirname, 'runs.txt'), process.argv[2] + String.fromCharCode(10))\n");
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ ...pkg, workspaces: ['apps/*'] }, null, 2));
+  fs.mkdirSync(path.join(dir, 'apps', 'backend'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'apps', 'backend', 'package.json'), JSON.stringify({ name: 'backend', private: true, scripts: { 'test:e2e': 'node ../../count.cjs e2e' } }, null, 2));
+  const runs = () => (fs.existsSync(path.join(dir, 'runs.txt')) ? fs.readFileSync(path.join(dir, 'runs.txt'), 'utf8').trim().split('\n') : []);
+  return { ...made, runs };
+}
+
+test('a "final gate:" criterion has no ticket, and a plan that gives it one is refused', () => {
+  const goalText = finalGateContract('final gate: run: `npm test`');
+  const { dir } = project({ goalText, tickets: { '01-create': ticket('1, 2') } });
+  const res = run(dir, 'graph', 'things', '--plan');
+  assert.equal(res.code, 0, res.out);
+  assert.doesNotMatch(res.out, /criterion 3 has no ticket/);
+  assert.match(run(dir, 'check', 'things').out, /runs: {2}criterion 3 \(final gate\) {2}npm test/);
+  const given = project({ goalText, tickets: { '01-create': ticket('1, 2'), '02-regress': ticket('3', 'ready', '01') } });
+  const refused = run(given.dir, 'graph', 'things', '--plan');
+  assert.equal(refused.code, 1, refused.out);
+  assert.match(refused.out, /ticket 02 names criterion 3, which the final gate proves \("final gate:"\): no ticket builds or runs it/);
+  // a criterion without the form still needs its ticket
+  assert.match(run(project({ tickets: { '01-create': ticket('1, 2') } }).dir, 'graph', 'things', '--plan').out, /criterion 3 has no ticket/);
+});
+
+test('the whole final gate runs npm test and the backend e2e once, and a "final gate:" proof keeps only its other parts', () => {
+  const { dir, runs } = counting();
+  const res = run(dir, 'gate', 'things', '--final');
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /R e2e +exit 0/);
+  assert.deepEqual(runs().sort(), ['audit', 'e2e', 'test']);
+  assert.match(res.out, /a round's re-check carries from here: npm run goal -- gate things --final --since [0-9a-f]{8}/);
+  // outside the gate, the same proof runs whole
+  fs.rmSync(path.join(dir, 'runs.txt'));
+  assert.equal(run(dir, 'prove', 'things', '--criterion', '3').code, 0);
+  assert.deepEqual(runs().sort(), ['audit', 'e2e', 'test']);
+  // a line the shell would read differently is never split: it runs as written
+  const quoted = counting();
+  fs.writeFileSync(path.join(quoted.dir, 'docs', 'goals', 'things.md'), finalGateContract('final gate: run: `npm test && node count.cjs "audit"`'));
+  assert.equal(run(quoted.dir, 'gate', 'things', '--final').code, 0);
+  assert.deepEqual(quoted.runs().sort(), ['audit', 'e2e', 'test', 'test']);
+});
+
+test("a round's re-check runs only what the fix reaches, and only after a whole gate was green at that sha", () => {
+  const { dir, runs } = counting();
+  const git = (...argv) => spawnSync('git', ['-c', 'user.email=probe@example.com', '-c', 'user.name=probe', ...argv], { cwd: dir, encoding: 'utf8' });
+  fs.mkdirSync(path.join(dir, 'node_modules', '.bin'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'node_modules', '.bin', 'turbo'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'node_modules', '.bin', 'turbo.cmd'), '@exit /b 0\r\n');
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules\nruns.txt\n');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'goal');
+  const green = git('rev-parse', 'HEAD').stdout.trim();
+  const refused = run(dir, 'gate', 'things', '--final', '--since', green);
+  assert.equal(refused.code, 1, refused.out);
+  assert.match(refused.out, /no whole final gate was green at [0-9a-f]{8} on this machine: run "gate things --final" without --since/);
+  assert.equal(run(dir, 'gate', 'things', '--final').code, 0);
+  fs.writeFileSync(path.join(dir, 'fix.js'), '// the fix\n');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'fix');
+  fs.rmSync(path.join(dir, 'runs.txt'));
+  const again = run(dir, 'gate', 'things', '--final', '--since', green);
+  assert.equal(again.code, 0, again.out);
+  assert.match(again.out, /goal gate: things, final since [0-9a-f]{8}/);
+  assert.match(again.out, /carried from the whole gate green at [0-9a-f]{8}: the "final gate:" proofs, the backend e2e; the pull request's CI runs them again/);
+  assert.match(again.out, /R test +exit 0 .* npx turbo run test --filter=\.\.\.\[[0-9a-f]{40}\]/);
+  assert.match(again.out, /R proofs +exit 0/);
+  assert.doesNotMatch(again.out, /R e2e/);
+  assert.deepEqual(runs(), [], 'neither npm test whole, nor the e2e, nor the final gate proof ran again');
+  // a re-check never becomes the next one's starting point: only a whole gate does
+  const head = git('rev-parse', 'HEAD').stdout.trim();
+  assert.match(run(dir, 'gate', 'things', '--final', '--since', head).out, /no whole final gate was green at/);
 });

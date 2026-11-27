@@ -36,7 +36,8 @@ Look for prefactoring that makes the goal easier. "Make the change easy, then ma
 - A screen ticket covers at most one artboard group (one component's family of states), at most three frames (artboards × states: most of its calls go to iterating `compareArtboard` differences, five receipts took two contexts), and names the spec and the fixture it extends. When the component and its spec with fixtures are both new, they are two tickets, the spec blocked by the component: together they pass 90 calls
 - Any prefactoring is done first, in a ticket that changes no behaviour
 - The first ticket is the tracer bullet: the smallest path from the test of one success criterion down to the database
-- Every success criterion of the contract is advanced by at least one ticket
+- A criterion whose proof starts with `final gate:` has no ticket, and no ticket names it in **Criteria:** (`graph --plan` refuses one): the final gate proves it once. A ticket that changes an existing assertion lists it, with the decision that changes it, in its own file as it goes: no ticket compiles them at the end
+- Every other success criterion of the contract is advanced by at least one ticket
 
 </vertical-slice-rules>
 
