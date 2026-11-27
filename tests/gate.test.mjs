@@ -6,10 +6,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const goal = path.join(plugin, 'skills', 'monolith', 'config-project', 'assets', 'scripts', 'goal.mjs');
@@ -59,7 +59,7 @@ const ticket = (criteria, status = 'ready', blockedBy = 'None (can start immedia
   [`# ticket`, `**Criteria:** ${criteria}`, `**Blocked by:** ${blockedBy}`, '**Touches:** `modules/things`', `**Proof:** run: \`${exit(0)}\``, `**Status:** ${status}`].join('\n\n');
 
 function project({ scripts = {}, goalText = contract(), tickets = null, baseline = true } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'spectree-gate-test-'));
+  const dir = tmpDir('spectree-gate-test-');
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'probe', private: true, scripts: { build: exit(0), test: exit(0), ...scripts } }, null, 2));
   fs.mkdirSync(path.join(dir, 'docs', 'goals'), { recursive: true });
   if (goalText) fs.writeFileSync(path.join(dir, 'docs', 'goals', 'things.md'), goalText);
@@ -200,6 +200,13 @@ test('a round past the budget is not ready without the founder\'s "extended" ame
   assert.equal(run(extended.dir, 'check', '--ready', 'things').code, 0);
   const two = project({ goalText: contract({ rounds: 1, evidence, amendments: '| 2026-11-15 | budget | extended: 2 more rounds | founder | none |\n' }) });
   assert.equal(run(two.dir, 'check', '--ready', 'things').code, 0, 'the number in the cell is the rounds it gives');
+});
+
+test('a new Size is a "resized" amendment on the budget row, not a criterion (issue 158)', () => {
+  const { dir } = project({ goalText: contract({ amendments: '| 2026-11-26 | budget | resized: 600 to 900 changed lines, the proof runners count as product | orchestrator | none |\n' }) });
+  const res = run(dir, 'check', 'things');
+  assert.equal(res.code, 0, res.out);
+  assert.doesNotMatch(res.out, /names criterion NaN/);
 });
 
 test('goal next walks the goal from the disk, one step at a time', () => {

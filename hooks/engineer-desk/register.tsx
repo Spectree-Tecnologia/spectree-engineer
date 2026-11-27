@@ -210,6 +210,13 @@ const STDIN_DENY =
   'A heredoc or pipe into an interpreter hangs on Windows (the python Store stub waits on stdin) and leaves a process nobody can kill. ' +
   'Write the script to a file with the Write tool and run it from there.'
 
+// An unquoted heredoc expands its body: the Markdown backticks of a commit message or a file become command
+// substitution, and bash runs them (issue 152, tely-workspace). A quoted delimiter (`<<'EOF'`) keeps the body as written.
+const HEREDOC = /(?<!<)<<-?[ \t]*([A-Za-z_]\w*)[^\n]*\n([\s\S]*?)(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm
+export const backtickHeredoc = (command: string) => [...command.matchAll(HEREDOC)].some(m => (m[2] ?? '').includes('`'))
+const HEREDOC_DENY =
+  "An unquoted heredoc runs the backticks in its body as commands. Quote the delimiter (<<'EOF') or write the file with the Write tool."
+
 // The stash list belongs to the repository, not to a worktree: a subagent's `git stash pop` applied another
 // branch's stash over four files (the pilot project, 2026-11-11). Reading the list is harmless.
 // `stash` as the git subcommand, after any global option (-C <dir>, -c <k=v>, --no-pager): a commit message that says
@@ -412,6 +419,7 @@ export const register: Register = on => {
     const id = e.agentId
     const shell = e.tool === 'Bash' ? String((e as unknown as { command?: unknown }).command ?? '') : ''
     if (shell && stdinInterpreter(shell)) return { deny: STDIN_DENY }
+    if (shell && backtickHeredoc(shell)) return { deny: HEREDOC_DENY }
     if (id && shell && sharedStash(shell)) return { deny: STASH_DENY }
     const contractDeny = id ? goalContractGuard(String(e.tool), e as unknown as Record<string, unknown>) : null
     if (contractDeny) return { deny: contractDeny }

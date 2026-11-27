@@ -16,7 +16,10 @@ export const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 export function validateEnv(config: Record<string, unknown>): Env {
-  const result = envSchema.safeParse(config);
+  // a blank variable is an unset one: `goal` gives a proof CI's environment by blanking the keys only a local .env has
+  // (dotenv and Nest never override a set variable), and CI gives the same keys by absence
+  const given = Object.fromEntries(Object.entries(config).filter(([, value]) => value !== ''));
+  const result = envSchema.safeParse(given);
   if (!result.success) {
     const issues = result.error.issues.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`);
     throw new Error(`Invalid environment:\n${issues.join('\n')}`);

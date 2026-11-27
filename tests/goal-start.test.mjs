@@ -7,10 +7,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const script = path.join(plugin, 'skills', 'monolith', 'config-project', 'scripts', 'goal-start.mjs');
@@ -19,7 +19,7 @@ const version = JSON.parse(fs.readFileSync(path.join(plugin, '.claude-plugin', '
 const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
 
 function project(scripts = { build: 'node -e "process.exit(0)"', test: 'node -e "process.exit(0)"' }) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'spectree-goal-start-'));
+  const dir = tmpDir('spectree-goal-start-');
   const git = (...args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
   fs.writeFileSync(path.join(dir, 'package.json'), `${JSON.stringify({ name: 'probe', private: true, scripts }, null, 2)}\n`);
   git('init', '-q', '-b', 'main');

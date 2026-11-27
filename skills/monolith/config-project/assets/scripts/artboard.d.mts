@@ -20,6 +20,9 @@ export interface ArtboardExclusion {
 
 export const NOT_STYLE: { why: string; match: RegExp }[];
 
+/** two computed values are the same: a px length within 0.5, any other number within 0.01, the rest as written */
+export function sameValue(a: string | undefined, b: string | undefined): boolean;
+
 export function compareArtboard(
   page: Page,
   options: {

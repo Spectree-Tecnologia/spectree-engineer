@@ -14,6 +14,8 @@
 // `body`, `{{uuid}}` is a new UUID per request (the same one everywhere in that request) and `{{n}}` a per-route
 // counter, so `{ "name": "perf-{{uuid}}" }` measures the real create. `accept: [409]` lists the statuses besides 2xx
 // that the route may answer under load without failing; use it only when the status is the expected answer.
+// A route whose path or body needs a row the seed made with a random id names it `{{name}}` (`/units/{{unitId}}/debts`),
+// and the setup returns it in `values: { unitId }`: the project owns its seed, this script stays the plugin's.
 //   PERF_MAX_CPU=<percent>     the machine load above which nothing is measured (default 50; 100 measures anyway),
 //                              sampled before the run and again, with the server stopped, before a red: exit 3
 // A route over budget whose responses were all fine is measured once more, after the others, and the second
@@ -55,6 +57,7 @@ const baseUrl = (process.env.PERF_URL ?? `http://localhost:${port}`).replace(/\/
 let token = signJwt(env.JWT_SECRET);
 let authHeaders = null;
 let actorHeaders = null; // one per person, when the setup names them
+let setupValues = {}; // `{{name}}` in a route's path or body: the ids the setup seeded
 
 const changedAt = process.argv.indexOf('--changed');
 const changedRef = changedAt > -1 ? process.argv[changedAt + 1] : null;
@@ -208,11 +211,11 @@ async function measure(route) {
   const headers = { ...(route.auth ? (authHeaders ?? { authorization: `Bearer ${token}` }) : {}), ...(route.headers ?? {}) };
   if (route.body !== undefined) headers['content-type'] ??= 'application/json';
   const bodyTemplate = route.body === undefined ? undefined : JSON.stringify(route.body);
-  const placeholder = /\{\{(uuid|n)\}\}/g;
+  const placeholder = /\{\{([A-Za-z_]\w*)\}\}/g;
   let n = 0;
   // one request's url and init: placeholders filled per request, the rest shared
   const request = (connection) => {
-    const values = { uuid: randomUUID(), n: String(++n) };
+    const values = { ...setupValues, uuid: randomUUID(), n: String(++n) };
     const fill = (text) => text.replace(placeholder, (_, key) => values[key]);
     const own = route.auth && actorHeaders ? { ...headers, ...actorHeaders[connection % actorHeaders.length], ...(route.headers ?? {}) } : headers;
     const init = { method: route.method ?? 'GET', headers: own };
@@ -304,8 +307,12 @@ async function measureBase(routes) {
       }
       const envFile = path.join(backendDir, '.env');
       if (fs.existsSync(envFile)) fs.copyFileSync(envFile, path.join(checkout, path.relative(root, backendDir), '.env'));
-      for (const line of ['npm ci --no-audit --no-fund', config.baseBuild ?? 'npm run build']) {
-        const r = spawnSync(line, { ...capture, cwd: checkout, shell: true });
+      // Turbo shares its cache across worktrees: the base's build is replayed from it and its prebuild (prisma generate)
+      // never runs, so the base server would boot without a client (issue 150). Generate it before the build.
+      const baseBackend = path.join(checkout, path.relative(root, backendDir));
+      const generate = fs.existsSync(path.join(baseBackend, 'prisma')) ? ['npx prisma generate'] : [];
+      for (const [line, cwd] of [['npm ci --no-audit --no-fund', checkout], ...generate.map((one) => [one, baseBackend]), [config.baseBuild ?? 'npm run build', checkout]]) {
+        const r = spawnSync(line, { ...capture, cwd, shell: true });
         if (r.status !== 0) return { why: `"${line}" failed on the base: ${lastLine(r)}` };
       }
       // a database of the base's own: its migrations, its seed, nothing this change's run wrote
@@ -343,6 +350,13 @@ try {
     if (Array.isArray(result.actors) && result.actors.length > 0) {
       actorHeaders = result.actors.map((actor) => actor.headers ?? { authorization: `Bearer ${signJwt(env.JWT_SECRET, actor.claims)}` });
     }
+    if (result.values) setupValues = Object.fromEntries(Object.entries(result.values).map(([key, value]) => [key, encodeURIComponent(String(value))]));
+  }
+  // a `{{name}}` nobody gives would be measured as a 404 with the braces in the URL
+  for (const route of selected.routes) {
+    const named = [...`${route.path} ${JSON.stringify(route.body ?? '')}`.matchAll(/\{\{([A-Za-z_]\w*)\}\}/g)].map((m) => m[1]);
+    const missing = named.filter((key) => key !== 'uuid' && key !== 'n' && !(key in setupValues));
+    if (missing.length > 0) throw new Error(`${route.path} names {{${missing.join('}}, {{')}}}, which the setup's values do not give`);
   }
   const measured = [];
   for (const route of selected.routes) measured.push(await measure(route));

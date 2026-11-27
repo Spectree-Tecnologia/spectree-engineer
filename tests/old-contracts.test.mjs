@@ -4,10 +4,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from './tmp.mjs';
 
 const plugin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const goal = path.join(plugin, 'skills', 'monolith', 'config-project', 'assets', 'scripts', 'goal.mjs');
@@ -17,7 +17,7 @@ const sync = path.join(plugin, 'skills', 'monolith', 'config-project', 'scripts'
 const contract = (status) => `# Goal: x\n\nStatus: ${status}\n\n## Objective\n\nx\n`;
 
 function project() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'old-contracts-'));
+  const dir = tmpDir('old-contracts-');
   fs.mkdirSync(path.join(dir, 'docs', 'goals'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), '{ "name": "probe", "private": true, "scripts": {} }\n');
   fs.writeFileSync(path.join(dir, 'docs', 'goals', 'done.md'), contract('met on 2026-10-01'));
