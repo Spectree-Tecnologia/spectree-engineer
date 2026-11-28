@@ -4,6 +4,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { AgentRow, AgentStatus, AgentSteps, DeskUi, Plan, Resume } from './state'
 import { heroMarkup, mascotAvatar, planBarMarkup, planCellColors, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
+import { ceilingVerdict, CONTEXT_CEILING, contextOf, measured, NO_CONTEXT } from './ceiling'
 import { applyToPlan, planFromTool, planProgress } from './plan'
 import { clockTime, nextResume, NO_RESUME, resumePrompt } from './resume'
 import { artOf, faceOf, labelOf, PALETTE, roleOf } from './roles'
@@ -136,6 +137,7 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
   // A card that left takes its steps and its open toggle along.
   for (const one of gone) {
     await update($, { plugin: 'spectree-engineer', key: 'steps', id: one } as const, () => NO_STEPS)
+    await update($, { ...CONTEXT, id: one }, () => NO_CONTEXT)
     efforts.delete(one)
   }
   if (gone.length > 0) {
@@ -227,22 +229,25 @@ const STASH_DENY =
   'The stash list is shared by every worktree of the repository: a pop here can apply the work of another branch. ' +
   'Commit to your own branch instead (a wip commit you amend later).'
 
-// The fourth guard (2026-11-12): a long mission costs more per call, because every call re-reads the whole context.
-// On the pilot project's ci-time goal a full-stack-developer's call cost 98 thousand tokens in missions of up to 60 calls and 162
-// thousand in missions past 110, and six long missions were 76% of its tokens. A sentence in the card did not change
-// how the agents work, so the panel says it once, at the call where the cost turns: that call is refused, with the
-// way out, and passes when repeated.
-// 0.52.0 moved the point from 60 to 90. Measured on the pilot project's data-import-2 (2026-11-24): two of three
-// tickets were handed off at call 60, one before it had run anything; the missions cut at 60 cost 118 and 123
-// thousand tokens a turn, and the two that went on to 89 turns cost 100 and 140. The panel does not see a mission's
-// context size while it runs, so the point is still a count of calls.
-export const HANDOFF_AT = 90
-const HANDOFF_NOTICE =
-  `Handoff point: this is tool call ${HANDOFF_AT} of this mission, and every further call re-reads your whole context. ` +
-  'If what is left fits in 15 calls, finish it. Otherwise close what is in hand: commit, write `Next needs:` with what is left and what you learned (in your ticket, or in your report when the mission has no ticket), ' +
-  'stop what you started, and report `handoff`. Another full-stack-developer continues from there in a fresh context. ' +
-  'This call was not run: repeat it if you still need it.'
-export const isHandoffPoint = (type: string, count: number) => count === HANDOFF_AT && /(?:^|:)full-stack-developer$/.test(type)
+// The fourth guard: the context ceiling (1.3.0, the Founder's request of 2026-11-27, replacing the handoff at a
+// full-stack-developer's 90th call). No subagent works past CONTEXT_CEILING tokens of context in one mission. The
+// panel measures each mission on every model request it makes (`turn.step` carries the API's usage and the
+// subagent's id), and so it decides by the context itself, not by a count of calls standing in for it: measured on
+// the pilot project (152 missions of five goals, 2026-11-15 to 11-27), the count handed off 22 missions, every one
+// under 265k tokens, and no mission passed 306k. Near the ceiling one call is refused with the way out; at it, only
+// the calls that close a mission run. Every role, since the ceiling is about how well a context reasons.
+const CONTEXT = { plugin: 'spectree-engineer', key: 'context' } as const
+
+async function recordContext($: EngineInterface, id: string, tokens: number) {
+  if (tokens > 0) await update($, { ...CONTEXT, id }, (current = NO_CONTEXT) => measured(current, tokens))
+}
+
+async function ceilingDeny($: EngineInterface, id: string, tool: string, input: Record<string, unknown>) {
+  const { value } = await $.state.get({ ...CONTEXT, id })
+  const verdict = ceilingVerdict(value ?? NO_CONTEXT, tool, input)
+  if (verdict.isWarning) await update($, { ...CONTEXT, id }, (current = NO_CONTEXT) => ({ ...current, isWarned: true }))
+  return verdict.deny
+}
 
 // The Founder's third guard (2026-11-10): the squad is goal driven, and the goal contract belongs to the
 // Engineer, the main loop that talks to the Founder. A subagent neither calls the `to-goal` skill nor
@@ -446,11 +451,12 @@ export const register: Register = on => {
     }
     // An observer: whatever happens to the bookkeeping, the call goes on.
     if (id) {
-      const count = await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => {
+      await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => logFailure($, error))
+      const ceiling = await ceilingDeny($, id, String(e.tool), e as unknown as Record<string, unknown>).catch(error => {
         logFailure($, error)
-        return 0
+        return undefined
       })
-      if (count === HANDOFF_AT && isHandoffPoint((await read($, agents))[id]?.type ?? '', count)) return { deny: HANDOFF_NOTICE }
+      if (ceiling) return { deny: ceiling }
     }
 
     const answered = await next(e)
@@ -470,10 +476,13 @@ export const register: Register = on => {
     return { sections: [...composed.sections, { id: `${PLUGIN}:plan`, text: PLAN_PROMPT, scope: 'session' as const }] }
   })
 
-  // A subagent's effort is known only from its requests: the card shows the last one's.
+  // A subagent's effort is known only from its requests: the card shows the last one's. Its context is measured on
+  // each request's answer, for the ceiling.
   on('turn.step', async function* ($, e, next) {
     if (e.agentId && e.effort !== undefined) await recordEffort($, e.agentId, String(e.effort)).catch(error => logFailure($, error))
-    return yield* next(e)
+    const answered = yield* next(e)
+    if (e.agentId && answered?.usage) await recordContext($, e.agentId, contextOf(answered.usage)).catch(error => logFailure($, error))
+    return answered
   })
 
   on('turn.complete', async ($, e, next) => {
@@ -591,6 +600,8 @@ export const register: Register = on => {
     const stepsBy = new Map(
       await Promise.all(shown.map(async row => [row.id, (await read($, { plugin: 'spectree-engineer', key: 'steps', id: row.id } as const)) ?? NO_STEPS] as const)),
     )
+    // The largest context each card's mission has held, against the ceiling.
+    const peakBy = new Map(await Promise.all(shown.map(async row => [row.id, ((await read($, { ...CONTEXT, id: row.id })) ?? NO_CONTEXT).peak] as const)))
 
     const toggle = (field: 'isRunningCollapsed' | 'isFinishedCollapsed' | 'isFinishedWhole') => () =>
       update($, ui, v => ({ ...v, [field]: !v[field] }))
@@ -692,6 +703,7 @@ export const register: Register = on => {
               </Box>
               <Box flexShrink={0}>
                 <Text dimColor tabular>
+                  {(peakBy.get(row.id) ?? 0) > 0 ? `${formatTokens(peakBy.get(row.id) ?? 0)}/${formatTokens(CONTEXT_CEILING)} context · ` : ''}
                   {formatTokens(row.tokens)} tokens · {formatDuration(elapsed)}
                 </Text>
               </Box>

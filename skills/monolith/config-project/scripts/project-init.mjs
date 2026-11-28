@@ -1168,6 +1168,15 @@ async function patchRootPackageJson(rootDir, scope) {
       note: 'a built screen against its approved artboard, by computed style, for a Playwright spec',
     });
   }
+  // goal.mjs imports the squad's context ceiling from beside itself: the one file that holds the number
+  for (const name of ['context-ceiling.mjs', 'context-ceiling.d.mts']) {
+    const asset = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', name);
+    await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', name), await fs.readFile(asset, 'utf8'), {
+      ensureNewline: false,
+      markRiskOnOverwrite: false,
+      note: 'the context ceiling of a subagent mission, read by goal.mjs and the Engineer panel',
+    });
+  }
   const goalScript = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scripts', 'goal.mjs');
   await activeRunOps.writeTextFile(path.join(rootDir, 'scripts', 'goal.mjs'), await fs.readFile(goalScript, 'utf8'), {
     ensureNewline: false,
